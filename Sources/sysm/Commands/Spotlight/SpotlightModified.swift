@@ -1,0 +1,43 @@
+import ArgumentParser
+import Foundation
+
+struct SpotlightModified: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "modified",
+        abstract: "Find files modified in the last N days"
+    )
+
+    @Argument(help: "Number of days to look back")
+    var days: Int
+
+    @Option(name: .shortAndLong, help: "Limit search to directory")
+    var scope: String?
+
+    @Option(name: .shortAndLong, help: "Limit number of results")
+    var limit: Int?
+
+    @Flag(name: .long, help: "Output as JSON")
+    var json = false
+
+    func run() throws {
+        let service = SpotlightService()
+        let expandedScope = scope.map { NSString(string: $0).expandingTildeInPath }
+        let results = try service.searchModified(days: days, scope: expandedScope, limit: limit)
+
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = .prettyPrinted
+            let data = try encoder.encode(results)
+            print(String(data: data, encoding: .utf8)!)
+        } else {
+            if results.isEmpty {
+                print("No files modified in the last \(days) day(s)")
+            } else {
+                print("Files modified in last \(days) day(s) (\(results.count)):\n")
+                for result in results {
+                    print("  \(result.formatted())\n")
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,32 @@
+name: morning-briefing
+description: Daily morning briefing - gather calendar, reminders, and mail summary
+version: "1.0.0"
+
+steps:
+  - name: get-calendar
+    run: |
+      sysm calendar today --json
+    output: today_events
+
+  - name: get-reminders
+    run: |
+      sysm reminders today --json
+    output: today_reminders
+
+  - name: check-unread
+    run: |
+      sysm mail unread --limit 5 --json
+    output: unread_mail
+
+  - name: compile-briefing
+    run: |
+      echo "=== Morning Briefing ==="
+      echo ""
+      echo "Today's Events: {{ today_events | count }}"
+      echo "Due Reminders: {{ today_reminders | count }}"
+      echo "Unread Emails: {{ unread_mail | count }}"
+      echo ""
+      echo "Have a productive day!"
+
+# To schedule this workflow to run daily at 8 AM:
+# sysm schedule add morning --cron "0 8 * * *" --cmd "sysm workflow run ~/.sysm/workflows/morning-briefing.yaml"

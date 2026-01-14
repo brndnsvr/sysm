@@ -1,0 +1,16 @@
+import ArgumentParser
+import Foundation
+
+struct MessagesCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "messages",
+        abstract: "Access Apple Messages (iMessage/SMS)",
+        discussion: "Note: Messages access via AppleScript is limited on recent macOS versions.",
+        subcommands: [
+            MessagesSend.self,
+            MessagesRecent.self,
+            MessagesRead.self,
+        ],
+        defaultSubcommand: MessagesRecent.self
+    )
+}

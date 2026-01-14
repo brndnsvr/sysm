@@ -1,0 +1,45 @@
+name: backup-routine
+description: Example backup workflow with error handling and retries
+version: "1.0.0"
+
+env:
+  BACKUP_DIR: ~/Backups
+
+steps:
+  - name: check-backup-dir
+    run: |
+      mkdir -p "$BACKUP_DIR"
+      echo "Backup directory ready: $BACKUP_DIR"
+
+  - name: export-notes
+    run: |
+      sysm notes list --json > "$BACKUP_DIR/notes-$(date +%Y%m%d).json"
+      echo "Notes exported"
+    continue_on_error: true
+
+  - name: export-reminders
+    run: |
+      sysm reminders list --json > "$BACKUP_DIR/reminders-$(date +%Y%m%d).json"
+      echo "Reminders exported"
+    continue_on_error: true
+
+  - name: export-contacts
+    run: |
+      sysm contacts search "" --json > "$BACKUP_DIR/contacts-$(date +%Y%m%d).json"
+      echo "Contacts exported"
+    timeout: 60
+    retries: 2
+    retry_delay: 5
+
+  - name: cleanup-old
+    run: |
+      find "$BACKUP_DIR" -name "*.json" -mtime +30 -delete 2>/dev/null || true
+      echo "Cleaned up backups older than 30 days"
+
+  - name: summary
+    run: |
+      echo "=== Backup Complete ==="
+      ls -la "$BACKUP_DIR"/*.json 2>/dev/null | wc -l | xargs -I{} echo "Total backup files: {}"
+
+# To schedule weekly backups on Sunday at 2 AM:
+# sysm schedule add weekly-backup --cron "0 2 * * 0" --cmd "sysm workflow run ~/.sysm/workflows/backup-routine.yaml"
