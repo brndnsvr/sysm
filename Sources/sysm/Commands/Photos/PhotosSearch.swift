@@ -34,7 +34,7 @@ struct PhotosSearch: AsyncParsableCommand {
         // Set to end of day
         toDate = Calendar.current.date(byAdding: .day, value: 1, to: toDate)!.addingTimeInterval(-1)
 
-        let service = PhotosService()
+        let service = Services.photos()
         let photos = try await service.searchByDate(from: fromDate, to: toDate, limit: limit)
 
         if json {

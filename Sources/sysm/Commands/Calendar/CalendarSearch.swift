@@ -20,7 +20,7 @@ struct CalendarSearch: AsyncParsableCommand {
     var showCalendar = false
 
     func run() async throws {
-        let service = CalendarService()
+        let service = Services.calendar()
         let events = try await service.searchEvents(query: query, daysAhead: days)
 
         if json {

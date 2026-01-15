@@ -7,7 +7,7 @@ struct MusicPrev: ParsableCommand {
     )
 
     func run() throws {
-        let service = MusicService()
+        let service = Services.music()
         try service.previousTrack()
         print("Went to previous track")
     }

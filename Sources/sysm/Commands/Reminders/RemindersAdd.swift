@@ -20,7 +20,7 @@ struct RemindersAdd: AsyncParsableCommand {
     var quiet = false
 
     func run() async throws {
-        let service = ReminderService()
+        let service = Services.reminders()
 
         do {
             let reminder = try await service.addReminder(title: task, listName: list, dueDate: due)

@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-struct WorkflowEngine {
+struct WorkflowEngine: WorkflowEngineProtocol {
 
     // MARK: - Types
 

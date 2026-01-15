@@ -11,7 +11,7 @@ struct MusicStatus: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MusicService()
+        let service = Services.music()
         guard let status = try service.getStatus() else {
             print("No track information available")
             return

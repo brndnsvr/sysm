@@ -14,7 +14,7 @@ struct ContactsBirthdays: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = ContactsService()
+        let service = Services.contacts()
         let birthdays = try await service.getUpcomingBirthdays(days: days)
 
         if json {

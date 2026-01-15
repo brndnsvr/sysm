@@ -11,7 +11,7 @@ struct CalendarDelete: AsyncParsableCommand {
     var title: String
 
     func run() async throws {
-        let service = CalendarService()
+        let service = Services.calendar()
         let success = try await service.deleteEvent(title: title)
 
         if success {

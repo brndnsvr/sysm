@@ -11,7 +11,7 @@ struct MusicPlaylists: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MusicService()
+        let service = Services.music()
         let playlists = try service.listPlaylists()
 
         if json {

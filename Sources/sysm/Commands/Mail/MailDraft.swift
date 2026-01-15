@@ -17,7 +17,7 @@ struct MailDraft: ParsableCommand {
     var body: String?
 
     func run() throws {
-        let service = MailService()
+        let service = Services.mail()
         try service.createDraft(to: to, subject: subject, body: body)
         print("Draft created and Mail.app opened")
     }

@@ -14,7 +14,7 @@ struct TagsRemove: ParsableCommand {
     var tag: String
 
     func run() throws {
-        let service = TagsService()
+        let service = Services.tags()
         let expandedPath = NSString(string: path).expandingTildeInPath
         try service.removeTag(path: expandedPath, name: tag)
         print("Removed tag '\(tag)' from \(path)")

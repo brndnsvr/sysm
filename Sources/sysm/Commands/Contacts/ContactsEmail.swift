@@ -14,7 +14,7 @@ struct ContactsEmail: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = ContactsService()
+        let service = Services.contacts()
         let results = try await service.searchByEmail(query: query)
 
         if json {

@@ -11,7 +11,7 @@ struct ShortcutsList: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = ShortcutsService()
+        let service = Services.shortcuts()
         let shortcuts = try service.list()
 
         if json {

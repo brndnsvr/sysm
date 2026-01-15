@@ -29,7 +29,7 @@ struct PluginRun: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let manager = PluginManager()
+        let manager = Services.plugins()
 
         // Parse arguments into key-value pairs
         var argDict: [String: String] = [:]

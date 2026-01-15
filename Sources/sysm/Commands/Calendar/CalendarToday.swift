@@ -14,7 +14,7 @@ struct CalendarToday: AsyncParsableCommand {
     var showCalendar = false
 
     func run() async throws {
-        let service = CalendarService()
+        let service = Services.calendar()
         let events = try await service.getTodayEvents()
 
         if json {

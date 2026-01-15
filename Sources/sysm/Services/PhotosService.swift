@@ -1,7 +1,7 @@
 import Foundation
 import Photos
 
-actor PhotosService {
+actor PhotosService: PhotosServiceProtocol {
     private let library = PHPhotoLibrary.shared()
 
     // MARK: - Models

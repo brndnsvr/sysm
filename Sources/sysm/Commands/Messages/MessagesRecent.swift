@@ -14,7 +14,7 @@ struct MessagesRecent: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MessagesService()
+        let service = Services.messages()
         let conversations = try service.getRecentConversations(limit: limit)
 
         if json {

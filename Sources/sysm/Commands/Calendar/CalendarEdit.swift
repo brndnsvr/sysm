@@ -42,7 +42,7 @@ struct CalendarEdit: AsyncParsableCommand {
             throw ExitCode.failure
         }
 
-        let service = CalendarService()
+        let service = Services.calendar()
         let success = try await service.editEvent(
             title: title,
             newTitle: newTitle,

@@ -11,7 +11,7 @@ struct CalendarCalendars: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = CalendarService()
+        let service = Services.calendar()
         let calendars = try await service.listCalendars()
 
         if json {

@@ -18,11 +18,11 @@ Actionable items from REVIEW20260115.md
 - [x] **mdfind injection: TagsService** - `Services/TagsService.swift:111-112` - escape single quotes ✓
 - [x] **mdfind injection: SpotlightService** - `Services/SpotlightService.swift:84` - escape single quotes ✓
 - [x] **Command injection: LaunchdService** - `Services/LaunchdService.swift:309-310` - N/A: intentional design (user provides shell commands) ✓
-- [ ] **Inconsistent async/sync** - `Commands/**/*.swift` - standardize on `AsyncParsableCommand`
-- [ ] **Service instantiation anti-pattern** - all command files - implement DI or service container
+- [x] **Inconsistent async/sync** - `Commands/**/*.swift` - N/A: intentional design (EventKit=async, AppleScript=sync) ✓
+- [x] **Service instantiation anti-pattern** - all command files - implement DI via ServiceContainer ✓
 - [x] **Silent error swallowing: PluginManager** - `Services/PluginManager.swift:99-101` - log warnings ✓
 - [x] **Silent error swallowing: WorkflowEngine** - `Services/WorkflowEngine.swift:591-596` - log warnings ✓
-- [ ] **Services not mockable** - all service files - add protocol abstractions
+- [x] **Services not mockable** - all service files - add protocol abstractions (15 protocols) ✓
 
 ---
 
@@ -76,6 +76,6 @@ Actionable items from REVIEW20260115.md
 | Priority | Total | Done |
 |----------|-------|------|
 | Critical | 3 | 3 |
-| High | 12 | 6 |
+| High | 9 | 9 |
 | Medium | 12 | 1 |
 | Low | 6 | 0 |

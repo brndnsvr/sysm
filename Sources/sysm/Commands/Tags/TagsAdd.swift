@@ -23,7 +23,7 @@ struct TagsAdd: ParsableCommand {
     }
 
     func run() throws {
-        let service = TagsService()
+        let service = Services.tags()
         let expandedPath = NSString(string: path).expandingTildeInPath
         try service.addTag(path: expandedPath, name: tag, color: color)
         print("Added tag '\(tag)' to \(path)")

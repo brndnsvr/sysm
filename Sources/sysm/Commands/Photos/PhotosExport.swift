@@ -14,7 +14,7 @@ struct PhotosExport: AsyncParsableCommand {
     var output: String?
 
     func run() async throws {
-        let service = PhotosService()
+        let service = Services.photos()
 
         let outputPath: String
         if let output = output {

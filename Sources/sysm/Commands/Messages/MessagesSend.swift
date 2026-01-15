@@ -14,7 +14,7 @@ struct MessagesSend: ParsableCommand {
     var message: String
 
     func run() throws {
-        let service = MessagesService()
+        let service = Services.messages()
         try service.sendMessage(to: recipient, message: message)
         print("Message sent to \(recipient)")
     }

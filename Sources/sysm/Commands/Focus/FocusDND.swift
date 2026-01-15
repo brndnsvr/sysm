@@ -11,7 +11,7 @@ struct FocusDND: ParsableCommand {
     var state: String
 
     func run() throws {
-        let service = FocusService()
+        let service = Services.focus()
 
         switch state.lowercased() {
         case "on", "enable", "1", "true":

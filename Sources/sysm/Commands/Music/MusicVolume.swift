@@ -10,7 +10,7 @@ struct MusicVolume: ParsableCommand {
     var level: Int
 
     func run() throws {
-        let service = MusicService()
+        let service = Services.music()
         try service.setVolume(level)
         print("Volume set to \(level)%")
     }

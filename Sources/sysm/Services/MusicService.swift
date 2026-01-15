@@ -1,6 +1,6 @@
 import Foundation
 
-struct MusicService {
+struct MusicService: MusicServiceProtocol {
 
     // MARK: - Models
 

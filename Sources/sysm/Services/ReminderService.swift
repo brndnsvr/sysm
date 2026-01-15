@@ -1,7 +1,7 @@
 import EventKit
 import Foundation
 
-actor ReminderService {
+actor ReminderService: ReminderServiceProtocol {
     private let store = EKEventStore()
 
     func requestAccess() async throws -> Bool {

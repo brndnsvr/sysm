@@ -7,7 +7,7 @@ struct MusicPause: ParsableCommand {
     )
 
     func run() throws {
-        let service = MusicService()
+        let service = Services.music()
         try service.pause()
         print("Paused")
     }

@@ -1,6 +1,6 @@
 import Foundation
 
-struct MessagesService {
+struct MessagesService: MessagesServiceProtocol {
 
     // MARK: - Send Message
 

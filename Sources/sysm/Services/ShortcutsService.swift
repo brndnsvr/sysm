@@ -1,6 +1,6 @@
 import Foundation
 
-struct ShortcutsService {
+struct ShortcutsService: ShortcutsServiceProtocol {
     private let shortcutsPath = "/usr/bin/shortcuts"
 
     func list() throws -> [String] {

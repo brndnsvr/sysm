@@ -15,7 +15,7 @@ struct PluginRemove: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let manager = PluginManager()
+        let manager = Services.plugins()
 
         // Verify plugin exists
         _ = try manager.getPlugin(name: name)

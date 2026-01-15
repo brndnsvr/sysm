@@ -14,7 +14,7 @@ struct PhotosRecent: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = PhotosService()
+        let service = Services.photos()
         let photos = try await service.getRecentPhotos(limit: limit)
 
         if json {

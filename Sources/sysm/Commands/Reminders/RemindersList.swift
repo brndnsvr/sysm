@@ -14,7 +14,7 @@ struct RemindersList: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = ReminderService()
+        let service = Services.reminders()
         let reminders = try await service.getReminders(listName: listName)
 
         if json {

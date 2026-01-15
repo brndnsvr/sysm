@@ -11,7 +11,7 @@ struct NotesFolders: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = NotesService()
+        let service = Services.notes()
         let folders = try service.listFolders()
 
         if json {

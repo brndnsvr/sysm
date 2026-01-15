@@ -1,7 +1,7 @@
 import EventKit
 import Foundation
 
-actor CalendarService {
+actor CalendarService: CalendarServiceProtocol {
     private let store = EKEventStore()
 
     func requestAccess() async throws -> Bool {

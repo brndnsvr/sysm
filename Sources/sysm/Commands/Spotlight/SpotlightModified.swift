@@ -20,7 +20,7 @@ struct SpotlightModified: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = SpotlightService()
+        let service = Services.spotlight()
         let expandedScope = scope.map { NSString(string: $0).expandingTildeInPath }
         let results = try service.searchModified(days: days, scope: expandedScope, limit: limit)
 

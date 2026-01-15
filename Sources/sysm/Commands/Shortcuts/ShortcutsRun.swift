@@ -17,7 +17,7 @@ struct ShortcutsRun: ParsableCommand {
     var quiet = false
 
     func run() throws {
-        let service = ShortcutsService()
+        let service = Services.shortcuts()
         let output = try service.run(name: name, input: input)
 
         if !quiet {

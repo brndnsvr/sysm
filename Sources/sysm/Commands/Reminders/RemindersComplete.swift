@@ -11,7 +11,7 @@ struct RemindersComplete: AsyncParsableCommand {
     var name: String
 
     func run() async throws {
-        let service = ReminderService()
+        let service = Services.reminders()
         let completed = try await service.completeReminder(name: name)
 
         if completed {

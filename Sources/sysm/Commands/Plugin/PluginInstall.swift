@@ -23,7 +23,7 @@ struct PluginInstall: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let manager = PluginManager()
+        let manager = Services.plugins()
         let plugin = try manager.installPlugin(from: path, force: force)
 
         if json {

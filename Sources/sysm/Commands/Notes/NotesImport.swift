@@ -20,7 +20,7 @@ struct NotesImport: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = NotesService()
+        let service = Services.notes()
         let exporter = MarkdownExporter(outputDir: output)
 
         let notes = try service.getNotes(from: folder)

@@ -11,7 +11,7 @@ struct RemindersValidate: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = ReminderService()
+        let service = Services.reminders()
         let invalid = try await service.validateReminders()
 
         if json {

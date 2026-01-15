@@ -14,7 +14,7 @@ struct MailRead: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MailService()
+        let service = Services.mail()
 
         guard let message = try service.getMessage(id: id) else {
             fputs("Message not found: \(id)\n", stderr)

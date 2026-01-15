@@ -11,7 +11,7 @@ struct SafariTabs: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = SafariService()
+        let service = Services.safari()
         let tabs = try service.getOpenTabs()
 
         if json {

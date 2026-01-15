@@ -1,6 +1,6 @@
 import Foundation
 
-struct FocusService {
+struct FocusService: FocusServiceProtocol {
 
     // MARK: - Status
 

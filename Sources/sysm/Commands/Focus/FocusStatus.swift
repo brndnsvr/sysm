@@ -11,7 +11,7 @@ struct FocusStatus: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = FocusService()
+        let service = Services.focus()
         let status = try service.getStatus()
 
         if json {

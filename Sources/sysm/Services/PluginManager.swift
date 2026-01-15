@@ -1,7 +1,7 @@
 import Foundation
 import Yams
 
-struct PluginManager {
+struct PluginManager: PluginManagerProtocol {
 
     // MARK: - Types
 

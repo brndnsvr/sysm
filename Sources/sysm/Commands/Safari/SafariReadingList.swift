@@ -17,7 +17,7 @@ struct SafariReadingList: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = SafariService()
+        let service = Services.safari()
 
         if let url = url {
             // Add mode

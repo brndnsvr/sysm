@@ -38,7 +38,7 @@ struct CalendarList: AsyncParsableCommand {
             end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: startDate))!
         }
 
-        let service = CalendarService()
+        let service = Services.calendar()
         let events = try await service.getEvents(from: cal.startOfDay(for: startDate), to: end, calendar: calendar)
 
         if json {

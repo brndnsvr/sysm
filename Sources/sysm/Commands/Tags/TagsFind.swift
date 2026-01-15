@@ -20,7 +20,7 @@ struct TagsFind: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = TagsService()
+        let service = Services.tags()
         let expandedScope = scope.map { NSString(string: $0).expandingTildeInPath }
         var files = try service.findByTag(name: tag, scope: expandedScope)
 

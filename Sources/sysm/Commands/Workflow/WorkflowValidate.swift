@@ -23,7 +23,7 @@ struct WorkflowValidate: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let engine = WorkflowEngine()
+        let engine = Services.workflow()
 
         // Load and parse
         let workflow: WorkflowEngine.Workflow

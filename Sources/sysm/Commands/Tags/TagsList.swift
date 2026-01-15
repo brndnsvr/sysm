@@ -14,7 +14,7 @@ struct TagsList: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = TagsService()
+        let service = Services.tags()
         let expandedPath = NSString(string: path).expandingTildeInPath
         let tags = try service.getTags(path: expandedPath)
 

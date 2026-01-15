@@ -11,7 +11,7 @@ struct FocusList: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = FocusService()
+        let service = Services.focus()
         let modes = try service.listFocusModes()
 
         if json {

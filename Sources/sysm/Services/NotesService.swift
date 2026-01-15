@@ -1,6 +1,6 @@
 import Foundation
 
-struct NotesService {
+struct NotesService: NotesServiceProtocol {
 
     func listFolders() throws -> [String] {
         let script = """

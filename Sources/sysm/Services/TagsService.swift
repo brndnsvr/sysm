@@ -1,6 +1,6 @@
 import Foundation
 
-struct TagsService {
+struct TagsService: TagsServiceProtocol {
     private let tagAttribute = "com.apple.metadata:_kMDItemUserTags"
     private let mdfindPath = "/usr/bin/mdfind"
 

@@ -21,7 +21,7 @@ struct WorkflowList: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let engine = WorkflowEngine()
+        let engine = Services.workflow()
 
         let workflows = try engine.listWorkflows(in: dir)
 

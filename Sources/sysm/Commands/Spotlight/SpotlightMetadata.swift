@@ -14,7 +14,7 @@ struct SpotlightMetadata: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = SpotlightService()
+        let service = Services.spotlight()
         let metadata = try service.getMetadata(path: path)
 
         if json {

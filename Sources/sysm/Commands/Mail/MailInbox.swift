@@ -14,7 +14,7 @@ struct MailInbox: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MailService()
+        let service = Services.mail()
         let messages = try service.getInboxMessages(limit: limit)
 
         if json {

@@ -29,7 +29,7 @@ struct WorkflowRun: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let engine = WorkflowEngine()
+        let engine = Services.workflow()
 
         // Load workflow
         let workflow = try engine.load(path: file)

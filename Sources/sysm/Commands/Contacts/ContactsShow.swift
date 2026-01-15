@@ -14,7 +14,7 @@ struct ContactsShow: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = ContactsService()
+        let service = Services.contacts()
 
         guard let contact = try await service.getContact(identifier: identifier) else {
             fputs("Contact not found: \(identifier)\n", stderr)

@@ -11,7 +11,7 @@ struct ContactsGroups: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = ContactsService()
+        let service = Services.contacts()
         let groups = try await service.getGroups()
 
         if json {

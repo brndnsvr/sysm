@@ -1,6 +1,6 @@
 import Foundation
 
-struct SpotlightService {
+struct SpotlightService: SpotlightServiceProtocol {
     private let mdfindPath = "/usr/bin/mdfind"
     private let mdlsPath = "/usr/bin/mdls"
 

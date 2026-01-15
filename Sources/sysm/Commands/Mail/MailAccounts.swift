@@ -11,7 +11,7 @@ struct MailAccounts: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MailService()
+        let service = Services.mail()
         let accounts = try service.getAccounts()
 
         if json {

@@ -1,7 +1,7 @@
 import Contacts
 import Foundation
 
-actor ContactsService {
+actor ContactsService: ContactsServiceProtocol {
     private let store = CNContactStore()
 
     // MARK: - Access

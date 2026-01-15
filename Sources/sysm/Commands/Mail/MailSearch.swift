@@ -17,7 +17,7 @@ struct MailSearch: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MailService()
+        let service = Services.mail()
         let messages = try service.searchMessages(query: query, limit: limit)
 
         if json {

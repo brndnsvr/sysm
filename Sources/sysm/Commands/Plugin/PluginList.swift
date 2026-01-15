@@ -18,7 +18,7 @@ struct PluginList: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let manager = PluginManager()
+        let manager = Services.plugins()
         let plugins = try manager.listPlugins()
 
         if plugins.isEmpty {

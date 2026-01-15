@@ -49,7 +49,7 @@ struct CalendarAdd: AsyncParsableCommand {
             endDate = cal.date(byAdding: .hour, value: 1, to: startDate)!
         }
 
-        let service = CalendarService()
+        let service = Services.calendar()
         let event = try await service.addEvent(
             title: title,
             startDate: allDay ? cal.startOfDay(for: startDate) : startDate,

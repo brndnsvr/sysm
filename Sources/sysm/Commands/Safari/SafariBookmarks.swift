@@ -14,7 +14,7 @@ struct SafariBookmarks: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = SafariService()
+        let service = Services.safari()
         var bookmarks = try service.getBookmarks()
 
         // Filter by folder if specified

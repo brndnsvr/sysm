@@ -1,6 +1,6 @@
 import Foundation
 
-struct SafariService {
+struct SafariService: SafariServiceProtocol {
     private let bookmarksPath = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Safari/Bookmarks.plist")
 

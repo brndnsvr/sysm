@@ -1,6 +1,6 @@
 import Foundation
 
-struct MailService {
+struct MailService: MailServiceProtocol {
 
     // MARK: - Accounts
 

@@ -17,7 +17,7 @@ struct MessagesRead: ParsableCommand {
     var json = false
 
     func run() throws {
-        let service = MessagesService()
+        let service = Services.messages()
         let messages = try service.getMessages(conversationId: conversationId, limit: limit)
 
         if json {

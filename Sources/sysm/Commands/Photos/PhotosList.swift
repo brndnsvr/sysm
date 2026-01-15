@@ -17,7 +17,7 @@ struct PhotosList: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let service = PhotosService()
+        let service = Services.photos()
         let photos = try await service.listPhotos(albumId: albumId, limit: limit)
 
         if json {

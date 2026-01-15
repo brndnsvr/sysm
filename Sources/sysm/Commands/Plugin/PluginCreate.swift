@@ -23,7 +23,7 @@ struct PluginCreate: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let manager = PluginManager()
+        let manager = Services.plugins()
         let path = try manager.createPlugin(name: name, description: description, force: force)
 
         print("Created plugin: \(name)")
