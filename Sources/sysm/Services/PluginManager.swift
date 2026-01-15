@@ -96,8 +96,11 @@ struct PluginManager {
             guard FileManager.default.fileExists(atPath: pluginPath, isDirectory: &isDir),
                   isDir.boolValue else { continue }
 
-            if let plugin = try? loadPlugin(path: pluginPath) {
+            do {
+                let plugin = try loadPlugin(path: pluginPath)
                 plugins.append(plugin)
+            } catch {
+                fputs("Warning: Failed to load plugin '\(dir)': \(error.localizedDescription)\n", stderr)
             }
         }
 

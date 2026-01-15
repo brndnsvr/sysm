@@ -592,8 +592,7 @@ struct WorkflowEngine {
                 let workflow = try load(path: fullPath)
                 workflows.append((fullPath, workflow))
             } catch {
-                // Skip invalid workflow files
-                continue
+                fputs("Warning: Failed to load workflow '\(file)': \(error.localizedDescription)\n", stderr)
             }
         }
 
