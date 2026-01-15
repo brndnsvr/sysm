@@ -193,7 +193,7 @@ struct MusicService {
     }
 
     func searchLibrary(query: String, limit: Int = 20) throws -> [Track] {
-        let escapedQuery = query.replacingOccurrences(of: "\"", with: "\\\"")
+        let escapedQuery = AppleScriptRunner.escape(query)
         let script = """
         tell application "Music"
             set results to search library playlist 1 for "\(escapedQuery)"

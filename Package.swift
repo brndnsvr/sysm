@@ -22,5 +22,10 @@ let package = Package(
                 .linkedFramework("Photos"),
             ]
         ),
+        .testTarget(
+            name: "sysmTests",
+            dependencies: [],
+            path: "Tests/sysmTests"
+        ),
     ]
 )

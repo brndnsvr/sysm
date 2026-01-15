@@ -19,7 +19,7 @@ struct NotesService {
     }
 
     func listNotes(folder: String? = nil) throws -> [(name: String, folder: String, id: String)] {
-        let folderFilter = folder.map { "folder \"\($0)\"" } ?? "default folder"
+        let folderFilter = folder.map { "folder \"\(AppleScriptRunner.escape($0))\"" } ?? "default folder"
 
         let script = """
         tell application "Notes"
@@ -57,7 +57,7 @@ struct NotesService {
         let script = """
         tell application "Notes"
             try
-                set n to note id "\(id)"
+                set n to note id "\(AppleScriptRunner.escape(id))"
                 set noteData to ""
                 set noteData to noteData & (name of n) & "|||FIELD|||"
                 set noteData to noteData & (name of container of n) & "|||FIELD|||"
@@ -101,7 +101,7 @@ struct NotesService {
     }
 
     func countNotes(folder: String? = nil) throws -> Int {
-        let folderFilter = folder.map { "folder \"\($0)\"" } ?? "default folder"
+        let folderFilter = folder.map { "folder \"\(AppleScriptRunner.escape($0))\"" } ?? "default folder"
 
         let script = """
         tell application "Notes"
