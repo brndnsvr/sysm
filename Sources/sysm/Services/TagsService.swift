@@ -109,7 +109,8 @@ struct TagsService {
     // MARK: - Find Files by Tag
 
     func findByTag(name: String, scope: String? = nil) throws -> [String] {
-        var args = ["kMDItemUserTags == '\(name)'"]
+        let escapedName = AppleScriptRunner.escapeMdfind(name)
+        var args = ["kMDItemUserTags == '\(escapedName)'"]
         if let scope = scope {
             args.insert("-onlyin", at: 0)
             args.insert(scope, at: 1)

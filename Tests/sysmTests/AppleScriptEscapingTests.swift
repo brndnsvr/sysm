@@ -95,4 +95,73 @@ final class AppleScriptEscapingTests: XCTestCase {
         // So \\" becomes \\\\\"
         XCTAssertEqual(escaped, "test\\\\\\\"quoted\\\\\\\"")
     }
+
+    // MARK: - mdfind Escaping Tests
+
+    /// The mdfind escaping function to test (mirrors AppleScriptRunner.escapeMdfind)
+    func escapeMdfind(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+    }
+
+    func testMdfindEscapeSingleQuote() {
+        let input = "O'Reilly"
+        let escaped = escapeMdfind(input)
+        XCTAssertEqual(escaped, "O\\'Reilly")
+    }
+
+    func testMdfindEscapeBackslash() {
+        let input = "path\\to\\file"
+        let escaped = escapeMdfind(input)
+        XCTAssertEqual(escaped, "path\\\\to\\\\file")
+    }
+
+    func testMdfindEscapeInjectionAttempt() {
+        // Attempt to break out of single-quoted mdfind query
+        let input = "tag' || kMDItemKind == 'malicious"
+        let escaped = escapeMdfind(input)
+
+        // After escaping, single quotes should be escaped with backslash
+        // The escaped form is: tag\' || kMDItemKind == \'malicious
+        // This means all quotes are now escaped, neutralizing the injection
+
+        // Count escaped quotes - should match input quote count
+        let inputQuoteCount = input.filter { $0 == "'" }.count
+        let escapedQuoteCount = escaped.components(separatedBy: "\\'").count - 1
+        XCTAssertEqual(escapedQuoteCount, inputQuoteCount, "All single quotes should be escaped")
+
+        // Verify the escape sequences exist
+        XCTAssertTrue(escaped.contains("\\'"), "Single quotes should be escaped")
+    }
+
+    func testMdfindEscapeComplexInjection() {
+        // More complex mdfind injection
+        let input = "test' && rm -rf ~ && echo 'pwned"
+        let escaped = escapeMdfind(input)
+
+        // All single quotes should be escaped
+        let quoteCount = input.filter { $0 == "'" }.count
+        let escapedQuoteCount = escaped.components(separatedBy: "\\'").count - 1
+        XCTAssertEqual(escapedQuoteCount, quoteCount, "All single quotes should be escaped")
+    }
+
+    func testMdfindEscapeNormalString() {
+        let input = "My Tag Name"
+        XCTAssertEqual(escapeMdfind(input), "My Tag Name", "Normal strings should pass through unchanged")
+    }
+
+    func testMdfindEscapeEmptyString() {
+        XCTAssertEqual(escapeMdfind(""), "")
+    }
+
+    func testMdfindEscapeWithBackslashAndQuote() {
+        // Order matters: backslash must be escaped first
+        let input = "test\\'escaped"
+        let escaped = escapeMdfind(input)
+
+        // Backslash becomes \\, then ' becomes \'
+        // So \' becomes \\\'
+        XCTAssertEqual(escaped, "test\\\\\\'escaped")
+    }
 }

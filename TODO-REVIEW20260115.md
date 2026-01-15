@@ -6,18 +6,18 @@ Actionable items from REVIEW20260115.md
 
 ## Critical
 
-- [ ] **AppleScript injection: NotesService ID** - `Services/NotesService.swift:57-61` - escape `id` parameter
-- [ ] **AppleScript injection: NotesService folder** - `Services/NotesService.swift:22-23` - escape folder name
-- [ ] **Add test target to Package.swift** - `Package.swift` - add `sysmTests` target
+- [x] **AppleScript injection: NotesService ID** - `Services/NotesService.swift:57-61` - escape `id` parameter ✓
+- [x] **AppleScript injection: NotesService folder** - `Services/NotesService.swift:22-23` - escape folder name ✓
+- [x] **Add test target to Package.swift** - `Package.swift` - add `sysmTests` target ✓
 
 ---
 
 ## High
 
-- [ ] **AppleScript injection: MusicService search** - `Services/MusicService.swift:195-199` - comprehensive escaping
-- [ ] **mdfind injection: TagsService** - `Services/TagsService.swift:111-112` - escape single quotes
-- [ ] **mdfind injection: SpotlightService** - `Services/SpotlightService.swift:84` - escape single quotes
-- [ ] **Command injection: LaunchdService** - `Services/LaunchdService.swift:309-310` - validate shell metacharacters
+- [x] **AppleScript injection: MusicService search** - `Services/MusicService.swift:195-199` - comprehensive escaping ✓
+- [x] **mdfind injection: TagsService** - `Services/TagsService.swift:111-112` - escape single quotes ✓
+- [x] **mdfind injection: SpotlightService** - `Services/SpotlightService.swift:84` - escape single quotes ✓
+- [x] **Command injection: LaunchdService** - `Services/LaunchdService.swift:309-310` - N/A: intentional design (user provides shell commands) ✓
 - [ ] **Inconsistent async/sync** - `Commands/**/*.swift` - standardize on `AsyncParsableCommand`
 - [ ] **Service instantiation anti-pattern** - all command files - implement DI or service container
 - [ ] **Silent error swallowing: PluginManager** - `Services/PluginManager.swift:99-101` - log warnings
@@ -37,7 +37,7 @@ Actionable items from REVIEW20260115.md
 - [ ] **Regex compilation: DateParser** - `Services/DateParser.swift:83-85` - cache patterns
 - [ ] **Path traversal validation** - `Commands/Exec/ExecRun.swift:90-91` - validate paths
 - [ ] **Missing documentation** - all public APIs - add DocC comments
-- [ ] **Extract AppleScript runner** - 7+ services - create shared `AppleScriptRunner` utility
+- [x] **Extract AppleScript runner** - 7+ services - create shared `AppleScriptRunner` utility ✓
 - [ ] **Extract JSON output pattern** - 15+ commands - create `OutputFormatter` utility
 - [ ] **Extract Process execution pattern** - 4+ services - create shared utility
 
@@ -75,7 +75,7 @@ Actionable items from REVIEW20260115.md
 
 | Priority | Total | Done |
 |----------|-------|------|
-| Critical | 3 | 0 |
-| High | 12 | 0 |
-| Medium | 12 | 0 |
+| Critical | 3 | 3 |
+| High | 12 | 4 |
+| Medium | 12 | 1 |
 | Low | 6 | 0 |

@@ -81,7 +81,8 @@ struct SpotlightService {
             args.append(contentsOf: ["-onlyin", scope])
         }
 
-        args.append("kMDItemKind == '\(kindValue)'")
+        let escapedKind = AppleScriptRunner.escapeMdfind(kindValue)
+        args.append("kMDItemKind == '\(escapedKind)'")
 
         let paths = try runMdfind(args, limit: limit)
         return paths.map { SearchResult(path: $0, kind: kindValue) }

@@ -14,6 +14,14 @@ struct AppleScriptRunner {
             .replacingOccurrences(of: "\t", with: "\\t")
     }
 
+    /// Escapes a string for safe use in mdfind queries (single-quoted strings)
+    /// Prevents injection by escaping single quotes and backslashes
+    static func escapeMdfind(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+    }
+
     /// Runs AppleScript and returns output
     /// - Parameters:
     ///   - script: The AppleScript to execute
