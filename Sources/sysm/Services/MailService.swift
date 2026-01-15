@@ -104,7 +104,7 @@ struct MailService {
         let script = """
         tell application "Mail"
             try
-                set msg to message id \(id) of inbox
+                set msg to first message of inbox whose id is \(id)
                 set msgSubject to subject of msg
                 set msgFrom to sender of msg
                 set msgTo to (address of to recipients of msg) as string
