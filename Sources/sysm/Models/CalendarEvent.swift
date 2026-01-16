@@ -1,6 +1,10 @@
 import EventKit
 import Foundation
 
+/// Represents a calendar event from macOS Calendar.
+///
+/// This model wraps EventKit's `EKEvent` for JSON serialization and
+/// provides convenient formatting methods for CLI output.
 struct CalendarEvent: Codable {
     let id: String
     let title: String
@@ -11,6 +15,8 @@ struct CalendarEvent: Codable {
     let location: String?
     let notes: String?
 
+    /// Creates a CalendarEvent from an EventKit event.
+    /// - Parameter ekEvent: The EventKit event to convert.
     init(from ekEvent: EKEvent) {
         self.id = ekEvent.eventIdentifier ?? UUID().uuidString
         self.title = ekEvent.title ?? ""
@@ -22,6 +28,7 @@ struct CalendarEvent: Codable {
         self.notes = ekEvent.notes
     }
 
+    /// Formatted time range string (e.g., "10:00 AM - 11:00 AM" or "All day").
     var timeRange: String {
         let formatter = DateFormatter()
         if isAllDay {
@@ -31,12 +38,16 @@ struct CalendarEvent: Codable {
         return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
     }
 
+    /// Full date string for the event's start date.
     var dateString: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .full
         return formatter.string(from: startDate)
     }
 
+    /// Formats the event for CLI display.
+    /// - Parameter showCalendar: Whether to include the calendar name.
+    /// - Returns: Formatted string with time, title, location, and optionally calendar.
     func formatted(showCalendar: Bool = false) -> String {
         var result = "- \(timeRange): \(title)"
         if let loc = location, !loc.isEmpty {

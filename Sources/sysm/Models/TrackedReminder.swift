@@ -1,5 +1,9 @@
 import Foundation
 
+/// Tracks the state of a reminder across sessions for the `sysm today` command.
+///
+/// Used by the cache to remember which reminders have been seen, dismissed,
+/// or completed, enabling persistent tracking of daily tasks.
 struct TrackedReminder: Codable {
     var originalName: String
     var firstSeen: String
@@ -37,12 +41,16 @@ struct TrackedReminder: Codable {
         self.completedDate = completedDate
     }
 
+    /// Returns today's date as a string in YYYY-MM-DD format.
     static func todayString() -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter.string(from: Date())
     }
 
+    /// Creates a normalized key from a reminder name for cache lookups.
+    /// - Parameter name: The reminder name.
+    /// - Returns: Lowercase, trimmed string for consistent lookups.
     static func makeKey(_ name: String) -> String {
         return name.lowercased().trimmingCharacters(in: .whitespaces)
     }

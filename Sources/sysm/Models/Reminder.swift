@@ -1,6 +1,10 @@
 import Foundation
 import EventKit
 
+/// Represents a reminder from macOS Reminders.
+///
+/// This model wraps EventKit's `EKReminder` for JSON serialization and
+/// provides convenient formatting methods for CLI output.
 struct Reminder: Codable {
     let id: String
     let title: String
@@ -10,6 +14,8 @@ struct Reminder: Codable {
     let priority: Int
     let notes: String?
 
+    /// Creates a Reminder from an EventKit reminder.
+    /// - Parameter ekReminder: The EventKit reminder to convert.
     init(from ekReminder: EKReminder) {
         self.id = ekReminder.calendarItemIdentifier
         self.title = ekReminder.title ?? ""
@@ -26,6 +32,7 @@ struct Reminder: Codable {
         }
     }
 
+    /// Human-readable due date string.
     var dueDateString: String? {
         guard let date = dueDate else { return nil }
         let formatter = DateFormatter()
@@ -34,6 +41,7 @@ struct Reminder: Codable {
         return formatter.string(from: date)
     }
 
+    /// ISO 8601 formatted due date string.
     var dueDateISO: String? {
         guard let date = dueDate else { return nil }
         let formatter = ISO8601DateFormatter()
@@ -41,6 +49,9 @@ struct Reminder: Codable {
         return formatter.string(from: date)
     }
 
+    /// Formats the reminder for CLI display.
+    /// - Parameter includeList: Whether to include the list name.
+    /// - Returns: Markdown-style checkbox with title, due date, and optionally list.
     func formatted(includeList: Bool = false) -> String {
         var result = "- [ ] \(title)"
         if let due = dueDateString {

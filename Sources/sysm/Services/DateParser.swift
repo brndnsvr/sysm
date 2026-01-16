@@ -1,5 +1,19 @@
 import Foundation
 
+/// Parses natural language date strings into `Date` objects.
+///
+/// Supports various formats including:
+/// - Relative dates: "today", "tomorrow", "next Monday"
+/// - Day names: "friday", "tue"
+/// - ISO dates: "2024-01-15"
+/// - Slash dates: "1/15", "1/15/24"
+/// - Time specifications: "3pm", "15:30", "9:00 AM"
+///
+/// ## Example
+/// ```swift
+/// DateParser.parse("tomorrow 3pm")  // Returns tomorrow at 3:00 PM
+/// DateParser.parse("next friday")   // Returns next Friday at midnight
+/// ```
 struct DateParser {
     // MARK: - Cached Regex Patterns
 
@@ -28,6 +42,9 @@ struct DateParser {
         "saturday": 7, "sat": 7,
     ]
 
+    /// Parses a natural language date string.
+    /// - Parameter input: The date string to parse.
+    /// - Returns: The parsed date, or nil if parsing fails.
     static func parse(_ input: String) -> Date? {
         let text = input.lowercased().trimmingCharacters(in: .whitespaces)
         let now = Date()
@@ -78,6 +95,11 @@ struct DateParser {
         return parseTime(from: text, baseDate: now)
     }
 
+    /// Extracts and parses a time component from text.
+    /// - Parameters:
+    ///   - text: Text potentially containing a time specification.
+    ///   - baseDate: The base date to apply the time to.
+    /// - Returns: A new date with the parsed time, or nil if no time found.
     static func parseTime(from text: String, baseDate: Date) -> Date? {
         let calendar = Foundation.Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: baseDate)
@@ -116,6 +138,9 @@ struct DateParser {
         return nil
     }
 
+    /// Parses an ISO 8601 formatted date (YYYY-MM-DD).
+    /// - Parameter text: The ISO date string.
+    /// - Returns: The parsed date, or nil if invalid.
     static func parseISO(_ text: String) -> Date? {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
@@ -125,6 +150,9 @@ struct DateParser {
         return nil
     }
 
+    /// Parses a slash-formatted date (M/D or M/D/YY).
+    /// - Parameter text: The slash date string.
+    /// - Returns: The parsed date, or nil if invalid.
     static func parseSlashDate(_ text: String) -> Date? {
         guard let regex = slashDateRegex,
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),

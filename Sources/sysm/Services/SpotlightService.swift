@@ -119,66 +119,30 @@ struct SpotlightService: SpotlightServiceProtocol {
     // MARK: - Private Helpers
 
     private func runMdfind(_ arguments: [String], limit: Int? = nil) throws -> [String] {
-        guard FileManager.default.fileExists(atPath: mdfindPath) else {
+        do {
+            let output = try Shell.run(mdfindPath, args: arguments)
+            var results = output.components(separatedBy: "\n").filter { !$0.isEmpty }
+
+            if let limit = limit, results.count > limit {
+                results = Array(results.prefix(limit))
+            }
+
+            return results
+        } catch Shell.Error.commandNotFound {
             throw SpotlightError.mdfindNotFound
+        } catch Shell.Error.executionFailed(_, let stderr) {
+            throw SpotlightError.searchFailed(stderr)
         }
-
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: mdfindPath)
-        task.arguments = arguments
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = errorPipe
-
-        try task.run()
-        task.waitUntilExit()
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-
-        if task.terminationStatus != 0 {
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw SpotlightError.searchFailed(errorMessage.trimmingCharacters(in: .whitespacesAndNewlines))
-        }
-
-        let output = String(data: outputData, encoding: .utf8) ?? ""
-        var results = output.components(separatedBy: "\n").filter { !$0.isEmpty }
-
-        if let limit = limit, results.count > limit {
-            results = Array(results.prefix(limit))
-        }
-
-        return results
     }
 
     private func runMdls(_ arguments: [String]) throws -> String {
-        guard FileManager.default.fileExists(atPath: mdlsPath) else {
+        do {
+            return try Shell.run(mdlsPath, args: arguments)
+        } catch Shell.Error.commandNotFound {
             throw SpotlightError.mdlsNotFound
+        } catch Shell.Error.executionFailed(_, let stderr) {
+            throw SpotlightError.metadataFailed(stderr)
         }
-
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: mdlsPath)
-        task.arguments = arguments
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = errorPipe
-
-        try task.run()
-        task.waitUntilExit()
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-
-        if task.terminationStatus != 0 {
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw SpotlightError.metadataFailed(errorMessage.trimmingCharacters(in: .whitespacesAndNewlines))
-        }
-
-        return String(data: outputData, encoding: .utf8) ?? ""
     }
 
     private func parseMetadata(_ output: String) -> [String: String] {

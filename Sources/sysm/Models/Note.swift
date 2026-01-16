@@ -1,5 +1,9 @@
 import Foundation
 
+/// Represents a note from macOS Notes retrieved via AppleScript.
+///
+/// This model includes the note's content and metadata, along with
+/// methods for converting to Markdown format for export.
 struct Note: Codable {
     // MARK: - Cached Regex Patterns
 
@@ -56,6 +60,7 @@ struct Note: Codable {
     let creationDate: Date?
     let modificationDate: Date?
 
+    /// Name sanitized for use as a filename (special characters removed).
     var sanitizedName: String {
         var result = name
             .replacingOccurrences(of: "/", with: "-")
@@ -75,6 +80,8 @@ struct Note: Codable {
         return result
     }
 
+    /// Converts the note to Markdown format with YAML frontmatter.
+    /// - Returns: Markdown string with metadata and converted body content.
     func toMarkdown() -> String {
         var md = "---\n"
         md += "source: apple-notes\n"

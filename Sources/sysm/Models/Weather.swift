@@ -2,6 +2,7 @@ import Foundation
 
 // MARK: - Public Models
 
+/// Current weather conditions for a location.
 struct CurrentWeather: Codable {
     let location: String
     let latitude: Double
@@ -34,6 +35,7 @@ struct CurrentWeather: Codable {
     }
 }
 
+/// Multi-day weather forecast for a location.
 struct Forecast: Codable {
     let location: String
     let days: [DayForecast]
@@ -52,6 +54,7 @@ struct Forecast: Codable {
     }
 }
 
+/// Weather forecast for a single day.
 struct DayForecast: Codable {
     let date: Date
     let high: Double
@@ -62,6 +65,7 @@ struct DayForecast: Codable {
     let sunset: Date
 }
 
+/// Hourly weather forecast for a location.
 struct HourlyForecast: Codable {
     let location: String
     let hours: [HourForecast]
@@ -79,6 +83,7 @@ struct HourlyForecast: Codable {
     }
 }
 
+/// Weather forecast for a single hour.
 struct HourForecast: Codable {
     let time: Date
     let temperature: Double
@@ -86,6 +91,7 @@ struct HourForecast: Codable {
     let condition: WeatherCondition
 }
 
+/// Geographic coordinates with location metadata.
 struct Coordinates: Codable {
     let latitude: Double
     let longitude: Double
@@ -107,6 +113,7 @@ struct Coordinates: Codable {
 
 // MARK: - Weather Condition (WMO Weather Codes)
 
+/// Weather condition based on WMO (World Meteorological Organization) codes.
 enum WeatherCondition: Int, Codable {
     case clear = 0
     case mainlyClear = 1

@@ -94,23 +94,12 @@ struct FocusService: FocusServiceProtocol {
     // MARK: - Private Helpers
 
     private func isDNDEnabled() -> Bool {
-        // Check DND status via defaults
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/defaults")
-        task.arguments = ["-currentHost", "read", "com.apple.notificationcenterui", "doNotDisturb"]
-
-        let outputPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = Pipe()
-
         do {
-            try task.run()
-            task.waitUntilExit()
-
-            let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            let output = String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
-            return output == "1"
+            let result = try Shell.execute(
+                "/usr/bin/defaults",
+                args: ["-currentHost", "read", "com.apple.notificationcenterui", "doNotDisturb"]
+            )
+            return result.stdout == "1"
         } catch {
             return false
         }
@@ -195,27 +184,11 @@ struct FocusService: FocusServiceProtocol {
         try script.write(to: tempFile, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: tempFile) }
 
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = [tempFile.path]
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = errorPipe
-
-        try task.run()
-        task.waitUntilExit()
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-
-        if task.terminationStatus != 0 {
-            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw FocusError.appleScriptError(errorMessage)
+        do {
+            return try Shell.run("/usr/bin/osascript", args: [tempFile.path])
+        } catch Shell.Error.executionFailed(_, let stderr) {
+            throw FocusError.appleScriptError(stderr)
         }
-
-        return String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 }
 
