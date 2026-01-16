@@ -1,7 +1,12 @@
 import Foundation
 
+/// Utilities for formatting command output.
+///
+/// Provides consistent JSON encoding for all command output when the `--json` flag is used.
 enum OutputFormatter {
-    /// Print an Encodable value as pretty-printed JSON
+    /// Prints an Encodable value as pretty-printed, sorted JSON to stdout.
+    /// - Parameter value: The value to encode and print.
+    /// - Throws: `OutputError.encodingFailed` if encoding fails.
     static func printJSON<T: Encodable>(_ value: T) throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -13,7 +18,9 @@ enum OutputFormatter {
         print(jsonString)
     }
 
-    /// Encode a value to JSON Data
+    /// Encodes a value to pretty-printed JSON Data.
+    /// - Parameter value: The value to encode.
+    /// - Returns: JSON-encoded data.
     static func encodeJSON<T: Encodable>(_ value: T) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]

@@ -201,20 +201,10 @@ struct LaunchdService {
             throw LaunchdError.jobNotFound(name)
         }
 
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        task.arguments = ["kickstart", "-k", "gui/\(getuid())/\(label)"]
-
-        let errorPipe = Pipe()
-        task.standardError = errorPipe
-
-        try task.run()
-        task.waitUntilExit()
-
-        if task.terminationStatus != 0 {
-            let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-            let errorStr = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw LaunchdError.launchctlFailed(errorStr)
+        do {
+            _ = try Shell.run("/bin/launchctl", args: ["kickstart", "-k", "gui/\(getuid())/\(label)"])
+        } catch Shell.Error.executionFailed(_, let stderr) {
+            throw LaunchdError.launchctlFailed(stderr)
         }
     }
 
@@ -413,31 +403,13 @@ struct LaunchdService {
     }
 
     private func loadJob(plistPath: String) throws {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        task.arguments = ["load", plistPath]
-
-        let errorPipe = Pipe()
-        task.standardError = errorPipe
-
-        try task.run()
-        task.waitUntilExit()
-
-        // launchctl load returns 0 even if already loaded, so we don't check exit code strictly
+        // launchctl load returns 0 even if already loaded, so we ignore exit code
+        _ = try? Shell.execute("/bin/launchctl", args: ["load", plistPath])
     }
 
     private func unloadJob(plistPath: String) throws {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        task.arguments = ["unload", plistPath]
-
-        let errorPipe = Pipe()
-        task.standardError = errorPipe
-
-        try task.run()
-        task.waitUntilExit()
-
         // launchctl unload may fail if not loaded, that's ok
+        _ = try? Shell.execute("/bin/launchctl", args: ["unload", plistPath])
     }
 
     private func parseJob(plistPath: String) throws -> Job {
@@ -514,20 +486,9 @@ struct LaunchdService {
     }
 
     private func isJobLoaded(label: String) -> Bool {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
-        task.arguments = ["list", label]
-
-        let outputPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = outputPipe
-
-        do {
-            try task.run()
-            task.waitUntilExit()
-            return task.terminationStatus == 0
-        } catch {
+        guard let result = try? Shell.execute("/bin/launchctl", args: ["list", label]) else {
             return false
         }
+        return result.exitCode == 0
     }
 }

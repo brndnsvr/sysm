@@ -327,52 +327,30 @@ echo "Hello, $NAME!"
         }
 
         // Execute script
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/bin/bash")
-        task.arguments = [scriptPath]
-        task.currentDirectoryURL = URL(fileURLWithPath: pluginData.path)
-        task.environment = env
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = errorPipe
-
-        // Timeout handling
-        var timedOut = false
-        let timeoutWorkItem = DispatchWorkItem {
-            timedOut = true
-            task.terminate()
-        }
-        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timeoutWorkItem)
-
+        let result: Shell.Result
         do {
-            try task.run()
+            result = try Shell.execute(
+                "/bin/bash",
+                args: [scriptPath],
+                timeout: timeout,
+                environment: env,
+                workingDirectory: pluginData.path
+            )
+        } catch Shell.Error.timeout(let seconds) {
+            throw PluginError.executionFailed("Timeout after \(Int(seconds)) seconds")
+        } catch Shell.Error.launchFailed(let reason) {
+            throw PluginError.executionFailed(reason)
         } catch {
-            timeoutWorkItem.cancel()
             throw PluginError.executionFailed(error.localizedDescription)
         }
-
-        task.waitUntilExit()
-        timeoutWorkItem.cancel()
-
-        if timedOut {
-            throw PluginError.executionFailed("Timeout after \(Int(timeout)) seconds")
-        }
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-
-        let stdout = String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        let stderr = String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
         return ExecutionResult(
             plugin: plugin,
             command: command,
-            success: task.terminationStatus == 0,
-            exitCode: task.terminationStatus,
-            stdout: stdout,
-            stderr: stderr,
+            success: result.exitCode == 0,
+            exitCode: result.exitCode,
+            stdout: result.stdout,
+            stderr: result.stderr,
             duration: Date().timeIntervalSince(startTime)
         )
     }
