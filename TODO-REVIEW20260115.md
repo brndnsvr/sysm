@@ -77,5 +77,5 @@ Actionable items from REVIEW20260115.md
 |----------|-------|------|
 | Critical | 3 | 3 |
 | High | 9 | 9 |
-| Medium | 12 | 1 |
+| Medium | 12 | 10 |
 | Low | 6 | 0 |

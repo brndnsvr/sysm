@@ -5,7 +5,7 @@
 **What is sysm?**
 A Swift CLI tool providing terminal/AI-friendly access to Apple ecosystem services on macOS. Single binary with subcommand structure: `sysm <service> <action> [args]`
 
-**Current State:** Phase 1 complete. Phase 2e (Shortcuts) complete. Calendar, Reminders, Notes, and Shortcuts are fully functional.
+**Current State:** Phase 1-3 complete. All Apple app integrations functional. Code review remediation in progress (Critical/High complete, Medium 10/12 done).
 
 **Owner:** Brandon Seaver (network engineer, prefers Go/Python, learning Swift)
 
@@ -22,55 +22,27 @@ A Swift CLI tool providing terminal/AI-friendly access to Apple ecosystem servic
 
 ---
 
-## WHAT'S COMPLETE (Phase 1)
+## WHAT'S COMPLETE (Phases 1-3)
 
-### sysm calendar
-EventKit-based. 9 subcommands.
-```
-calendars    - List all calendars
-today        - Show today's events
-week         - Show this week's events
-list         - List events for date/range
-search       - Search by title/location/notes
-add          - Create event (natural language dates)
-edit         - Modify existing event
-delete       - Remove event
-validate     - Find events with invalid dates
-```
-
-### sysm reminders
-EventKit-based. 13 subcommands.
-```
-lists        - List reminder lists
-list         - List incomplete reminders
-today        - Due today
-add          - Create reminder
-complete     - Mark complete in Apple Reminders
-validate     - Find invalid dates
-track        - Add to local tracking (for reporting)
-dismiss      - Mark seen, don't track
-tracked      - Show tracked reminders
-done         - Mark tracked item done
-untrack      - Remove from tracking
-new          - Show reminders not yet seen
-sync         - Write tracked reminders to external file
-```
-
-### sysm notes
-AppleScript-based. 4 subcommands.
-```
-check        - Check for new notes
-list         - List notes in folder
-folders      - List all folders
-import       - Export to markdown files
-```
-
-### sysm shortcuts
-Shell wrapper around /usr/bin/shortcuts. 2 subcommands.
-```
-list         - List available shortcuts (supports --json)
-run <name>   - Execute a shortcut (supports --input)
-```
+| Service | Framework | Commands |
+|---------|-----------|----------|
+| `calendar` | EventKit | calendars, today, week, list, search, add, edit, delete, validate |
+| `reminders` | EventKit | lists, list, today, add, complete, validate, track, dismiss, tracked, done, untrack, new, sync |
+| `notes` | AppleScript | check, list, folders, import |
+| `contacts` | Contacts.framework | search, show, email, phone, birthdays, groups |
+| `mail` | AppleScript | unread, inbox, read, search, accounts, draft |
+| `messages` | AppleScript | send, recent, read |
+| `safari` | AppleScript+plist | rl, bookmarks, tabs |
+| `shortcuts` | CLI wrapper | list, run |
+| `focus` | AppleScript+defaults | status, dnd, list |
+| `tags` | xattr | list, add, remove, find |
+| `spotlight` | mdfind wrapper | search, kind, modified, metadata |
+| `music` | AppleScript | play, pause, next, prev, status, volume, playlists, search |
+| `photos` | PhotoKit | albums, list, recent, search, export |
+| `schedule` | launchd | add, list, show, remove, enable, disable, run, logs |
+| `plugin` | Custom | list, info, create, install, remove, run |
+| `workflow` | YAML engine | list, new, run, validate |
+| `exec` | Shell | run |
 
 ---
 
@@ -82,34 +54,43 @@ sysm/
 ├── ROADMAP.md
 └── Sources/sysm/
     ├── Sysm.swift                    # @main entry point
-    ├── Commands/
-    │   ├── Calendar/
-    │   │   ├── CalendarCommand.swift # Subcommand group
-    │   │   ├── CalendarToday.swift
-    │   │   └── ... (9 files)
-    │   ├── Reminders/
-    │   │   ├── RemindersCommand.swift
-    │   │   └── ... (13 files)
-    │   ├── Notes/
-    │   │   ├── NotesCommand.swift
-    │   │   └── ... (4 files)
-    │   └── Shortcuts/
-    │       ├── ShortcutsCommand.swift
-    │       └── ... (2 files)
+    ├── Commands/                     # 17 service command groups
+    │   ├── Calendar/                 # 10 files
+    │   ├── Reminders/                # 14 files
+    │   ├── Notes/                    # 5 files
+    │   ├── Contacts/                 # 6 files
+    │   ├── Mail/                     # 7 files
+    │   ├── Messages/                 # 4 files
+    │   ├── Safari/                   # 4 files
+    │   ├── Shortcuts/                # 3 files
+    │   ├── Focus/                    # 4 files
+    │   ├── Tags/                     # 5 files
+    │   ├── Spotlight/                # 5 files
+    │   ├── Music/                    # 10 files
+    │   ├── Photos/                   # 6 files
+    │   ├── Schedule/                 # 10 files
+    │   ├── Plugin/                   # 7 files
+    │   ├── Workflow/                 # 5 files
+    │   └── Exec/                     # 2 files
     ├── Models/
     │   ├── CalendarEvent.swift
     │   ├── Reminder.swift
-    │   ├── TrackedReminder.swift     # + SysmCache
+    │   ├── TrackedReminder.swift
+    │   ├── SysmCache.swift
     │   └── Note.swift
-    └── Services/
-        ├── CalendarService.swift     # actor, EventKit
-        ├── ReminderService.swift     # actor, EventKit
-        ├── NotesService.swift        # AppleScript via Process
-        ├── ShortcutsService.swift    # /usr/bin/shortcuts wrapper
-        ├── CacheService.swift        # ~/.sysm_cache.json
-        ├── TriggerService.swift      # Writes to external MD file
-        ├── DateParser.swift          # Natural language dates
-        └── MarkdownExporter.swift    # Notes → .md conversion
+    ├── Services/
+    │   ├── ServiceContainer.swift    # DI container
+    │   ├── CalendarService.swift     # actor, EventKit
+    │   ├── ReminderService.swift     # actor, EventKit
+    │   ├── NotesService.swift        # AppleScript via Process
+    │   └── ... (15 services total)
+    ├── Protocols/                    # Service abstractions
+    │   ├── CalendarServiceProtocol.swift
+    │   └── ... (15 protocols)
+    └── Utilities/
+        ├── OutputFormatter.swift     # JSON output helper
+        ├── AppleScriptRunner.swift   # Shared AS execution
+        └── AnyCodable.swift          # Type-erased wrapper
 ```
 
 ### Key Patterns
@@ -150,48 +131,18 @@ actor CalendarService {
 
 ---
 
-## WHAT'S NEXT (Phase 2)
+## WHAT'S NEXT
 
-See `ROADMAP.md` for full details. Priority order:
+See `ROADMAP.md` and `TODO-REVIEW20260115.md` for details.
 
-| Phase | Subcommand | Complexity | Framework |
-|-------|------------|------------|-----------|
-| 2e | `sysm shortcuts` | Low | Wrapper around `/usr/bin/shortcuts` |
-| 2d | `sysm safari` | Low-Medium | AppleScript + plist |
-| 2a | `sysm contacts` | Medium | Contacts.framework |
-| 2f | `sysm focus` | Low-Medium | defaults + AppleScript |
-| 2b | `sysm mail` | Medium | AppleScript |
-| 2c | `sysm messages` | Medium-High | AppleScript (limited) |
+**Feature Ideas:**
+- `sysm weather` - WeatherKit integration for current/forecast data
+- Configuration system (`~/.sysm/config.yaml`)
+- Better DateParser (natural language: "in 2 hours", "next week")
 
-### Quick Win: sysm shortcuts
-
-Simplest addition - wrapper around existing macOS CLI:
-```swift
-// Just shell out to /usr/bin/shortcuts
-// Parse JSON output
-// Commands: list, run <name>
-```
-
-### Quick Win: sysm safari
-
-Reading list from plist + AppleScript for tabs:
-```swift
-// ~/Library/Safari/Bookmarks.plist for reading list
-// AppleScript for open tabs
-// Commands: rl, rl add <url>, bookmarks, tabs
-```
-
----
-
-## SESSION BOUNDARIES
-
-**Start:** Pick a Phase 2 item from ROADMAP.md and implement it.
-
-**End:** When the new subcommand is complete and tested:
-1. Update ROADMAP.md (mark complete)
-2. Run `swift build -c release` to verify
-3. Test the new commands manually
-4. Summarize what was built
+**Remaining Code Review Items:**
+- Low priority: 6 items (access control, validation, caching)
+- Missing documentation: DocC comments for public APIs
 
 ---
 
