@@ -43,6 +43,7 @@ A Swift CLI tool providing terminal/AI-friendly access to Apple ecosystem servic
 | `plugin` | Custom | list, info, create, install, remove, run |
 | `workflow` | YAML engine | list, new, run, validate |
 | `exec` | Shell | run |
+| `weather` | Open-Meteo API | current, forecast, hourly |
 
 ---
 
@@ -54,7 +55,7 @@ sysm/
 ├── ROADMAP.md
 └── Sources/sysm/
     ├── Sysm.swift                    # @main entry point
-    ├── Commands/                     # 17 service command groups
+    ├── Commands/                     # 18 service command groups
     │   ├── Calendar/                 # 10 files
     │   ├── Reminders/                # 14 files
     │   ├── Notes/                    # 5 files
@@ -136,9 +137,9 @@ actor CalendarService {
 See `ROADMAP.md` and `TODO-REVIEW20260115.md` for details.
 
 **Feature Ideas:**
-- `sysm weather` - WeatherKit integration for current/forecast data
 - Configuration system (`~/.sysm/config.yaml`)
 - Better DateParser (natural language: "in 2 hours", "next week")
+- Weather alerts integration
 
 **Remaining Code Review Items:**
 - Low priority: 6 items (access control, validation, caching)

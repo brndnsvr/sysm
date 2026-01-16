@@ -29,6 +29,8 @@ struct Sysm: AsyncParsableCommand {
             WorkflowCommand.self,
             ScheduleCommand.self,
             PluginCommand.self,
+            // Phase 5: External APIs
+            WeatherCommand.self,
         ]
     )
 }

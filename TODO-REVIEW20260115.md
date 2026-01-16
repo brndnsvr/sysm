@@ -56,6 +56,7 @@ Actionable items from REVIEW20260115.md
 
 ## Feature Requests
 
+- [x] Weather integration - `sysm weather` with Open-Meteo API ✓
 - [ ] Configuration system (`~/.sysm/config.yaml`)
 - [ ] Logging framework with debug mode
 - [ ] Better DateParser (natural language: "in 2 hours", "next week")

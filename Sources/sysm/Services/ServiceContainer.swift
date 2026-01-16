@@ -22,6 +22,7 @@ final class ServiceContainer: @unchecked Sendable {
     var shortcutsFactory: () -> any ShortcutsServiceProtocol = { ShortcutsService() }
     var workflowFactory: () -> any WorkflowEngineProtocol = { WorkflowEngine() }
     var pluginFactory: () -> any PluginManagerProtocol = { PluginManager() }
+    var weatherFactory: () -> any WeatherServiceProtocol = { WeatherService() }
 
     // MARK: - Service Accessors
 
@@ -40,6 +41,7 @@ final class ServiceContainer: @unchecked Sendable {
     func shortcuts() -> any ShortcutsServiceProtocol { shortcutsFactory() }
     func workflow() -> any WorkflowEngineProtocol { workflowFactory() }
     func plugins() -> any PluginManagerProtocol { pluginFactory() }
+    func weather() -> any WeatherServiceProtocol { weatherFactory() }
 
     // MARK: - Test Support
 
@@ -61,6 +63,7 @@ final class ServiceContainer: @unchecked Sendable {
         shortcutsFactory = { ShortcutsService() }
         workflowFactory = { WorkflowEngine() }
         pluginFactory = { PluginManager() }
+        weatherFactory = { WeatherService() }
     }
 
     private init() {}

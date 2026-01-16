@@ -185,6 +185,23 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 
 ---
 
+## Phase 5 - External APIs (Completed)
+
+### Phase 5a - Weather (Done)
+
+**Framework:** Open-Meteo REST API (no API key required)
+
+| Command | Description |
+|---------|-------------|
+| `current <location>` | Current weather conditions |
+| `forecast <location>` | 7-day forecast |
+| `hourly <location>` | Hourly forecast (up to 168 hours) |
+
+**Status:** Complete
+**Notes:** Uses Open-Meteo API (<10K calls/day free). Location can be city name or lat,lon coordinates. Fahrenheit default with Celsius in parentheses. Supports `--json` output.
+
+---
+
 ## Future Possibilities
 
 | Feature | Framework | Feasibility | Notes |
