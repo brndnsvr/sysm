@@ -14,7 +14,7 @@ struct WeatherHourly: AsyncParsableCommand {
     var hours: Int = 24
 
     @Option(name: .long, help: "Weather data backend (open-meteo, weatherkit)")
-    var backend: WeatherBackend = .openMeteo
+    var backend: WeatherBackend = .weatherKit
 
     @Flag(name: .long, help: "Output as JSON")
     var json = false

@@ -11,7 +11,7 @@ struct WeatherCurrent: AsyncParsableCommand {
     var location: String
 
     @Option(name: .long, help: "Weather data backend (open-meteo, weatherkit)")
-    var backend: WeatherBackend = .openMeteo
+    var backend: WeatherBackend = .weatherKit
 
     @Flag(name: .long, help: "Output as JSON")
     var json = false
