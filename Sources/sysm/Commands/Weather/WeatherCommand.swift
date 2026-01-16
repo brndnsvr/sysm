@@ -6,7 +6,7 @@ enum WeatherBackend: String, ExpressibleByArgument, CaseIterable {
     case openMeteo = "open-meteo"
     case weatherKit = "weatherkit"
 
-    static var defaultValue: WeatherBackend { .openMeteo }
+    static var defaultValue: WeatherBackend { .weatherKit }
 
     /// Get the appropriate weather service for this backend
     func service() -> any WeatherServiceProtocol {

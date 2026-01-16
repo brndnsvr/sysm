@@ -190,8 +190,8 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 ### Phase 5a - Weather (Done)
 
 **Backends:**
-- Open-Meteo REST API (default, no API key required)
-- WeatherKit (requires code signing with entitlement)
+- WeatherKit (default, requires code signing with entitlement)
+- Open-Meteo REST API (no API key required)
 
 | Command | Description |
 |---------|-------------|
@@ -200,11 +200,11 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 | `hourly <location>` | Hourly forecast (up to 168 hours) |
 
 **Options:**
-- `--backend open-meteo` - Use Open-Meteo API (default)
-- `--backend weatherkit` - Use Apple WeatherKit (requires signing)
+- `--backend weatherkit` - Use Apple WeatherKit (default)
+- `--backend open-meteo` - Use Open-Meteo API
 
 **Status:** Complete
-**Notes:** Default uses Open-Meteo API (<10K calls/day free). Location can be city name or lat,lon coordinates. Fahrenheit default with Celsius in parentheses. Supports `--json` output. WeatherKit backend available when signed with entitlement.
+**Notes:** Default uses WeatherKit with signed binary. Open-Meteo available as fallback (<10K calls/day free). Location can be city name or lat,lon coordinates. Fahrenheit default with Celsius in parentheses. Supports `--json` output.
 
 ---
 
