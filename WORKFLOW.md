@@ -84,8 +84,11 @@ swift build
 # Test
 swift test
 
-# Install
-cp .build/release/sysm ~/bin/
+# Install (signed + notarized for WeatherKit)
+make install-notarized
+
+# Install (ad-hoc signed, no WeatherKit)
+make install-signed
 
 # Run specific command
 sysm <command> <subcommand> [options]
