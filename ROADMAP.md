@@ -189,7 +189,9 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 
 ### Phase 5a - Weather (Done)
 
-**Framework:** Open-Meteo REST API (no API key required)
+**Backends:**
+- Open-Meteo REST API (default, no API key required)
+- WeatherKit (requires code signing with entitlement)
 
 | Command | Description |
 |---------|-------------|
@@ -197,8 +199,12 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 | `forecast <location>` | 7-day forecast |
 | `hourly <location>` | Hourly forecast (up to 168 hours) |
 
+**Options:**
+- `--backend open-meteo` - Use Open-Meteo API (default)
+- `--backend weatherkit` - Use Apple WeatherKit (requires signing)
+
 **Status:** Complete
-**Notes:** Uses Open-Meteo API (<10K calls/day free). Location can be city name or lat,lon coordinates. Fahrenheit default with Celsius in parentheses. Supports `--json` output.
+**Notes:** Default uses Open-Meteo API (<10K calls/day free). Location can be city name or lat,lon coordinates. Fahrenheit default with Celsius in parentheses. Supports `--json` output. WeatherKit backend available when signed with entitlement.
 
 ---
 
@@ -218,11 +224,24 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 - Single binary with subcommand routing via ArgumentParser
 - Shared utilities for JSON output, date formatting, error handling
 
+### Code Signing
+For distribution and WeatherKit support:
+```bash
+make release-signed SIGNING_IDENTITY="Developer ID Application: Your Name (TEAM_ID)"
+```
+
+Requirements for WeatherKit:
+1. Apple Developer Program membership
+2. Developer ID Application certificate
+3. App ID registered with WeatherKit capability
+4. Provisioning profile with `com.apple.developer.weatherkit` entitlement
+
 ### Permissions
 Each subcommand may require specific entitlements:
 - Calendar/Reminders: `com.apple.security.personal-information.calendars`
 - Contacts: `com.apple.security.personal-information.addressbook`
 - Photos: `com.apple.security.personal-information.photos-library`
+- Weather (WeatherKit): `com.apple.developer.weatherkit`
 
 ### Output Format
 - Default: Human-readable

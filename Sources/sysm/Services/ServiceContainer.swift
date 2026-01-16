@@ -23,6 +23,7 @@ final class ServiceContainer: @unchecked Sendable {
     var workflowFactory: () -> any WorkflowEngineProtocol = { WorkflowEngine() }
     var pluginFactory: () -> any PluginManagerProtocol = { PluginManager() }
     var weatherFactory: () -> any WeatherServiceProtocol = { WeatherService() }
+    var weatherKitFactory: () -> any WeatherServiceProtocol = { WeatherKitService() }
 
     // MARK: - Service Accessors
 
@@ -42,6 +43,7 @@ final class ServiceContainer: @unchecked Sendable {
     func workflow() -> any WorkflowEngineProtocol { workflowFactory() }
     func plugins() -> any PluginManagerProtocol { pluginFactory() }
     func weather() -> any WeatherServiceProtocol { weatherFactory() }
+    func weatherKit() -> any WeatherServiceProtocol { weatherKitFactory() }
 
     // MARK: - Test Support
 
@@ -64,6 +66,7 @@ final class ServiceContainer: @unchecked Sendable {
         workflowFactory = { WorkflowEngine() }
         pluginFactory = { PluginManager() }
         weatherFactory = { WeatherService() }
+        weatherKitFactory = { WeatherKitService() }
     }
 
     private init() {}

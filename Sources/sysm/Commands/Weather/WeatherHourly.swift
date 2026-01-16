@@ -13,11 +13,14 @@ struct WeatherHourly: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Number of hours (1-168)")
     var hours: Int = 24
 
+    @Option(name: .long, help: "Weather data backend (open-meteo, weatherkit)")
+    var backend: WeatherBackend = .openMeteo
+
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
     func run() async throws {
-        let service = Services.weather()
+        let service = backend.service()
         let forecast = try await service.getHourlyForecast(location: location, hours: hours)
 
         if json {

@@ -13,11 +13,14 @@ struct WeatherForecast: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "Number of days (1-16)")
     var days: Int = 7
 
+    @Option(name: .long, help: "Weather data backend (open-meteo, weatherkit)")
+    var backend: WeatherBackend = .openMeteo
+
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
     func run() async throws {
-        let service = Services.weather()
+        let service = backend.service()
         let forecast = try await service.getForecast(location: location, days: days)
 
         if json {

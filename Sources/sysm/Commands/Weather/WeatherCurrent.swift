@@ -10,11 +10,14 @@ struct WeatherCurrent: AsyncParsableCommand {
     @Argument(help: "Location (city name or lat,lon)")
     var location: String
 
+    @Option(name: .long, help: "Weather data backend (open-meteo, weatherkit)")
+    var backend: WeatherBackend = .openMeteo
+
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
     func run() async throws {
-        let service = Services.weather()
+        let service = backend.service()
         let weather = try await service.getCurrentWeather(location: location)
 
         if json {
