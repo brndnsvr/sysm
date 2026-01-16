@@ -18,7 +18,7 @@ A Swift CLI tool providing terminal/AI-friendly access to Apple ecosystem servic
 
 **Project Location:** `~/code/sysm/`
 
-**Binary Install:** `swift build -c release && cp .build/release/sysm ~/bin/`
+**Binary Install:** `make install-notarized` (signed + notarized for WeatherKit)
 
 ---
 
@@ -43,7 +43,7 @@ A Swift CLI tool providing terminal/AI-friendly access to Apple ecosystem servic
 | `plugin` | Custom | list, info, create, install, remove, run |
 | `workflow` | YAML engine | list, new, run, validate |
 | `exec` | Shell | run |
-| `weather` | Open-Meteo API | current, forecast, hourly |
+| `weather` | WeatherKit (default) / Open-Meteo | current, forecast, hourly |
 
 ---
 
@@ -179,21 +179,25 @@ See `ROADMAP.md` and `TODO-REVIEW20260115.md` for details.
 ```bash
 cd ~/code/sysm
 
-# Build
+# Build (debug)
 swift build
 
-# Build release
+# Build release (unsigned)
 swift build -c release
+
+# Build, sign, notarize, install (recommended for WeatherKit)
+make install-notarized
+
+# Build with ad-hoc signing (no WeatherKit)
+make install-signed
 
 # Run directly
 .build/debug/sysm --help
 .build/debug/sysm calendar today
 
-# Install
-cp .build/release/sysm ~/bin/
-
 # Test installed
 sysm --help
+sysm weather current "New York"  # uses WeatherKit by default
 ```
 
 ---
