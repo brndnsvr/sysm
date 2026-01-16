@@ -28,17 +28,17 @@ Actionable items from REVIEW20260115.md
 
 ## Medium
 
-- [ ] **Force unwrapping** - `Commands/Calendar/CalendarAdd.swift:47-49` - use guard statements
-- [ ] **Mixed concerns in TrackedReminder.swift** - `Models/TrackedReminder.swift` - split into separate files
-- [ ] **TriggerService hardcoded path** - `Services/TriggerService.swift:7-8` - make configurable
-- [ ] **Inconsistent error handling** - `Commands/Reminders/RemindersAdd.swift:37-39` - standardize across commands
-- [ ] **N+1 query pattern: NotesService** - `Services/NotesService.swift:90-101` - batch AppleScript calls
-- [ ] **Regex compilation in hot paths** - `Models/Note.swift:56-98` - cache as static constants
-- [ ] **Regex compilation: DateParser** - `Services/DateParser.swift:83-85` - cache patterns
-- [ ] **Path traversal validation** - `Commands/Exec/ExecRun.swift:90-91` - validate paths
+- [x] **Force unwrapping** - `Commands/Calendar/CalendarAdd.swift:47-49` - use guard statements ✓
+- [x] **Mixed concerns in TrackedReminder.swift** - `Models/TrackedReminder.swift` - split into separate files ✓
+- [x] **TriggerService hardcoded path** - `Services/TriggerService.swift:7-8` - make configurable ✓
+- [x] **Inconsistent error handling** - `Commands/Reminders/RemindersAdd.swift:37-39` - standardize across commands ✓
+- [x] **N+1 query pattern: NotesService** - `Services/NotesService.swift:90-101` - batch AppleScript calls ✓
+- [x] **Regex compilation in hot paths** - `Models/Note.swift:56-98` - cache as static constants ✓
+- [x] **Regex compilation: DateParser** - `Services/DateParser.swift:83-85` - cache patterns ✓
+- [x] **Path traversal validation** - `Commands/Exec/ExecRun.swift:90-91` - validate paths ✓
 - [ ] **Missing documentation** - all public APIs - add DocC comments
 - [x] **Extract AppleScript runner** - 7+ services - create shared `AppleScriptRunner` utility ✓
-- [ ] **Extract JSON output pattern** - 15+ commands - create `OutputFormatter` utility
+- [x] **Extract JSON output pattern** - 15+ commands - create `OutputFormatter` utility ✓
 - [ ] **Extract Process execution pattern** - 4+ services - create shared utility
 
 ---

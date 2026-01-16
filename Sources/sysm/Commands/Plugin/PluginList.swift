@@ -32,10 +32,7 @@ struct PluginList: ParsableCommand {
         }
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(plugins)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(plugins)
         } else {
             print("Installed Plugins (\(plugins.count)):\n")
             for plugin in plugins {

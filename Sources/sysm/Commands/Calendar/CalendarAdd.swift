@@ -44,9 +44,15 @@ struct CalendarAdd: AsyncParsableCommand {
             }
             endDate = parsed
         } else if allDay {
-            endDate = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: startDate))!
+            guard let nextDay = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: startDate)) else {
+                throw CalendarError.invalidDateFormat("Unable to calculate end date")
+            }
+            endDate = nextDay
         } else {
-            endDate = cal.date(byAdding: .hour, value: 1, to: startDate)!
+            guard let oneHourLater = cal.date(byAdding: .hour, value: 1, to: startDate) else {
+                throw CalendarError.invalidDateFormat("Unable to calculate end date")
+            }
+            endDate = oneHourLater
         }
 
         let service = Services.calendar()
@@ -61,11 +67,7 @@ struct CalendarAdd: AsyncParsableCommand {
         )
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(event)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(event)
         } else {
             let formatter = DateFormatter()
             formatter.dateStyle = .full

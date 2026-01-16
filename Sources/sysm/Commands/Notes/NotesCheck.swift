@@ -24,11 +24,7 @@ struct NotesCheck: ParsableCommand {
         let newNotes = exporter.checkForNew(notes)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(newNotes)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(newNotes)
         } else {
             if newNotes.isEmpty {
                 print("No new notes in '\(folder)'")

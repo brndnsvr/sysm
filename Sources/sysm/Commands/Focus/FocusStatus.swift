@@ -15,12 +15,7 @@ struct FocusStatus: ParsableCommand {
         let status = try service.getStatus()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(status)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(status)
         } else {
             if status.isActive {
                 if let activeFocus = status.activeFocus {

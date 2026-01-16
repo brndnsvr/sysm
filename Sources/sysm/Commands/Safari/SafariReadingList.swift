@@ -30,13 +30,7 @@ struct SafariReadingList: ParsableCommand {
             let items = try service.getReadingList()
 
             if json {
-                let encoder = JSONEncoder()
-                encoder.outputFormatting = .prettyPrinted
-                encoder.dateEncodingStrategy = .iso8601
-                let data = try encoder.encode(items)
-                if let jsonString = String(data: data, encoding: .utf8) {
-                    print(jsonString)
-                }
+                try OutputFormatter.printJSON(items)
             } else {
                 if items.isEmpty {
                     print("Reading list is empty")

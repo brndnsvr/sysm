@@ -15,13 +15,8 @@ struct FocusList: ParsableCommand {
         let modes = try service.listFocusModes()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
             let jsonModes = modes.map { ["name": $0] }
-            let data = try encoder.encode(jsonModes)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(jsonModes)
         } else {
             print("Focus Modes (\(modes.count)):")
             for mode in modes {

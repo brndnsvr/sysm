@@ -25,10 +25,7 @@ struct SpotlightSearch: ParsableCommand {
         let results = try service.search(query: query, scope: expandedScope, limit: limit)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(results)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(results)
         } else {
             if results.isEmpty {
                 print("No results for '\(query)'")

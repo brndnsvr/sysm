@@ -24,10 +24,7 @@ struct PluginInfo: ParsableCommand {
         let plugin = try manager.getPlugin(name: name)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(plugin)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(plugin)
         } else {
             print(manager.generateHelp(for: plugin))
         }

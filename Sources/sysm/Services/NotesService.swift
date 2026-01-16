@@ -88,16 +88,47 @@ struct NotesService: NotesServiceProtocol {
     }
 
     func getNotes(from folder: String) throws -> [Note] {
-        let notesList = try listNotes(folder: folder)
-        var notes: [Note] = []
+        let escapedFolder = AppleScriptRunner.escape(folder)
 
-        for noteInfo in notesList {
-            if let note = try getNote(id: noteInfo.id) {
-                notes.append(note)
-            }
+        // Batch fetch all notes in a single AppleScript call
+        let script = """
+        tell application "Notes"
+            try
+                set targetFolder to folder "\(escapedFolder)"
+                set output to ""
+                repeat with n in notes of targetFolder
+                    if output is not "" then set output to output & "###NOTE###"
+                    set noteData to ""
+                    set noteData to noteData & (id of n) & "|||FIELD|||"
+                    set noteData to noteData & (name of n) & "|||FIELD|||"
+                    set noteData to noteData & (name of container of n) & "|||FIELD|||"
+                    set noteData to noteData & (body of n) & "|||FIELD|||"
+                    set noteData to noteData & ((creation date of n) as string) & "|||FIELD|||"
+                    set noteData to noteData & ((modification date of n) as string)
+                    set output to output & noteData
+                end repeat
+                return output
+            on error
+                return ""
+            end try
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.isEmpty { return [] }
+
+        return result.components(separatedBy: "###NOTE###").compactMap { noteData in
+            let parts = noteData.components(separatedBy: "|||FIELD|||")
+            guard parts.count >= 6 else { return nil }
+            return Note(
+                id: parts[0],
+                name: parts[1],
+                folder: parts[2],
+                body: parts[3],
+                creationDate: parseAppleScriptDate(parts[4]),
+                modificationDate: parseAppleScriptDate(parts[5])
+            )
         }
-
-        return notes
     }
 
     func countNotes(folder: String? = nil) throws -> Int {

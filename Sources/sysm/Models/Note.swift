@@ -1,6 +1,54 @@
 import Foundation
 
 struct Note: Codable {
+    // MARK: - Cached Regex Patterns
+
+    private static let styleTagRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: "<style[^>]*>.*?</style>", options: [.caseInsensitive, .dotMatchesLineSeparators])
+    }()
+
+    private static let htmlTagRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: "<[^>]+>", options: [])
+    }()
+
+    private static let htmlReplacements: [(regex: NSRegularExpression, replacement: String)] = {
+        let patterns: [(String, String)] = [
+            ("<br>", "\n"),
+            ("<br/>", "\n"),
+            ("<br />", "\n"),
+            ("</p>", "\n\n"),
+            ("<p>", ""),
+            ("</div>", "\n"),
+            ("<div[^>]*>", ""),
+            ("<h1[^>]*>", "# "),
+            ("</h1>", "\n"),
+            ("<h2[^>]*>", "## "),
+            ("</h2>", "\n"),
+            ("<h3[^>]*>", "### "),
+            ("</h3>", "\n"),
+            ("<strong>", "**"),
+            ("</strong>", "**"),
+            ("<b>", "**"),
+            ("</b>", "**"),
+            ("<em>", "*"),
+            ("</em>", "*"),
+            ("<i>", "*"),
+            ("</i>", "*"),
+            ("<li>", "- "),
+            ("</li>", "\n"),
+            ("<ul[^>]*>", ""),
+            ("</ul>", "\n"),
+            ("<ol[^>]*>", ""),
+            ("</ol>", "\n"),
+        ]
+        return patterns.compactMap { pattern, replacement in
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) else { return nil }
+            return (regex, replacement)
+        }
+    }()
+
+    // MARK: - Properties
+
     let id: String
     let name: String
     let folder: String
@@ -53,49 +101,17 @@ struct Note: Codable {
         var text = html
 
         // Remove style tags and their content
-        if let regex = try? NSRegularExpression(pattern: "<style[^>]*>.*?</style>", options: [.caseInsensitive, .dotMatchesLineSeparators]) {
+        if let regex = Self.styleTagRegex {
             text = regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "")
         }
 
-        // Convert common HTML to markdown
-        let replacements: [(String, String)] = [
-            ("<br>", "\n"),
-            ("<br/>", "\n"),
-            ("<br />", "\n"),
-            ("</p>", "\n\n"),
-            ("<p>", ""),
-            ("</div>", "\n"),
-            ("<div[^>]*>", ""),
-            ("<h1[^>]*>", "# "),
-            ("</h1>", "\n"),
-            ("<h2[^>]*>", "## "),
-            ("</h2>", "\n"),
-            ("<h3[^>]*>", "### "),
-            ("</h3>", "\n"),
-            ("<strong>", "**"),
-            ("</strong>", "**"),
-            ("<b>", "**"),
-            ("</b>", "**"),
-            ("<em>", "*"),
-            ("</em>", "*"),
-            ("<i>", "*"),
-            ("</i>", "*"),
-            ("<li>", "- "),
-            ("</li>", "\n"),
-            ("<ul[^>]*>", ""),
-            ("</ul>", "\n"),
-            ("<ol[^>]*>", ""),
-            ("</ol>", "\n"),
-        ]
-
-        for (pattern, replacement) in replacements {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive) {
-                text = regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: replacement)
-            }
+        // Convert common HTML to markdown using cached patterns
+        for (regex, replacement) in Self.htmlReplacements {
+            text = regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: replacement)
         }
 
         // Remove remaining HTML tags
-        if let regex = try? NSRegularExpression(pattern: "<[^>]+>", options: []) {
+        if let regex = Self.htmlTagRegex {
             text = regex.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "")
         }
 

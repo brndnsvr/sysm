@@ -62,10 +62,7 @@ struct ScheduleAdd: ParsableCommand {
         )
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(job)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(job)
         } else {
             print("Created scheduled job: \(job.name)")
             print("Label: \(job.label)")

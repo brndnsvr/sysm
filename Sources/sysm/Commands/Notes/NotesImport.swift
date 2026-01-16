@@ -27,11 +27,8 @@ struct NotesImport: ParsableCommand {
         let results = try exporter.exportNotes(notes, dryRun: dryRun)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
             let jsonResults = results.map { ["name": $0.note.name, "path": $0.path.path] }
-            let data = try encoder.encode(jsonResults)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(jsonResults)
         } else {
             if results.isEmpty {
                 print("No new notes to import from '\(folder)'")

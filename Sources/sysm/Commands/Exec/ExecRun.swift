@@ -89,6 +89,14 @@ struct ExecRun: ParsableCommand {
         } else if let scriptPath = script {
             // Run script file
             let expandedPath = (scriptPath as NSString).expandingTildeInPath
+            let resolvedPath = (expandedPath as NSString).standardizingPath
+
+            // Validate path is within allowed directories
+            let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
+            guard resolvedPath.hasPrefix(homeDir) || resolvedPath.hasPrefix("/tmp") else {
+                throw ExecError.invalidPath(scriptPath)
+            }
+
             result = try runner.runFile(
                 path: expandedPath,
                 args: args,
@@ -101,10 +109,7 @@ struct ExecRun: ParsableCommand {
 
         // Output results
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(result)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(result)
         } else if quiet {
             // Exit with script's exit code
             if !result.success {
@@ -148,6 +153,7 @@ enum ExecError: LocalizedError {
     case noInput
     case typeRequired
     case invalidShell(String)
+    case invalidPath(String)
 
     var errorDescription: String? {
         switch self {
@@ -157,6 +163,8 @@ enum ExecError: LocalizedError {
             return "Specify script type with --shell, --python, --applescript, or --swift"
         case .invalidShell(let shell):
             return "Invalid shell type: \(shell). Use: bash, zsh, fish"
+        case .invalidPath(let path):
+            return "Script path must be within home directory or /tmp: \(path)"
         }
     }
 }

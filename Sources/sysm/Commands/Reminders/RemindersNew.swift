@@ -18,10 +18,7 @@ struct RemindersNew: AsyncParsableCommand {
         let newReminders = cacheService.getNewReminders(currentReminders: allReminders)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(newReminders)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(newReminders)
         } else {
             if newReminders.isEmpty {
                 print("No new reminders")

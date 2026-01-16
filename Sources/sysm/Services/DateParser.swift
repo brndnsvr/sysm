@@ -1,6 +1,23 @@
 import Foundation
 
 struct DateParser {
+    // MARK: - Cached Regex Patterns
+
+    private static let timePatterns: [NSRegularExpression] = {
+        let patterns = [
+            #"(\d{1,2}):(\d{2})\s*(am|pm)"#,
+            #"(\d{1,2})\s*(am|pm)"#,
+            #"(\d{1,2}):(\d{2})"#,
+        ]
+        return patterns.compactMap { try? NSRegularExpression(pattern: $0, options: .caseInsensitive) }
+    }()
+
+    private static let slashDateRegex: NSRegularExpression? = {
+        try? NSRegularExpression(pattern: #"(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?"#)
+    }()
+
+    // MARK: - Day Mappings
+
     static let daysOfWeek: [String: Int] = [
         "sunday": 1, "sun": 1,
         "monday": 2, "mon": 2,
@@ -65,24 +82,8 @@ struct DateParser {
         let calendar = Foundation.Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: baseDate)
 
-        let patterns: [(String, (Int, Int) -> Void)] = [
-            (#"(\d{1,2}):(\d{2})\s*(am|pm)"#, { hour, minute in
-                components.hour = hour
-                components.minute = minute
-            }),
-            (#"(\d{1,2})\s*(am|pm)"#, { hour, _ in
-                components.hour = hour
-                components.minute = 0
-            }),
-            (#"(\d{1,2}):(\d{2})"#, { hour, minute in
-                components.hour = hour
-                components.minute = minute
-            }),
-        ]
-
-        for (pattern, _) in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern, options: .caseInsensitive),
-               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
+        for regex in timePatterns {
+            if let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
 
                 if let hourRange = Range(match.range(at: 1), in: text) {
                     var hour = Int(text[hourRange]) ?? 0
@@ -125,8 +126,7 @@ struct DateParser {
     }
 
     static func parseSlashDate(_ text: String) -> Date? {
-        let pattern = #"(\d{1,2})/(\d{1,2})(?:/(\d{2,4}))?"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
+        guard let regex = slashDateRegex,
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let monthRange = Range(match.range(at: 1), in: text),
               let dayRange = Range(match.range(at: 2), in: text) else {

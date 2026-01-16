@@ -22,12 +22,7 @@ struct ContactsShow: AsyncParsableCommand {
         }
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(contact)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(contact)
         } else {
             print("\(contact.fullName)")
             print(String(repeating: "-", count: contact.fullName.count))

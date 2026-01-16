@@ -27,10 +27,7 @@ struct PluginInstall: ParsableCommand {
         let plugin = try manager.installPlugin(from: path, force: force)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(plugin)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(plugin)
         } else {
             print("Installed plugin: \(plugin.name) v\(plugin.version)")
             if let desc = plugin.description {

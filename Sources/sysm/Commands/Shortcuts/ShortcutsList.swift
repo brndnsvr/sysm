@@ -15,11 +15,8 @@ struct ShortcutsList: ParsableCommand {
         let shortcuts = try service.list()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
             let jsonShortcuts = shortcuts.map { ["name": $0] }
-            let data = try encoder.encode(jsonShortcuts)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(jsonShortcuts)
         } else {
             if shortcuts.isEmpty {
                 print("No shortcuts found")

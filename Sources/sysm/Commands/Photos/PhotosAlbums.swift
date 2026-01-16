@@ -15,10 +15,7 @@ struct PhotosAlbums: AsyncParsableCommand {
         let albums = try await service.listAlbums()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(albums)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(albums)
         } else {
             if albums.isEmpty {
                 print("No albums found")

@@ -15,12 +15,7 @@ struct SafariTabs: ParsableCommand {
         let tabs = try service.getOpenTabs()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(tabs)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(tabs)
         } else {
             if tabs.isEmpty {
                 print("No Safari tabs open (is Safari running?)")

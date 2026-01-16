@@ -19,10 +19,7 @@ struct TagsList: ParsableCommand {
         let tags = try service.getTags(path: expandedPath)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(tags)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(tags)
         } else {
             if tags.isEmpty {
                 print("No tags on: \(path)")

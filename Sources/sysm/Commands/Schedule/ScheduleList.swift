@@ -32,10 +32,7 @@ struct ScheduleList: ParsableCommand {
         }
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(jobs)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(jobs)
         } else {
             print("Scheduled Jobs (\(jobs.count)):\n")
             for job in jobs {

@@ -29,11 +29,8 @@ struct TagsFind: ParsableCommand {
         }
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
             let results = files.map { ["path": $0] }
-            let data = try encoder.encode(results)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(results)
         } else {
             if files.isEmpty {
                 print("No files found with tag '\(tag)'")

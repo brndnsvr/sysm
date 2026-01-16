@@ -15,10 +15,7 @@ struct MusicPlaylists: ParsableCommand {
         let playlists = try service.listPlaylists()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(playlists)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(playlists)
         } else {
             if playlists.isEmpty {
                 print("No playlists found")

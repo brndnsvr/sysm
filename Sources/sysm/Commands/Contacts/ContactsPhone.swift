@@ -18,13 +18,8 @@ struct ContactsPhone: AsyncParsableCommand {
         let results = try await service.searchByPhone(query: query)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
             let jsonResults = results.map { ["name": $0.name, "phone": $0.phone] }
-            let data = try encoder.encode(jsonResults)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(jsonResults)
         } else {
             if results.isEmpty {
                 print("No phone numbers found for '\(query)'")

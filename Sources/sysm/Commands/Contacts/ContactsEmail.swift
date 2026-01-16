@@ -18,13 +18,8 @@ struct ContactsEmail: AsyncParsableCommand {
         let results = try await service.searchByEmail(query: query)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
             let jsonResults = results.map { ["name": $0.name, "email": $0.email] }
-            let data = try encoder.encode(jsonResults)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(jsonResults)
         } else {
             if results.isEmpty {
                 print("No email addresses found for '\(query)'")

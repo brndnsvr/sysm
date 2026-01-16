@@ -18,11 +18,7 @@ struct CalendarWeek: AsyncParsableCommand {
         let events = try await service.getWeekEvents()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(events)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(events)
         } else {
             if events.isEmpty {
                 print("No events this week")

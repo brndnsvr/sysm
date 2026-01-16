@@ -22,12 +22,7 @@ struct MailRead: ParsableCommand {
         }
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(message)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(message)
         } else {
             print("Subject: \(message.subject)")
             print("From: \(message.from)")

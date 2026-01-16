@@ -21,10 +21,7 @@ struct MusicSearch: ParsableCommand {
         let tracks = try service.searchLibrary(query: query, limit: limit)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(tracks)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(tracks)
         } else {
             if tracks.isEmpty {
                 print("No tracks found for '\(query)'")

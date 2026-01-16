@@ -18,12 +18,7 @@ struct MessagesRecent: ParsableCommand {
         let conversations = try service.getRecentConversations(limit: limit)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(conversations)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(conversations)
         } else {
             if conversations.isEmpty {
                 print("No recent conversations")

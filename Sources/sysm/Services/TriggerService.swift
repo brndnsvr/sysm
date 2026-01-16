@@ -3,9 +3,9 @@ import Foundation
 class TriggerService {
     private let triggerPath: URL
 
-    init() {
+    init(relativePath: String = "dayai/_dayai/TRIGGER.md") {
         self.triggerPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("dayai/_dayai/TRIGGER.md")
+            .appendingPathComponent(relativePath)
     }
 
     func syncTrackedReminders(_ tracked: [(key: String, reminder: TrackedReminder)]) throws {

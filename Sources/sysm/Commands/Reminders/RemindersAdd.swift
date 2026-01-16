@@ -34,8 +34,8 @@ struct RemindersAdd: AsyncParsableCommand {
                 }
                 print(msg)
             }
-        } catch ReminderError.invalidYear(let year) {
-            fputs("Error: Year \(year) out of valid range (2000-2100)\n", stderr)
+        } catch {
+            fputs("Error: \(error.localizedDescription)\n", stderr)
             throw ExitCode.failure
         }
     }

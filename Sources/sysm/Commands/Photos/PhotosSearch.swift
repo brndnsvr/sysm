@@ -38,11 +38,7 @@ struct PhotosSearch: AsyncParsableCommand {
         let photos = try await service.searchByDate(from: fromDate, to: toDate, limit: limit)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(photos)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(photos)
         } else {
             if photos.isEmpty {
                 print("No photos found between \(from) and \(to)")

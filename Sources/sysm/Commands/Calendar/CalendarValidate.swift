@@ -15,11 +15,7 @@ struct CalendarValidate: AsyncParsableCommand {
         let invalidEvents = try await service.validateEvents()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            encoder.dateEncodingStrategy = .iso8601
-            let data = try encoder.encode(invalidEvents)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(invalidEvents)
         } else {
             if invalidEvents.isEmpty {
                 print("All events have valid dates (2000-2100)")

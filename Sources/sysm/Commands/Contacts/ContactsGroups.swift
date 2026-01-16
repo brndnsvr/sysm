@@ -15,12 +15,7 @@ struct ContactsGroups: AsyncParsableCommand {
         let groups = try await service.getGroups()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(groups)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(groups)
         } else {
             if groups.isEmpty {
                 print("No contact groups found")

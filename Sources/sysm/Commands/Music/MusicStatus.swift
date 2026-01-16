@@ -23,10 +23,7 @@ struct MusicStatus: ParsableCommand {
         }
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(status)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(status)
         } else {
             print("Now Playing:\n")
             print(status.formatted())

@@ -23,12 +23,7 @@ struct SafariBookmarks: ParsableCommand {
         }
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(bookmarks)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(bookmarks)
         } else {
             if bookmarks.isEmpty {
                 print("No bookmarks found")

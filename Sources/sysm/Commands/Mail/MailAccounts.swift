@@ -15,12 +15,7 @@ struct MailAccounts: ParsableCommand {
         let accounts = try service.getAccounts()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(accounts)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(accounts)
         } else {
             if accounts.isEmpty {
                 print("No email accounts configured")

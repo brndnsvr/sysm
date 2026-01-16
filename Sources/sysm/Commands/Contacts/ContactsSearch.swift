@@ -18,12 +18,7 @@ struct ContactsSearch: AsyncParsableCommand {
         let contacts = try await service.search(query: query)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(contacts)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(contacts)
         } else {
             if contacts.isEmpty {
                 print("No contacts found for '\(query)'")

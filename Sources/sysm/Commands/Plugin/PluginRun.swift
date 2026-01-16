@@ -69,10 +69,7 @@ struct PluginRun: ParsableCommand {
         )
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(result)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(result)
         } else {
             print(result.formatted())
         }

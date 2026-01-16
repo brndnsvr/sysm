@@ -18,10 +18,7 @@ struct RemindersList: AsyncParsableCommand {
         let reminders = try await service.getReminders(listName: listName)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(reminders)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(reminders)
         } else {
             if reminders.isEmpty {
                 print("No incomplete reminders")

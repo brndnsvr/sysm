@@ -15,10 +15,7 @@ struct CalendarCalendars: AsyncParsableCommand {
         let calendars = try await service.listCalendars()
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(calendars)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(calendars)
         } else {
             print("Calendars:")
             for cal in calendars {

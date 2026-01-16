@@ -18,11 +18,8 @@ struct NotesList: ParsableCommand {
         let notes = try service.listNotes(folder: folder)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
             let jsonNotes = notes.map { ["name": $0.name, "folder": $0.folder, "id": $0.id] }
-            let data = try encoder.encode(jsonNotes)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(jsonNotes)
         } else {
             print("Notes in '\(folder)' (\(notes.count)):")
             for note in notes {

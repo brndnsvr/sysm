@@ -21,12 +21,7 @@ struct MailSearch: ParsableCommand {
         let messages = try service.searchMessages(query: query, limit: limit)
 
         if json {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(messages)
-            if let jsonString = String(data: data, encoding: .utf8) {
-                print(jsonString)
-            }
+            try OutputFormatter.printJSON(messages)
         } else {
             if messages.isEmpty {
                 print("No messages found for '\(query)'")

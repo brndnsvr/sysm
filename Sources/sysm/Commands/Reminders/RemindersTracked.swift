@@ -23,10 +23,7 @@ struct RemindersTracked: AsyncParsableCommand {
                     "status": reminder.status
                 ]
             }
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = .prettyPrinted
-            let data = try encoder.encode(output)
-            print(String(data: data, encoding: .utf8)!)
+            try OutputFormatter.printJSON(output)
         } else {
             if tracked.isEmpty {
                 print("No tracked reminders")
