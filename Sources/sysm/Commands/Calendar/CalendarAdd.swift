@@ -69,10 +69,7 @@ struct CalendarAdd: AsyncParsableCommand {
         if json {
             try OutputFormatter.printJSON(event)
         } else {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .full
-            formatter.timeStyle = allDay ? .none : .short
-
+            let formatter = allDay ? DateFormatters.fullDate : DateFormatters.fullDateTime
             print("Created event: \(event.title)")
             print("  Calendar: \(event.calendarName)")
             print("  Start: \(formatter.string(from: event.startDate))")

@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide access to macOS Focus modes and Do Not Disturb settings,
 /// supporting status queries and DND toggle through various system APIs.
-protocol FocusServiceProtocol {
+protocol FocusServiceProtocol: Sendable {
     /// Gets the current focus/DND status.
     /// - Returns: Status information including active state and focus mode name.
     func getStatus() throws -> FocusStatusInfo

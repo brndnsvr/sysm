@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide access to the user's Shortcuts app automations,
 /// supporting listing available shortcuts and executing them with optional input.
-protocol ShortcutsServiceProtocol {
+protocol ShortcutsServiceProtocol: Sendable {
     /// Lists all available shortcuts.
     /// - Returns: Array of shortcut names.
     func list() throws -> [String]

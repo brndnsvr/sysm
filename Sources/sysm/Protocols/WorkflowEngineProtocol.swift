@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide workflow file loading, validation, and execution,
 /// supporting multi-step automation with dry-run capabilities.
-protocol WorkflowEngineProtocol {
+protocol WorkflowEngineProtocol: Sendable {
     /// Lists all workflows in a directory.
     /// - Parameter directory: Optional directory to search (defaults to ~/.sysm/workflows).
     /// - Returns: Array of tuples with workflow path and parsed workflow.

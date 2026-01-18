@@ -30,19 +30,15 @@ struct CalendarEvent: Codable {
 
     /// Formatted time range string (e.g., "10:00 AM - 11:00 AM" or "All day").
     var timeRange: String {
-        let formatter = DateFormatter()
         if isAllDay {
             return "All day"
         }
-        formatter.dateFormat = "h:mm a"
-        return "\(formatter.string(from: startDate)) - \(formatter.string(from: endDate))"
+        return "\(DateFormatters.shortTime.string(from: startDate)) - \(DateFormatters.shortTime.string(from: endDate))"
     }
 
     /// Full date string for the event's start date.
     var dateString: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .full
-        return formatter.string(from: startDate)
+        DateFormatters.mediumDate.string(from: startDate)
     }
 
     /// Formats the event for CLI display.

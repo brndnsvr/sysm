@@ -3,7 +3,7 @@ import Foundation
 /// Protocol defining messages service operations for accessing macOS Messages via AppleScript.
 ///
 /// Implementations provide access to iMessage conversations and the ability to send messages.
-protocol MessagesServiceProtocol {
+protocol MessagesServiceProtocol: Sendable {
     /// Sends a message to a recipient.
     /// - Parameters:
     ///   - recipient: Phone number or email address.

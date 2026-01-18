@@ -181,10 +181,7 @@ actor ReminderService: ReminderServiceProtocol {
     }
 
     private func parseDateString(_ dateStr: String) throws -> DateComponents {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        guard let date = formatter.date(from: dateStr) else {
+        guard let date = DateFormatters.isoDate.date(from: dateStr) else {
             throw ReminderError.invalidDateFormat(dateStr)
         }
 

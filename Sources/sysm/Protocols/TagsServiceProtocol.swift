@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide access to macOS Finder tags (color labels),
 /// supporting read/write of tags and search by tag name.
-protocol TagsServiceProtocol {
+protocol TagsServiceProtocol: Sendable {
     /// Retrieves tags assigned to a file.
     /// - Parameter path: Path to the file.
     /// - Returns: Array of Finder tags.

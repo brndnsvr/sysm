@@ -34,11 +34,8 @@ struct CalendarSearch: AsyncParsableCommand {
 
                 // Group events by date
                 var eventsByDate: [String: [CalendarEvent]] = [:]
-                let formatter = DateFormatter()
-                formatter.dateStyle = .full
-
                 for event in events {
-                    let dateKey = formatter.string(from: event.startDate)
+                    let dateKey = DateFormatters.fullDate.string(from: event.startDate)
                     eventsByDate[dateKey, default: []].append(event)
                 }
 

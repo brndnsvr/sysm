@@ -87,15 +87,14 @@ struct Note: Codable {
         md += "source: apple-notes\n"
         md += "folder: \(folder)\n"
 
-        let formatter = ISO8601DateFormatter()
         if let created = creationDate {
-            md += "created: \(formatter.string(from: created))\n"
+            md += "created: \(DateFormatters.iso8601.string(from: created))\n"
         }
         if let modified = modificationDate {
-            md += "modified: \(formatter.string(from: modified))\n"
+            md += "modified: \(DateFormatters.iso8601.string(from: modified))\n"
         }
 
-        md += "imported: \(formatter.string(from: Date()))\n"
+        md += "imported: \(DateFormatters.iso8601.string(from: Date()))\n"
         md += "---\n\n"
 
         // Convert HTML to basic markdown

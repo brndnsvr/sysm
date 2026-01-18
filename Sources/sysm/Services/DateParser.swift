@@ -142,9 +142,7 @@ struct DateParser {
     /// - Parameter text: The ISO date string.
     /// - Returns: The parsed date, or nil if invalid.
     static func parseISO(_ text: String) -> Date? {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        if let date = formatter.date(from: text.components(separatedBy: " ").first ?? text) {
+        if let date = DateFormatters.isoDate.date(from: text.components(separatedBy: " ").first ?? text) {
             return parseTime(from: text, baseDate: date) ?? date
         }
         return nil

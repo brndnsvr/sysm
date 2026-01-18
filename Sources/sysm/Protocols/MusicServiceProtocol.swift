@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide playback control and library access for Apple Music,
 /// supporting play/pause, track navigation, volume, and playlist queries.
-protocol MusicServiceProtocol {
+protocol MusicServiceProtocol: Sendable {
     /// Starts or resumes playback.
     func play() throws
 

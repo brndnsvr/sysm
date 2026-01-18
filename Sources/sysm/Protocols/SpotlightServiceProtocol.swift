@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide file search capabilities using macOS Spotlight index,
 /// supporting query search, file type filtering, modification date queries, and metadata retrieval.
-protocol SpotlightServiceProtocol {
+protocol SpotlightServiceProtocol: Sendable {
     /// Searches files using Spotlight query syntax.
     /// - Parameters:
     ///   - query: Spotlight query string.

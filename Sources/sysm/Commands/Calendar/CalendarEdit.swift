@@ -56,16 +56,10 @@ struct CalendarEdit: AsyncParsableCommand {
                 print("  New title: \(t)")
             }
             if let s = newStart {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .full
-                formatter.timeStyle = .short
-                print("  New start: \(formatter.string(from: s))")
+                print("  New start: \(DateFormatters.fullDateTime.string(from: s))")
             }
             if let e = newEnd {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .full
-                formatter.timeStyle = .short
-                print("  New end: \(formatter.string(from: e))")
+                print("  New end: \(DateFormatters.fullDateTime.string(from: e))")
             }
         } else {
             print("Event '\(title)' not found")

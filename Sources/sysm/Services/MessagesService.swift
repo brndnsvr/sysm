@@ -128,8 +128,7 @@ struct MessagesService: MessagesServiceProtocol {
     }
 
     private func escapeForAppleScript(_ string: String) -> String {
-        return string.replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
+        AppleScriptRunner.escape(string)
     }
 }
 
