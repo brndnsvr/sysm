@@ -43,9 +43,7 @@ struct TrackedReminder: Codable {
 
     /// Returns today's date as a string in YYYY-MM-DD format.
     static func todayString() -> String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter.string(from: Date())
+        DateFormatters.isoDate.string(from: Date())
     }
 
     /// Creates a normalized key from a reminder name for cache lookups.

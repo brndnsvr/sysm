@@ -3,7 +3,7 @@ import Foundation
 /// Protocol defining Safari service operations for accessing Safari data via AppleScript.
 ///
 /// Implementations provide read access to Safari's reading list, bookmarks, and open tabs.
-protocol SafariServiceProtocol {
+protocol SafariServiceProtocol: Sendable {
     /// Retrieves all reading list items.
     /// - Returns: Array of reading list items.
     func getReadingList() throws -> [ReadingListItem]

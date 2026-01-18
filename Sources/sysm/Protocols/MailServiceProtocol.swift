@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide read access to the user's email accounts and messages,
 /// supporting inbox queries, search, and draft creation.
-protocol MailServiceProtocol {
+protocol MailServiceProtocol: Sendable {
     /// Retrieves all configured mail accounts.
     /// - Returns: Array of mail accounts.
     func getAccounts() throws -> [MailAccount]

@@ -47,20 +47,17 @@ struct CalendarList: AsyncParsableCommand {
             if events.isEmpty {
                 print("No events found")
             } else {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .full
-
                 if endDate != nil {
-                    print("Events from \(formatter.string(from: startDate)):")
+                    print("Events from \(DateFormatters.fullDate.string(from: startDate)):")
                 } else {
-                    print("Events for \(formatter.string(from: startDate)):")
+                    print("Events for \(DateFormatters.fullDate.string(from: startDate)):")
                 }
                 print("")
 
                 // Group events by date for range queries
                 var eventsByDate: [String: [CalendarEvent]] = [:]
                 for event in events {
-                    let dateKey = formatter.string(from: event.startDate)
+                    let dateKey = DateFormatters.fullDate.string(from: event.startDate)
                     eventsByDate[dateKey, default: []].append(event)
                 }
 

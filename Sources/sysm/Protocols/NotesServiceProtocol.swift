@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide read-only access to the user's notes, supporting
 /// folder listing, note retrieval, and export to Markdown format.
-protocol NotesServiceProtocol {
+protocol NotesServiceProtocol: Sendable {
     /// Lists all note folders.
     /// - Returns: Array of folder names.
     func listFolders() throws -> [String]

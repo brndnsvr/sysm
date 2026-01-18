@@ -23,9 +23,7 @@ struct CalendarToday: AsyncParsableCommand {
             if events.isEmpty {
                 print("No events today")
             } else {
-                let formatter = DateFormatter()
-                formatter.dateStyle = .full
-                print("Events for \(formatter.string(from: Date())):")
+                print("Events for \(DateFormatters.fullDate.string(from: Date())):")
                 print("")
                 for event in events {
                     print(event.formatted(showCalendar: showCalendar))

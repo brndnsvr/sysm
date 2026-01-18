@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations fetch weather data from external APIs (WeatherKit or Open-Meteo),
 /// supporting current conditions, daily forecasts, and hourly forecasts.
-protocol WeatherServiceProtocol {
+protocol WeatherServiceProtocol: Sendable {
     /// Fetches current weather for a location.
     /// - Parameter location: Location name or coordinates (lat,lon).
     /// - Returns: Current weather conditions.

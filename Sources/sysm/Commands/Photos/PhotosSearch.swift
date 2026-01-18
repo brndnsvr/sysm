@@ -20,14 +20,11 @@ struct PhotosSearch: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-
-        guard let fromDate = formatter.date(from: from) else {
+        guard let fromDate = DateFormatters.isoDate.date(from: from) else {
             throw ValidationError("Invalid from date. Use YYYY-MM-DD format.")
         }
 
-        guard var toDate = formatter.date(from: to) else {
+        guard var toDate = DateFormatters.isoDate.date(from: to) else {
             throw ValidationError("Invalid to date. Use YYYY-MM-DD format.")
         }
 

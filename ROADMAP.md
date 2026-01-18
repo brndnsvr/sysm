@@ -126,10 +126,11 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 | `list <path>` | List tags on file/folder |
 | `add <path> --tag <name>` | Add tag to file |
 | `remove <path> --tag <name>` | Remove tag from file |
+| `set <path> --tags <list>` | Replace all tags atomically |
 | `find <tag>` | Find files with tag |
 
 **Status:** Complete
-**Notes:** Uses `getxattr`/`setxattr` for tag manipulation. Tag colors (0-7) supported. Search via mdfind.
+**Notes:** Uses `getxattr`/`setxattr` for tag manipulation. Tag colors (0-7) supported. The `set` command replaces all existing tags with the specified list. Search via mdfind.
 
 ---
 
@@ -182,6 +183,79 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 
 **Status:** Complete
 **Notes:** Requires Photos permission. Actor-based service. Supports `--json` output.
+
+---
+
+## Phase 4 - Automation (Completed)
+
+### Phase 4a - Script Execution (Done)
+
+**Framework:** Shell/AppleScript/Python execution
+
+| Command | Description |
+|---------|-------------|
+| `exec <script>` | Run a script file |
+| `exec -c <cmd>` | Run inline command |
+| `exec --shell <type>` | Specify shell (bash, zsh, sh) |
+| `exec --python` | Run Python script |
+| `exec --applescript` | Run AppleScript |
+
+**Status:** Complete
+**Notes:** Supports shell scripts, Python, AppleScript, and Swift code execution with timeout and error handling.
+
+---
+
+### Phase 4b - Workflows (Done)
+
+**Framework:** YAML-based workflow engine
+
+| Command | Description |
+|---------|-------------|
+| `workflow run <file>` | Execute a workflow |
+| `workflow validate <file>` | Validate workflow syntax |
+| `workflow list` | List available workflows |
+| `workflow new <name>` | Create workflow scaffold |
+
+**Status:** Complete
+**Notes:** YAML-based multi-step automations. Supports variable passing between steps, conditional execution, error handling with retries, and template expansion. Workflows stored in `~/.sysm/workflows/`. Supports `--dry-run` and `--verbose` flags.
+
+---
+
+### Phase 4c - Scheduling (Done)
+
+**Framework:** macOS launchd
+
+| Command | Description |
+|---------|-------------|
+| `schedule add <name>` | Create scheduled job |
+| `schedule list` | List all scheduled jobs |
+| `schedule show <name>` | Show job details |
+| `schedule remove <name>` | Delete scheduled job |
+| `schedule enable <name>` | Enable a job |
+| `schedule disable <name>` | Disable a job |
+| `schedule run <name>` | Run job immediately |
+| `schedule logs <name>` | View job logs |
+
+**Status:** Complete
+**Notes:** Uses macOS launchd for persistent scheduling. Supports cron syntax (`--cron "M H D Mo W"`) or interval-based (`--every N` seconds). Jobs persist across reboots.
+
+---
+
+### Phase 4d - Plugins (Done)
+
+**Framework:** Shell script plugins
+
+| Command | Description |
+|---------|-------------|
+| `plugin list` | List installed plugins |
+| `plugin create <name>` | Create plugin scaffold |
+| `plugin install <path>` | Install from directory |
+| `plugin remove <name>` | Uninstall plugin |
+| `plugin run <plugin> <cmd>` | Execute plugin command |
+| `plugin info <name>` | Show plugin details |
+
+**Status:** Complete
+**Notes:** Extend sysm with custom shell script commands. Plugins stored in `~/.sysm/plugins/` with `plugin.yaml` manifest defining commands and arguments. Supports timeout configuration and argument passing.
 
 ---
 

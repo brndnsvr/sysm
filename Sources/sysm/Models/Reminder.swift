@@ -35,18 +35,13 @@ struct Reminder: Codable {
     /// Human-readable due date string.
     var dueDateString: String? {
         guard let date = dueDate else { return nil }
-        let formatter = DateFormatter()
-        formatter.dateStyle = .full
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        return DateFormatters.fullDateTime.string(from: date)
     }
 
     /// ISO 8601 formatted due date string.
     var dueDateISO: String? {
         guard let date = dueDate else { return nil }
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        return formatter.string(from: date)
+        return DateFormatters.iso8601DateOnly.string(from: date)
     }
 
     /// Formats the reminder for CLI display.

@@ -8,6 +8,7 @@ struct TagsCommand: ParsableCommand {
             TagsList.self,
             TagsAdd.self,
             TagsRemove.self,
+            TagsSet.self,
             TagsFind.self,
         ],
         defaultSubcommand: TagsList.self

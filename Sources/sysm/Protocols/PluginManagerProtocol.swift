@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Implementations provide plugin discovery, installation, removal, and execution
 /// for extending sysm with custom shell script-based commands.
-protocol PluginManagerProtocol {
+protocol PluginManagerProtocol: Sendable {
     /// Lists all installed plugins.
     /// - Returns: Array of plugins.
     func listPlugins() throws -> [PluginManager.Plugin]
