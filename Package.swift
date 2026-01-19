@@ -12,20 +12,27 @@ let package = Package(
         .package(url: "https://github.com/apple/swift-docc-plugin.git", from: "1.3.0"),
     ],
     targets: [
-        .executableTarget(
-            name: "sysm",
+        .target(
+            name: "SysmCore",
             dependencies: [
-                .product(name: "ArgumentParser", package: "swift-argument-parser"),
                 .product(name: "Yams", package: "Yams"),
             ],
-            path: "Sources/sysm",
+            path: "Sources/SysmCore",
             linkerSettings: [
                 .linkedFramework("Photos"),
             ]
         ),
+        .executableTarget(
+            name: "sysm",
+            dependencies: [
+                "SysmCore",
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+            ],
+            path: "Sources/sysm"
+        ),
         .testTarget(
             name: "sysmTests",
-            dependencies: [],
+            dependencies: ["SysmCore"],
             path: "Tests/sysmTests"
         ),
     ]

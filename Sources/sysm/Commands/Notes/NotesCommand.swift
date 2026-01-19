@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct NotesCommand: ParsableCommand {
     static let configuration = CommandConfiguration(

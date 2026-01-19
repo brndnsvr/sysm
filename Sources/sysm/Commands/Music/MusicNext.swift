@@ -1,4 +1,5 @@
 import ArgumentParser
+import SysmCore
 
 struct MusicNext: ParsableCommand {
     static let configuration = CommandConfiguration(

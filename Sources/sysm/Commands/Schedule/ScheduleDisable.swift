@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct ScheduleDisable: ParsableCommand {
     static let configuration = CommandConfiguration(

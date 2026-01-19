@@ -129,7 +129,15 @@ sysm requires macOS permissions for each service it accesses. Grant these in Sys
 | Photos | `photos` |
 | Automation | `notes`, `music`, `messages`, `shortcuts` |
 
-## Weather Backends
+## Configuration
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `SYSM_TRIGGER_PATH` | Override trigger file path for reminder tracking | `~/dayai/_dayai/TRIGGER.md` |
+
+### Weather Backends
 
 The weather command supports two backends:
 
@@ -161,6 +169,23 @@ Requirements:
 - Provisioning profile
 
 See `make help` for all build options.
+
+## Architecture
+
+sysm is organized as a modular Swift Package with two targets:
+
+- **SysmCore**: Library containing all services, models, protocols, and utilities. Can be imported independently for programmatic access to macOS services.
+- **sysm**: Command-line executable providing the CLI interface.
+
+```swift
+// Example: Using SysmCore directly
+import SysmCore
+
+let calendar = Services.calendar()
+let events = try await calendar.getTodayEvents()
+```
+
+The `ServiceContainer` provides dependency injection, allowing test mocking and customization.
 
 ## Documentation
 

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct ContactsBirthdays: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

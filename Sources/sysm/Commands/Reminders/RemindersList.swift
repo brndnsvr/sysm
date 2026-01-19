@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct RemindersList: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
@@ -15,7 +16,7 @@ struct RemindersList: AsyncParsableCommand {
 
     func run() async throws {
         let service = Services.reminders()
-        let reminders = try await service.getReminders(listName: listName)
+        let reminders = try await service.getReminders(listName: listName, includeCompleted: false)
 
         if json {
             try OutputFormatter.printJSON(reminders)

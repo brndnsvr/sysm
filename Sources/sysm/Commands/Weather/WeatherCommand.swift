@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 /// Weather data backend selection
 enum WeatherBackend: String, ExpressibleByArgument, CaseIterable {
