@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct SpotlightKind: ParsableCommand {
     static let configuration = CommandConfiguration(

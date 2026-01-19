@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct TagsSet: ParsableCommand {
     static let configuration = CommandConfiguration(

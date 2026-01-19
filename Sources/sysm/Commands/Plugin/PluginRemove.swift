@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct PluginRemove: ParsableCommand {
     static let configuration = CommandConfiguration(

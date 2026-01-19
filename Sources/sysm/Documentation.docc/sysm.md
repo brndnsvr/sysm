@@ -6,6 +6,15 @@ Unified CLI for the Apple ecosystem on macOS.
 
 sysm provides a single command-line interface to interact with macOS system services including Calendar, Reminders, Notes, Contacts, Mail, Messages, Safari, Music, Photos, Finder tags, Spotlight, Shortcuts, Focus modes, and Weather.
 
+### Architecture
+
+sysm is organized into two targets:
+
+- **SysmCore**: A Swift library containing all services, models, protocols, and utilities. This library can be used independently for programmatic access to macOS services.
+- **sysm**: The command-line executable that provides the user interface via ArgumentParser.
+
+The ``ServiceContainer`` provides dependency injection and test mocking capabilities.
+
 ### Key Features
 
 - **Personal Information Management**: Calendar events, reminders, notes, and contacts
@@ -68,6 +77,9 @@ sysm weather current "San Francisco"
 - ``Note``
 - ``CurrentWeather``
 - ``Forecast``
+- ``NowPlaying``
+- ``Playlist``
+- ``Track``
 
 ### Utilities
 
@@ -75,3 +87,10 @@ sysm weather current "San Francisco"
 - ``DateFormatters``
 - ``AppleScriptRunner``
 - ``OutputFormatter``
+- ``ServiceContainer``
+
+### Articles
+
+- <doc:GettingStarted>
+- <doc:Configuration>
+- <doc:Security>

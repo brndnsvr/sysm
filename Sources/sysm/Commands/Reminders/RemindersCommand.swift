@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct RemindersCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

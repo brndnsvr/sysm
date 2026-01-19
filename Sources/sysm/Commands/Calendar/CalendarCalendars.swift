@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct CalendarCalendars: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

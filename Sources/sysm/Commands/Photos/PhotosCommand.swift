@@ -1,4 +1,5 @@
 import ArgumentParser
+import SysmCore
 
 struct PhotosCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(

@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 @main
 struct Sysm: AsyncParsableCommand {

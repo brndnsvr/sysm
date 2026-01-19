@@ -1,5 +1,6 @@
 import ArgumentParser
 import Foundation
+import SysmCore
 
 struct SafariCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
