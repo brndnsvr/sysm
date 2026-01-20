@@ -148,6 +148,81 @@ public struct NotesService: NotesServiceProtocol {
         return Int(result.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
     }
 
+    public func createNote(name: String, body: String, folder: String? = nil) throws -> String {
+        let escapedName = AppleScriptRunner.escape(name)
+        let escapedBody = AppleScriptRunner.escape(body)
+        let folderRef = folder.map { "folder \"\(AppleScriptRunner.escape($0))\"" } ?? "default folder"
+
+        let script = """
+        tell application "Notes"
+            set targetFolder to \(folderRef)
+            set newNote to make new note at targetFolder with properties {name:"\(escapedName)", body:"\(escapedBody)"}
+            return id of newNote
+        end tell
+        """
+
+        return try runAppleScript(script).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func updateNote(id: String, name: String?, body: String?) throws {
+        let escapedId = AppleScriptRunner.escape(id)
+
+        var updates: [String] = []
+        if let name = name {
+            updates.append("set name of n to \"\(AppleScriptRunner.escape(name))\"")
+        }
+        if let body = body {
+            updates.append("set body of n to \"\(AppleScriptRunner.escape(body))\"")
+        }
+
+        guard !updates.isEmpty else { return }
+
+        let script = """
+        tell application "Notes"
+            set n to note id "\(escapedId)"
+            \(updates.joined(separator: "\n            "))
+        end tell
+        """
+
+        _ = try runAppleScript(script)
+    }
+
+    public func deleteNote(id: String) throws {
+        let escapedId = AppleScriptRunner.escape(id)
+
+        let script = """
+        tell application "Notes"
+            delete note id "\(escapedId)"
+        end tell
+        """
+
+        _ = try runAppleScript(script)
+    }
+
+    public func createFolder(name: String) throws {
+        let escapedName = AppleScriptRunner.escape(name)
+
+        let script = """
+        tell application "Notes"
+            make new folder with properties {name:"\(escapedName)"}
+        end tell
+        """
+
+        _ = try runAppleScript(script)
+    }
+
+    public func deleteFolder(name: String) throws {
+        let escapedName = AppleScriptRunner.escape(name)
+
+        let script = """
+        tell application "Notes"
+            delete folder "\(escapedName)"
+        end tell
+        """
+
+        _ = try runAppleScript(script)
+    }
+
     private func runAppleScript(_ script: String) throws -> String {
         do {
             return try AppleScriptRunner.run(script, identifier: "notes")

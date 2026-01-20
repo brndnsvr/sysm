@@ -122,6 +122,64 @@ public struct WeatherService: WeatherServiceProtocol {
         )
     }
 
+    public func getAlerts(location: String) async throws -> [WeatherAlert] {
+        // Open-Meteo does not provide weather alerts
+        // Return empty array (alerts are available in WeatherKit backend)
+        return []
+    }
+
+    public func getDetailedWeather(location: String) async throws -> DetailedWeather {
+        let coords = try await resolveLocation(location)
+
+        let params = [
+            "latitude": String(coords.latitude),
+            "longitude": String(coords.longitude),
+            "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,pressure_msl,cloud_cover,uv_index",
+            "hourly": "visibility,dew_point_2m",
+            "temperature_unit": "fahrenheit",
+            "wind_speed_unit": "mph",
+            "timezone": "auto",
+            "forecast_hours": "1"
+        ]
+
+        let data = try await fetch(path: "/forecast", params: params)
+        let response = try JSONDecoder().decode(DetailedWeatherResponse.self, from: data)
+
+        guard let current = response.current else {
+            throw WeatherError.invalidResponse
+        }
+
+        // Get visibility and dew point from hourly (first hour)
+        let visibility = response.hourly?.visibility?.first ?? 10.0
+        let dewPoint = response.hourly?.dew_point_2m?.first ?? 0.0
+
+        // Convert pressure from hPa to inHg
+        let pressureInHg = (current.pressure_msl ?? 1013.25) * 0.02953
+
+        let uvValue = Int(current.uv_index ?? 0)
+
+        return DetailedWeather(
+            location: coords.displayName,
+            latitude: coords.latitude,
+            longitude: coords.longitude,
+            temperature: current.temperature_2m,
+            apparentTemperature: current.apparent_temperature,
+            humidity: Int(current.relative_humidity_2m),
+            windSpeed: current.wind_speed_10m,
+            windDirection: Int(current.wind_direction_10m),
+            windGust: current.wind_gusts_10m,
+            pressure: pressureInHg,
+            dewPoint: dewPoint,
+            visibility: visibility * 0.000621371,  // meters to miles
+            uvIndex: uvValue,
+            uvIndexDescription: uvIndexDescription(uvValue),
+            cloudCover: Int(current.cloud_cover ?? 0),
+            condition: WeatherCondition(rawValue: current.weather_code) ?? .clear,
+            time: parseISO8601(current.time) ?? Date(),
+            timezone: response.timezone
+        )
+    }
+
     // MARK: - Location Resolution
 
     private func resolveLocation(_ location: String) async throws -> Coordinates {
@@ -291,4 +349,32 @@ private struct GeocodeResponse: Codable {
 private struct ErrorResponse: Codable {
     public let error: Bool?
     public let reason: String?
+}
+
+private struct DetailedWeatherResponse: Codable {
+    public let latitude: Double
+    public let longitude: Double
+    public let timezone: String
+    public let current: DetailedCurrentData?
+    public let hourly: DetailedHourlyData?
+
+    public struct DetailedCurrentData: Codable {
+        let time: String
+        let temperature_2m: Double
+        let relative_humidity_2m: Double
+        let apparent_temperature: Double
+        let weather_code: Int
+        let wind_speed_10m: Double
+        let wind_direction_10m: Double
+        let wind_gusts_10m: Double?
+        let pressure_msl: Double?
+        let cloud_cover: Double?
+        let uv_index: Double?
+    }
+
+    public struct DetailedHourlyData: Codable {
+        let time: [String]?
+        let visibility: [Double]?
+        let dew_point_2m: [Double]?
+    }
 }

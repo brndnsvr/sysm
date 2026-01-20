@@ -9,7 +9,6 @@ struct ShortcutsCommand: ParsableCommand {
         subcommands: [
             ShortcutsList.self,
             ShortcutsRun.self,
-        ],
-        defaultSubcommand: ShortcutsList.self
+        ]
     )
 }

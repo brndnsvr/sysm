@@ -10,16 +10,42 @@ public struct NowPlaying: Codable {
     public let duration: Int  // seconds
     public let position: Int  // seconds
     public let state: String  // playing, paused, stopped
+    public let shuffle: Bool?
+    public let repeatMode: String?
+    public let volume: Int?
+
+    public init(name: String, artist: String, album: String, duration: Int, position: Int, state: String,
+                shuffle: Bool? = nil, repeatMode: String? = nil, volume: Int? = nil) {
+        self.name = name
+        self.artist = artist
+        self.album = album
+        self.duration = duration
+        self.position = position
+        self.state = state
+        self.shuffle = shuffle
+        self.repeatMode = repeatMode
+        self.volume = volume
+    }
 
     public func formatted() -> String {
         let progress = duration > 0 ? "\(formatTime(position)) / \(formatTime(duration))" : ""
-        return """
+        var result = """
         \(name)
         Artist: \(artist)
         Album: \(album)
         State: \(state.capitalized)
         Progress: \(progress)
         """
+        if let shuffle = shuffle {
+            result += "\nShuffle: \(shuffle ? "On" : "Off")"
+        }
+        if let repeatMode = repeatMode {
+            result += "\nRepeat: \(repeatMode.capitalized)"
+        }
+        if let volume = volume {
+            result += "\nVolume: \(volume)%"
+        }
+        return result
     }
 
     private func formatTime(_ seconds: Int) -> String {

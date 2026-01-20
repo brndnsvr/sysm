@@ -91,6 +91,203 @@ public struct HourForecast: Codable {
     public let condition: WeatherCondition
 }
 
+/// Weather alert (severe weather warning).
+public struct WeatherAlert: Codable {
+    public let id: String
+    public let event: String
+    public let severity: AlertSeverity
+    public let urgency: AlertUrgency
+    public let headline: String
+    public let description: String
+    public let source: String
+    public let effectiveTime: Date
+    public let expiresTime: Date
+    public let affectedRegions: [String]
+
+    public init(
+        id: String,
+        event: String,
+        severity: AlertSeverity,
+        urgency: AlertUrgency,
+        headline: String,
+        description: String,
+        source: String,
+        effectiveTime: Date,
+        expiresTime: Date,
+        affectedRegions: [String]
+    ) {
+        self.id = id
+        self.event = event
+        self.severity = severity
+        self.urgency = urgency
+        self.headline = headline
+        self.description = description
+        self.source = source
+        self.effectiveTime = effectiveTime
+        self.expiresTime = expiresTime
+        self.affectedRegions = affectedRegions
+    }
+
+    public func formatted() -> String {
+        let df = DateFormatter()
+        df.dateFormat = "MMM d, h:mm a"
+
+        return """
+        [\(severity.emoji) \(severity.rawValue.uppercased())] \(event)
+          \(headline)
+          Source: \(source)
+          Effective: \(df.string(from: effectiveTime))
+          Expires: \(df.string(from: expiresTime))
+          Regions: \(affectedRegions.joined(separator: ", "))
+        """
+    }
+}
+
+/// Alert severity levels.
+public enum AlertSeverity: String, Codable {
+    case extreme
+    case severe
+    case moderate
+    case minor
+    case unknown
+
+    public var emoji: String {
+        switch self {
+        case .extreme: return "🔴"
+        case .severe: return "🟠"
+        case .moderate: return "🟡"
+        case .minor: return "🟢"
+        case .unknown: return "⚪"
+        }
+    }
+}
+
+/// Alert urgency levels.
+public enum AlertUrgency: String, Codable {
+    case immediate
+    case expected
+    case future
+    case past
+    case unknown
+}
+
+/// Detailed weather including UV index and air quality.
+public struct DetailedWeather: Codable {
+    public let location: String
+    public let latitude: Double
+    public let longitude: Double
+    public let temperature: Double
+    public let apparentTemperature: Double
+    public let humidity: Int
+    public let windSpeed: Double
+    public let windDirection: Int
+    public let windGust: Double?
+    public let pressure: Double
+    public let dewPoint: Double
+    public let visibility: Double
+    public let uvIndex: Int
+    public let uvIndexDescription: String
+    public let cloudCover: Int
+    public let condition: WeatherCondition
+    public let time: Date
+    public let timezone: String
+
+    public init(
+        location: String,
+        latitude: Double,
+        longitude: Double,
+        temperature: Double,
+        apparentTemperature: Double,
+        humidity: Int,
+        windSpeed: Double,
+        windDirection: Int,
+        windGust: Double?,
+        pressure: Double,
+        dewPoint: Double,
+        visibility: Double,
+        uvIndex: Int,
+        uvIndexDescription: String,
+        cloudCover: Int,
+        condition: WeatherCondition,
+        time: Date,
+        timezone: String
+    ) {
+        self.location = location
+        self.latitude = latitude
+        self.longitude = longitude
+        self.temperature = temperature
+        self.apparentTemperature = apparentTemperature
+        self.humidity = humidity
+        self.windSpeed = windSpeed
+        self.windDirection = windDirection
+        self.windGust = windGust
+        self.pressure = pressure
+        self.dewPoint = dewPoint
+        self.visibility = visibility
+        self.uvIndex = uvIndex
+        self.uvIndexDescription = uvIndexDescription
+        self.cloudCover = cloudCover
+        self.condition = condition
+        self.time = time
+        self.timezone = timezone
+    }
+
+    public func formatted() -> String {
+        let tempF = temperature
+        let tempC = (tempF - 32) * 5 / 9
+        let feelsF = apparentTemperature
+        let feelsC = (feelsF - 32) * 5 / 9
+        let dewF = dewPoint
+        let dewC = (dewF - 32) * 5 / 9
+
+        var lines = [
+            "Detailed Weather for \(location)",
+            "",
+            "Temperature: \(Int(tempF))°F (\(Int(tempC))°C)",
+            "Feels like: \(Int(feelsF))°F (\(Int(feelsC))°C)",
+            "Humidity: \(humidity)%",
+            "Dew point: \(Int(dewF))°F (\(Int(dewC))°C)",
+            "",
+            "Wind: \(Int(windSpeed)) mph \(windDirectionStr(windDirection))",
+        ]
+
+        if let gust = windGust, gust > 0 {
+            lines.append("Wind gusts: \(Int(gust)) mph")
+        }
+
+        lines += [
+            "",
+            "Pressure: \(String(format: "%.2f", pressure)) inHg",
+            "Visibility: \(String(format: "%.1f", visibility)) mi",
+            "Cloud cover: \(cloudCover)%",
+            "",
+            "UV Index: \(uvIndex) (\(uvIndexDescription))",
+            "",
+            "Conditions: \(condition.emoji) \(condition.description)",
+        ]
+
+        return lines.joined(separator: "\n")
+    }
+
+    private func windDirectionStr(_ degrees: Int) -> String {
+        let directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                          "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+        let index = Int((Double(degrees) + 11.25) / 22.5) % 16
+        return directions[index]
+    }
+}
+
+/// UV index description helper
+public func uvIndexDescription(_ index: Int) -> String {
+    switch index {
+    case 0...2: return "Low"
+    case 3...5: return "Moderate"
+    case 6...7: return "High"
+    case 8...10: return "Very High"
+    default: return "Extreme"
+    }
+}
+
 /// Geographic coordinates with location metadata.
 public struct Coordinates: Codable {
     public let latitude: Double

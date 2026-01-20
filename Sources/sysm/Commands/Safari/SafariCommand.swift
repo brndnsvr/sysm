@@ -10,7 +10,6 @@ struct SafariCommand: ParsableCommand {
             SafariReadingList.self,
             SafariBookmarks.self,
             SafariTabs.self,
-        ],
-        defaultSubcommand: SafariTabs.self
+        ]
     )
 }

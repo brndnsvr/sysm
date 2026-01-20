@@ -1,4 +1,4 @@
-.PHONY: build release bundle release-signed notarize release-notarized install install-signed install-notarized clean test help all-release
+.PHONY: build release bundle release-signed notarize release-notarized install install-signed install-notarized clean test help all-release completions install-completions
 
 # Default target
 all: release
@@ -119,6 +119,30 @@ clean:
 test:
 	swift test
 
+# Regenerate shell completion scripts
+completions: build
+	@echo "Generating shell completions..."
+	swift run sysm --generate-completion-script bash > completions/sysm.bash
+	swift run sysm --generate-completion-script zsh > completions/_sysm
+	swift run sysm --generate-completion-script fish > completions/sysm.fish
+	@echo "Completions generated in completions/"
+
+# Install shell completions (zsh to homebrew site-functions)
+install-completions: completions
+	@echo "Installing zsh completion..."
+	@if [ -d /opt/homebrew/share/zsh/site-functions ]; then \
+		sudo ln -sf "$(PWD)/completions/_sysm" /opt/homebrew/share/zsh/site-functions/_sysm; \
+		echo "Installed to /opt/homebrew/share/zsh/site-functions/_sysm"; \
+	elif [ -d /usr/local/share/zsh/site-functions ]; then \
+		sudo ln -sf "$(PWD)/completions/_sysm" /usr/local/share/zsh/site-functions/_sysm; \
+		echo "Installed to /usr/local/share/zsh/site-functions/_sysm"; \
+	else \
+		echo "No standard zsh completion directory found. Add to your .zshrc:"; \
+		echo "  fpath=($(PWD)/completions \$$fpath)"; \
+		echo "  autoload -Uz compinit && compinit"; \
+	fi
+	@echo "Restart your shell or run: exec zsh"
+
 # Full release pipeline via script
 all-release:
 	./scripts/release.sh all
@@ -126,16 +150,18 @@ all-release:
 # Show help
 help:
 	@echo "sysm build targets:"
-	@echo "  make build             - Debug build"
-	@echo "  make release           - Release build"
-	@echo "  make bundle            - Create app bundle with provisioning profile"
-	@echo "  make release-signed    - Signed app bundle for WeatherKit"
-	@echo "  make release-notarized - Signed + notarized (full distribution)"
-	@echo "  make install           - Build and install to ~/bin (no signing)"
-	@echo "  make install-signed    - Build with ad-hoc signing (no WeatherKit)"
-	@echo "  make install-notarized - Full pipeline: build, sign, notarize, install"
-	@echo "  make clean             - Remove build artifacts"
-	@echo "  make test              - Run tests"
+	@echo "  make build              - Debug build"
+	@echo "  make release            - Release build"
+	@echo "  make bundle             - Create app bundle with provisioning profile"
+	@echo "  make release-signed     - Signed app bundle for WeatherKit"
+	@echo "  make release-notarized  - Signed + notarized (full distribution)"
+	@echo "  make install            - Build and install to ~/bin (no signing)"
+	@echo "  make install-signed     - Build with ad-hoc signing (no WeatherKit)"
+	@echo "  make install-notarized  - Full pipeline: build, sign, notarize, install"
+	@echo "  make completions        - Regenerate shell completion scripts"
+	@echo "  make install-completions- Install zsh completions to system path"
+	@echo "  make clean              - Remove build artifacts"
+	@echo "  make test               - Run tests"
 	@echo ""
 	@echo "For WeatherKit + distribution (recommended):"
 	@echo "  make install-notarized"

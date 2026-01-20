@@ -91,6 +91,63 @@ public struct FocusService: FocusServiceProtocol {
         return modes.sorted()
     }
 
+    // MARK: - Focus Mode Activation
+
+    public func activateFocus(_ name: String) throws {
+        // Try using Shortcuts first (most reliable method)
+        // Shortcuts should be named "Turn On [Focus Name]" (e.g., "Turn On Work")
+        let shortcutName = "Turn On \(name)"
+        let script = """
+        tell application "Shortcuts Events"
+            run shortcut "\(shortcutName)"
+        end tell
+        """
+
+        do {
+            _ = try runAppleScript(script)
+        } catch {
+            // Try alternative shortcut naming convention
+            let altShortcutName = "Enable \(name)"
+            let altScript = """
+            tell application "Shortcuts Events"
+                run shortcut "\(altShortcutName)"
+            end tell
+            """
+
+            do {
+                _ = try runAppleScript(altScript)
+            } catch {
+                throw FocusError.toggleFailed(
+                    "Could not activate '\(name)' focus. " +
+                    "Create a Shortcut named '\(shortcutName)' that enables this focus mode."
+                )
+            }
+        }
+    }
+
+    public func deactivateFocus() throws {
+        // Try to turn off any focus mode using Shortcuts
+        let shortcutNames = ["Turn Off Focus", "Disable Focus", "Turn Off Do Not Disturb"]
+
+        for shortcutName in shortcutNames {
+            let script = """
+            tell application "Shortcuts Events"
+                run shortcut "\(shortcutName)"
+            end tell
+            """
+
+            do {
+                _ = try runAppleScript(script)
+                return
+            } catch {
+                continue
+            }
+        }
+
+        // Fall back to disabling DND
+        try disableDND()
+    }
+
     // MARK: - Private Helpers
 
     private func isDNDEnabled() -> Bool {

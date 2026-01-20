@@ -46,9 +46,20 @@ public protocol CalendarServiceProtocol: Sendable {
     ///   - location: Optional event location.
     ///   - notes: Optional event notes.
     ///   - isAllDay: Whether this is an all-day event.
+    ///   - recurrence: Optional recurrence rule for repeating events.
+    ///   - alarmMinutes: Optional array of alarm times (minutes before event).
+    ///   - url: Optional URL associated with the event.
+    ///   - availability: Event availability status (busy, free, tentative).
     /// - Returns: The created event.
     func addEvent(title: String, startDate: Date, endDate: Date, calendarName: String?,
-                  location: String?, notes: String?, isAllDay: Bool) async throws -> CalendarEvent
+                  location: String?, notes: String?, isAllDay: Bool,
+                  recurrence: RecurrenceRule?, alarmMinutes: [Int]?,
+                  url: String?, availability: EventAvailability?) async throws -> CalendarEvent
+
+    /// Gets a single event by ID.
+    /// - Parameter id: The event identifier.
+    /// - Returns: The event if found.
+    func getEvent(id: String) async throws -> CalendarEvent?
 
     /// Deletes an event by title.
     /// - Parameter title: Title of the event to delete.
@@ -67,4 +78,14 @@ public protocol CalendarServiceProtocol: Sendable {
     /// Validates and returns events that may have issues.
     /// - Returns: Array of events with validation concerns.
     func validateEvents() async throws -> [CalendarEvent]
+}
+
+// Default implementations for backward compatibility
+extension CalendarServiceProtocol {
+    public func addEvent(title: String, startDate: Date, endDate: Date, calendarName: String? = nil,
+                         location: String? = nil, notes: String? = nil, isAllDay: Bool = false) async throws -> CalendarEvent {
+        try await addEvent(title: title, startDate: startDate, endDate: endDate, calendarName: calendarName,
+                          location: location, notes: notes, isAllDay: isAllDay,
+                          recurrence: nil, alarmMinutes: nil, url: nil, availability: nil)
+    }
 }

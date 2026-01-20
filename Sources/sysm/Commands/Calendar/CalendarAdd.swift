@@ -26,8 +26,32 @@ struct CalendarAdd: AsyncParsableCommand {
     @Option(name: .long, help: "Event notes")
     var notes: String?
 
+    @Option(name: .long, help: "URL associated with the event")
+    var url: String?
+
     @Flag(name: .long, help: "Create as all-day event")
     var allDay = false
+
+    // Recurrence options
+    @Option(name: .long, help: "Repeat frequency: daily, weekly, monthly, yearly")
+    var repeats: RecurrenceFrequency?
+
+    @Option(name: .long, help: "Repeat interval (e.g., 2 for every 2 weeks)")
+    var repeatInterval: Int?
+
+    @Option(name: .long, help: "End date for recurring events")
+    var repeatUntil: String?
+
+    @Option(name: .long, help: "Number of occurrences for recurring events")
+    var repeatCount: Int?
+
+    // Alarm options
+    @Option(name: .long, parsing: .upToNextOption, help: "Reminder times in minutes before event (e.g., --remind 15 60 for 15min and 1hr)")
+    var remind: [Int] = []
+
+    // Availability
+    @Option(name: .long, help: "Show as: busy, free, tentative, unavailable")
+    var showAs: EventAvailability?
 
     @Flag(name: .long, help: "Output as JSON")
     var json = false
@@ -56,6 +80,22 @@ struct CalendarAdd: AsyncParsableCommand {
             endDate = oneHourLater
         }
 
+        // Build recurrence rule if specified
+        var recurrence: RecurrenceRule? = nil
+        if let frequency = repeats {
+            var recEndDate: Date? = nil
+            if let untilStr = repeatUntil {
+                recEndDate = DateParser.parse(untilStr)
+            }
+            recurrence = RecurrenceRule(
+                frequency: frequency,
+                interval: repeatInterval ?? 1,
+                daysOfWeek: nil,
+                endDate: recEndDate,
+                occurrenceCount: repeatCount
+            )
+        }
+
         let service = Services.calendar()
         let event = try await service.addEvent(
             title: title,
@@ -64,7 +104,11 @@ struct CalendarAdd: AsyncParsableCommand {
             calendarName: calendar,
             location: location,
             notes: notes,
-            isAllDay: allDay
+            isAllDay: allDay,
+            recurrence: recurrence,
+            alarmMinutes: remind.isEmpty ? nil : remind,
+            url: url,
+            availability: showAs
         )
 
         if json {
@@ -77,6 +121,12 @@ struct CalendarAdd: AsyncParsableCommand {
             print("  End: \(formatter.string(from: event.endDate))")
             if let loc = event.location, !loc.isEmpty {
                 print("  Location: \(loc)")
+            }
+            if let rule = event.recurrenceRule {
+                print("  Repeats: \(rule.description)")
+            }
+            if let alarms = event.alarms, !alarms.isEmpty {
+                print("  Reminders: \(alarms.map { $0.description }.joined(separator: ", "))")
             }
         }
     }

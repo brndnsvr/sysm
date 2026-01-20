@@ -68,10 +68,30 @@ struct ContactsShow: AsyncParsableCommand {
                 }
             }
 
+            if let profiles = contact.socialProfiles, !profiles.isEmpty {
+                print("\nSocial Profiles:")
+                for profile in profiles {
+                    if let url = profile.url {
+                        print("  \(profile.service): @\(profile.username) (\(url))")
+                    } else {
+                        print("  \(profile.service): @\(profile.username)")
+                    }
+                }
+            }
+
+            if let relations = contact.relations, !relations.isEmpty {
+                print("\nRelations:")
+                for relation in relations {
+                    print("  \(relation.label): \(relation.name)")
+                }
+            }
+
             if let note = contact.note {
                 print("\nNotes:")
                 print("  \(note)")
             }
+
+            print("\nID: \(contact.identifier)")
         }
     }
 }

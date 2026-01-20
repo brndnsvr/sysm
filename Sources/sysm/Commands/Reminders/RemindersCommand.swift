@@ -11,7 +11,11 @@ struct RemindersCommand: AsyncParsableCommand {
             RemindersList.self,
             RemindersToday.self,
             RemindersAdd.self,
+            RemindersEdit.self,
+            RemindersDelete.self,
             RemindersComplete.self,
+            RemindersCreateList.self,
+            RemindersDeleteList.self,
             RemindersValidate.self,
             RemindersTrack.self,
             RemindersDismiss.self,
@@ -20,7 +24,6 @@ struct RemindersCommand: AsyncParsableCommand {
             RemindersUntrack.self,
             RemindersNew.self,
             RemindersSync.self,
-        ],
-        defaultSubcommand: RemindersList.self
+        ]
     )
 }

@@ -5,15 +5,17 @@ import SysmCore
 struct ContactsCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "contacts",
-        abstract: "Search and view contacts",
+        abstract: "Search, view, and manage contacts",
         subcommands: [
             ContactsSearch.self,
             ContactsShow.self,
+            ContactsAdd.self,
+            ContactsEdit.self,
+            ContactsDelete.self,
             ContactsEmail.self,
             ContactsPhone.self,
             ContactsBirthdays.self,
             ContactsGroups.self,
-        ],
-        defaultSubcommand: ContactsSearch.self
+        ]
     )
 }

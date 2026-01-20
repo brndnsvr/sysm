@@ -32,6 +32,8 @@ struct Sysm: AsyncParsableCommand {
             PluginCommand.self,
             // Phase 5: External APIs
             WeatherCommand.self,
+            // Utilities
+            CompletionsCommand.self,
         ]
     )
 }

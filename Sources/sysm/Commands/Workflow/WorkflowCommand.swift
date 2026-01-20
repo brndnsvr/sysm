@@ -27,7 +27,6 @@ struct WorkflowCommand: ParsableCommand {
             WorkflowValidate.self,
             WorkflowList.self,
             WorkflowNew.self,
-        ],
-        defaultSubcommand: WorkflowRun.self
+        ]
     )
 }

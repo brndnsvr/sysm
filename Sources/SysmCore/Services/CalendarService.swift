@@ -89,7 +89,10 @@ public actor CalendarService: CalendarServiceProtocol {
             .sorted { $0.startDate < $1.startDate }
     }
 
-    public func addEvent(title: String, startDate: Date, endDate: Date, calendarName: String? = nil, location: String? = nil, notes: String? = nil, isAllDay: Bool = false) async throws -> CalendarEvent {
+    public func addEvent(title: String, startDate: Date, endDate: Date, calendarName: String? = nil,
+                         location: String? = nil, notes: String? = nil, isAllDay: Bool = false,
+                         recurrence: RecurrenceRule? = nil, alarmMinutes: [Int]? = nil,
+                         url: String? = nil, availability: EventAvailability? = nil) async throws -> CalendarEvent {
         try await ensureAccess()
 
         let calendar: EKCalendar
@@ -119,7 +122,38 @@ public actor CalendarService: CalendarServiceProtocol {
         event.location = location
         event.notes = notes
 
+        // Add recurrence rule
+        if let recurrence = recurrence {
+            event.addRecurrenceRule(recurrence.toEKRecurrenceRule())
+        }
+
+        // Add alarms
+        if let alarmMinutes = alarmMinutes {
+            for minutes in alarmMinutes {
+                let alarm = EKAlarm(relativeOffset: TimeInterval(-minutes * 60))
+                event.addAlarm(alarm)
+            }
+        }
+
+        // Set URL
+        if let urlString = url, let eventUrl = URL(string: urlString) {
+            event.url = eventUrl
+        }
+
+        // Set availability
+        if let availability = availability {
+            event.availability = availability.ekAvailability
+        }
+
         try store.save(event, span: .thisEvent)
+        return CalendarEvent(from: event)
+    }
+
+    public func getEvent(id: String) async throws -> CalendarEvent? {
+        try await ensureAccess()
+        guard let event = store.event(withIdentifier: id) else {
+            return nil
+        }
         return CalendarEvent(from: event)
     }
 

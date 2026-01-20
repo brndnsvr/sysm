@@ -16,7 +16,6 @@ struct CalendarCommand: AsyncParsableCommand {
             CalendarEdit.self,
             CalendarDelete.self,
             CalendarValidate.self,
-        ],
-        defaultSubcommand: CalendarToday.self
+        ]
     )
 }

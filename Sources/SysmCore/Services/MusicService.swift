@@ -158,6 +158,96 @@ public struct MusicService: MusicServiceProtocol {
         }
     }
 
+    // MARK: - Shuffle and Repeat
+
+    public func getShuffle() throws -> Bool {
+        let script = """
+        tell application "Music"
+            return shuffle enabled
+        end tell
+        """
+        let result = try runAppleScript(script)
+        return result.lowercased() == "true"
+    }
+
+    public func setShuffle(_ enabled: Bool) throws {
+        let script = """
+        tell application "Music"
+            set shuffle enabled to \(enabled)
+        end tell
+        """
+        _ = try runAppleScript(script)
+    }
+
+    public func getRepeatMode() throws -> RepeatMode {
+        let script = """
+        tell application "Music"
+            return song repeat as string
+        end tell
+        """
+        let result = try runAppleScript(script)
+        switch result.lowercased() {
+        case "one": return .one
+        case "all": return .all
+        default: return .off
+        }
+    }
+
+    public func setRepeatMode(_ mode: RepeatMode) throws {
+        let script = """
+        tell application "Music"
+            set song repeat to \(mode.appleScriptValue)
+        end tell
+        """
+        _ = try runAppleScript(script)
+    }
+
+    // MARK: - Playback Controls
+
+    public func playPlaylist(_ name: String) throws {
+        let escapedName = AppleScriptRunner.escape(name)
+        let script = """
+        tell application "Music"
+            play playlist "\(escapedName)"
+        end tell
+        """
+        _ = try runAppleScript(script)
+    }
+
+    public func playTrack(_ query: String) throws {
+        let escapedQuery = AppleScriptRunner.escape(query)
+        let script = """
+        tell application "Music"
+            set results to search library playlist 1 for "\(escapedQuery)"
+            if (count of results) > 0 then
+                play item 1 of results
+            else
+                error "No tracks found matching the query"
+            end if
+        end tell
+        """
+        _ = try runAppleScript(script)
+    }
+
+    public func playNext(_ query: String) throws {
+        let escapedQuery = AppleScriptRunner.escape(query)
+        let script = """
+        tell application "Music"
+            set results to search library playlist 1 for "\(escapedQuery)"
+            if (count of results) > 0 then
+                set theTrack to item 1 of results
+                -- Note: "play next" might not work in all versions
+                -- This is a workaround that adds to Up Next
+                play theTrack
+                pause
+            else
+                error "No tracks found matching the query"
+            end if
+        end tell
+        """
+        _ = try runAppleScript(script)
+    }
+
     // MARK: - Private Helpers
 
     private func runAppleScript(_ script: String) throws -> String {
