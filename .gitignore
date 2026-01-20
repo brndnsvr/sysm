@@ -8,8 +8,8 @@ DerivedData/
 *.xcworkspace/
 xcuserdata/
 
-# Generated files
-completions/
+# Generated files (root completions/ directory only)
+/completions/
 
 # OS files
 .DS_Store

@@ -11,7 +11,6 @@ struct TagsCommand: ParsableCommand {
             TagsRemove.self,
             TagsSet.self,
             TagsFind.self,
-        ],
-        defaultSubcommand: TagsList.self
+        ]
     )
 }

@@ -12,9 +12,12 @@ struct MusicCommand: ParsableCommand {
             MusicPrev.self,
             MusicStatus.self,
             MusicVolume.self,
+            MusicShuffle.self,
+            MusicRepeat.self,
             MusicPlaylists.self,
+            MusicPlayPlaylist.self,
+            MusicPlayTrack.self,
             MusicSearch.self,
-        ],
-        defaultSubcommand: MusicStatus.self
+        ]
     )
 }

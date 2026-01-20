@@ -28,7 +28,8 @@ struct WeatherCommand: AsyncParsableCommand {
             WeatherCurrent.self,
             WeatherForecast.self,
             WeatherHourly.self,
-        ],
-        defaultSubcommand: WeatherCurrent.self
+            WeatherDetailed.self,
+            WeatherAlerts.self,
+        ]
     )
 }

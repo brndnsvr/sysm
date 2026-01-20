@@ -10,7 +10,8 @@ struct FocusCommand: ParsableCommand {
             FocusStatus.self,
             FocusDND.self,
             FocusList.self,
-        ],
-        defaultSubcommand: FocusStatus.self
+            FocusActivate.self,
+            FocusOff.self,
+        ]
     )
 }

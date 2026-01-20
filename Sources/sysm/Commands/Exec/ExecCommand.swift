@@ -17,7 +17,6 @@ struct ExecCommand: ParsableCommand {
         """,
         subcommands: [
             ExecRun.self,
-        ],
-        defaultSubcommand: ExecRun.self
+        ]
     )
 }

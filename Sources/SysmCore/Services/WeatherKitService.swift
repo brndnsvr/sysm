@@ -103,6 +103,78 @@ public struct WeatherKitService: WeatherServiceProtocol {
         }
     }
 
+    public func getAlerts(location: String) async throws -> [WeatherAlert] {
+        guard #available(macOS 13.0, *) else {
+            throw WeatherError.apiError("WeatherKit requires macOS 13.0 or later")
+        }
+
+        let coords = try await resolveLocation(location)
+        let clLocation = CLLocation(latitude: coords.latitude, longitude: coords.longitude)
+
+        do {
+            let weather = try await WeatherKit.WeatherService.shared.weather(for: clLocation, including: .alerts)
+
+            guard let alerts = weather else {
+                return []
+            }
+
+            return alerts.map { alert in
+                WeatherAlert(
+                    id: UUID().uuidString,  // Generate unique ID
+                    event: alert.summary,
+                    severity: mapAlertSeverity(alert.severity),
+                    urgency: .unknown,  // WeatherKit doesn't expose urgency directly
+                    headline: alert.summary,
+                    description: alert.detailsURL.absoluteString,
+                    source: alert.source,
+                    effectiveTime: alert.metadata.date,
+                    expiresTime: alert.metadata.expirationDate,
+                    affectedRegions: alert.region.map { [$0] } ?? []
+                )
+            }
+        } catch {
+            throw handleWeatherKitError(error)
+        }
+    }
+
+    public func getDetailedWeather(location: String) async throws -> DetailedWeather {
+        guard #available(macOS 13.0, *) else {
+            throw WeatherError.apiError("WeatherKit requires macOS 13.0 or later")
+        }
+
+        let coords = try await resolveLocation(location)
+        let clLocation = CLLocation(latitude: coords.latitude, longitude: coords.longitude)
+
+        do {
+            let weather = try await WeatherKit.WeatherService.shared.weather(for: clLocation, including: .current)
+
+            let uvValue = Int(weather.uvIndex.value)
+
+            return DetailedWeather(
+                location: coords.displayName,
+                latitude: coords.latitude,
+                longitude: coords.longitude,
+                temperature: weather.temperature.converted(to: UnitTemperature.fahrenheit).value,
+                apparentTemperature: weather.apparentTemperature.converted(to: UnitTemperature.fahrenheit).value,
+                humidity: Int(weather.humidity * 100),
+                windSpeed: weather.wind.speed.converted(to: UnitSpeed.milesPerHour).value,
+                windDirection: Int(weather.wind.direction.value),
+                windGust: weather.wind.gust?.converted(to: UnitSpeed.milesPerHour).value,
+                pressure: weather.pressure.converted(to: UnitPressure.inchesOfMercury).value,
+                dewPoint: weather.dewPoint.converted(to: UnitTemperature.fahrenheit).value,
+                visibility: weather.visibility.converted(to: UnitLength.miles).value,
+                uvIndex: uvValue,
+                uvIndexDescription: uvIndexDescription(uvValue),
+                cloudCover: Int(weather.cloudCover * 100),
+                condition: mapCondition(weather.condition),
+                time: weather.date,
+                timezone: TimeZone.current.identifier
+            )
+        } catch {
+            throw handleWeatherKitError(error)
+        }
+    }
+
     // MARK: - Location Resolution
 
     private func resolveLocation(_ location: String) async throws -> Coordinates {
@@ -205,6 +277,24 @@ public struct WeatherKitService: WeatherServiceProtocol {
 
         @unknown default:
             return .clear
+        }
+    }
+
+    @available(macOS 13.0, *)
+    private func mapAlertSeverity(_ severity: WeatherKit.WeatherSeverity) -> AlertSeverity {
+        switch severity {
+        case .extreme:
+            return .extreme
+        case .severe:
+            return .severe
+        case .moderate:
+            return .moderate
+        case .minor:
+            return .minor
+        case .unknown:
+            return .unknown
+        @unknown default:
+            return .unknown
         }
     }
 

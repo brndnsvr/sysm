@@ -23,4 +23,14 @@ public protocol WeatherServiceProtocol: Sendable {
     ///   - hours: Number of hours to forecast.
     /// - Returns: Hourly forecast data.
     func getHourlyForecast(location: String, hours: Int) async throws -> HourlyForecast
+
+    /// Fetches weather alerts for a location.
+    /// - Parameter location: Location name or coordinates (lat,lon).
+    /// - Returns: Active weather alerts.
+    func getAlerts(location: String) async throws -> [WeatherAlert]
+
+    /// Fetches detailed weather data including UV index and air quality.
+    /// - Parameter location: Location name or coordinates (lat,lon).
+    /// - Returns: Detailed weather data.
+    func getDetailedWeather(location: String) async throws -> DetailedWeather
 }

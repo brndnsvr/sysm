@@ -20,4 +20,13 @@ public protocol FocusServiceProtocol: Sendable {
     /// Lists available focus modes.
     /// - Returns: Array of focus mode names.
     func listFocusModes() throws -> [String]
+
+    /// Activates a specific focus mode.
+    /// - Parameter name: The name of the focus mode to activate.
+    /// - Note: Requires a Shortcut named "Turn On [Focus Name]" to exist.
+    func activateFocus(_ name: String) throws
+
+    /// Deactivates the current focus mode.
+    /// - Note: Requires a Shortcut named "Turn Off Focus" to exist.
+    func deactivateFocus() throws
 }

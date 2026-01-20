@@ -28,4 +28,32 @@ public protocol NotesServiceProtocol: Sendable {
     /// - Parameter folder: Optional folder name to filter by.
     /// - Returns: Number of notes.
     func countNotes(folder: String?) throws -> Int
+
+    /// Creates a new note.
+    /// - Parameters:
+    ///   - name: The title of the note.
+    ///   - body: The body content (can include HTML for formatting).
+    ///   - folder: Optional folder name (uses default folder if nil).
+    /// - Returns: The ID of the created note.
+    func createNote(name: String, body: String, folder: String?) throws -> String
+
+    /// Updates an existing note.
+    /// - Parameters:
+    ///   - id: The note's unique identifier.
+    ///   - name: New title (nil to keep existing).
+    ///   - body: New body content (nil to keep existing).
+    func updateNote(id: String, name: String?, body: String?) throws
+
+    /// Deletes a note.
+    /// - Parameter id: The note's unique identifier.
+    func deleteNote(id: String) throws
+
+    /// Creates a new folder.
+    /// - Parameter name: The folder name.
+    func createFolder(name: String) throws
+
+    /// Deletes a folder.
+    /// - Parameter name: The folder name.
+    /// - Note: This will also delete all notes in the folder.
+    func deleteFolder(name: String) throws
 }

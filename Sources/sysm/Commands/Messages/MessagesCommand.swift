@@ -11,7 +11,6 @@ struct MessagesCommand: ParsableCommand {
             MessagesSend.self,
             MessagesRecent.self,
             MessagesRead.self,
-        ],
-        defaultSubcommand: MessagesRecent.self
+        ]
     )
 }

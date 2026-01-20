@@ -8,10 +8,11 @@ struct PhotosCommand: AsyncParsableCommand {
         subcommands: [
             PhotosAlbums.self,
             PhotosList.self,
+            PhotosVideos.self,
             PhotosRecent.self,
             PhotosSearch.self,
             PhotosExport.self,
-        ],
-        defaultSubcommand: PhotosRecent.self
+            PhotosMetadata.self,
+        ]
     )
 }

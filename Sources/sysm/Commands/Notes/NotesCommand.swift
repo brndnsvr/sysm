@@ -10,8 +10,12 @@ struct NotesCommand: ParsableCommand {
             NotesCheck.self,
             NotesList.self,
             NotesFolders.self,
+            NotesCreate.self,
+            NotesEdit.self,
+            NotesDelete.self,
+            NotesCreateFolder.self,
+            NotesDeleteFolder.self,
             NotesImport.self,
-        ],
-        defaultSubcommand: NotesCheck.self
+        ]
     )
 }

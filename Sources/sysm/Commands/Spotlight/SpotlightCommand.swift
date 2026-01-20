@@ -10,7 +10,6 @@ struct SpotlightCommand: ParsableCommand {
             SpotlightKind.self,
             SpotlightModified.self,
             SpotlightMetadata.self,
-        ],
-        defaultSubcommand: SpotlightSearch.self
+        ]
     )
 }

@@ -13,7 +13,6 @@ struct MailCommand: ParsableCommand {
             MailSearch.self,
             MailAccounts.self,
             MailDraft.self,
-        ],
-        defaultSubcommand: MailUnread.self
+        ]
     )
 }

@@ -5,28 +5,40 @@ import SysmCore
 struct PhotosExport: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "export",
-        abstract: "Export a photo to a file"
+        abstract: "Export a photo or video to a file"
     )
 
-    @Argument(help: "Photo asset ID (use 'recent' or 'list' to find)")
+    @Argument(help: "Asset ID (use 'recent', 'list', or 'videos' to find IDs)")
     var assetId: String
 
     @Option(name: .shortAndLong, help: "Output file path")
     var output: String?
 
+    @Flag(name: .long, help: "Export as video (for video assets)")
+    var video = false
+
     func run() async throws {
         let service = Services.photos()
+
+        // Get metadata to determine asset type if not specified
+        let metadata = try await service.getMetadata(assetId: assetId)
+        let isVideo = video || metadata.mediaType == "Video"
 
         let outputPath: String
         if let output = output {
             outputPath = NSString(string: output).expandingTildeInPath
         } else {
-            // Default to current directory with asset ID
-            let sanitizedId = assetId.replacingOccurrences(of: "/", with: "_")
-            outputPath = FileManager.default.currentDirectoryPath + "/\(sanitizedId).jpg"
+            // Default to current directory with original filename
+            let filename = metadata.filename
+            outputPath = FileManager.default.currentDirectoryPath + "/\(filename)"
         }
 
-        try await service.exportPhoto(assetId: assetId, outputPath: outputPath)
-        print("Exported photo to: \(outputPath)")
+        if isVideo {
+            try await service.exportVideo(assetId: assetId, outputPath: outputPath)
+            print("Exported video to: \(outputPath)")
+        } else {
+            try await service.exportPhoto(assetId: assetId, outputPath: outputPath)
+            print("Exported photo to: \(outputPath)")
+        }
     }
 }
