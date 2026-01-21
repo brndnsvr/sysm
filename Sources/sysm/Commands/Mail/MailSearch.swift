@@ -11,6 +11,9 @@ struct MailSearch: ParsableCommand {
     @Argument(help: "Search query")
     var query: String
 
+    @Option(name: .long, help: "Filter by account name")
+    var account: String?
+
     @Option(name: .long, help: "Maximum results (default: 30)")
     var limit: Int = 30
 
@@ -19,7 +22,7 @@ struct MailSearch: ParsableCommand {
 
     func run() throws {
         let service = Services.mail()
-        let messages = try service.searchMessages(query: query, limit: limit)
+        let messages = try service.searchMessages(accountName: account, query: query, limit: limit)
 
         if json {
             try OutputFormatter.printJSON(messages)

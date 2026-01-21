@@ -63,8 +63,10 @@ sysm contacts search "John"
 sysm contacts birthdays
 
 # Mail
+sysm mail accounts             # List accounts
 sysm mail unread
 sysm mail inbox --limit 10
+sysm mail inbox --account "Work" --limit 20  # Filter by account
 
 # Messages
 sysm messages send "+15551234567" "Hello!"
