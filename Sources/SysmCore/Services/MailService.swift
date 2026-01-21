@@ -27,12 +27,20 @@ public struct MailService: MailServiceProtocol {
 
     // MARK: - Inbox
 
-    public func getInboxMessages(limit: Int = 20) throws -> [MailMessage] {
+    public func getInboxMessages(accountName: String? = nil, limit: Int = 20) throws -> [MailMessage] {
+        let inboxSource: String
+        if let accountName = accountName {
+            let escapedName = escapeForAppleScript(accountName)
+            inboxSource = "inbox of (first account whose name is \"\(escapedName)\")"
+        } else {
+            inboxSource = "inbox"
+        }
+
         let script = """
         tell application "Mail"
             set messageList to ""
             set msgCount to 0
-            repeat with msg in (messages of inbox)
+            repeat with msg in (messages of \(inboxSource))
                 if msgCount >= \(limit) then exit repeat
                 set msgCount to msgCount + 1
                 set msgId to (id of msg) as string
@@ -64,12 +72,20 @@ public struct MailService: MailServiceProtocol {
 
     // MARK: - Unread
 
-    public func getUnreadMessages(limit: Int = 50) throws -> [MailMessage] {
+    public func getUnreadMessages(accountName: String? = nil, limit: Int = 50) throws -> [MailMessage] {
+        let inboxSource: String
+        if let accountName = accountName {
+            let escapedName = escapeForAppleScript(accountName)
+            inboxSource = "inbox of (first account whose name is \"\(escapedName)\")"
+        } else {
+            inboxSource = "inbox"
+        }
+
         let script = """
         tell application "Mail"
             set messageList to ""
             set msgCount to 0
-            repeat with msg in (messages of inbox whose read status is false)
+            repeat with msg in (messages of \(inboxSource) whose read status is false)
                 if msgCount >= \(limit) then exit repeat
                 set msgCount to msgCount + 1
                 set msgId to (id of msg) as string
@@ -135,13 +151,21 @@ public struct MailService: MailServiceProtocol {
 
     // MARK: - Search
 
-    public func searchMessages(query: String, limit: Int = 30) throws -> [MailMessage] {
+    public func searchMessages(accountName: String? = nil, query: String, limit: Int = 30) throws -> [MailMessage] {
         let escapedQuery = escapeForAppleScript(query)
+        let inboxSource: String
+        if let accountName = accountName {
+            let escapedName = escapeForAppleScript(accountName)
+            inboxSource = "inbox of (first account whose name is \"\(escapedName)\")"
+        } else {
+            inboxSource = "inbox"
+        }
+
         let script = """
         tell application "Mail"
             set messageList to ""
             set msgCount to 0
-            repeat with msg in (messages of inbox whose subject contains "\(escapedQuery)" or sender contains "\(escapedQuery)")
+            repeat with msg in (messages of \(inboxSource) whose subject contains "\(escapedQuery)" or sender contains "\(escapedQuery)")
                 if msgCount >= \(limit) then exit repeat
                 set msgCount to msgCount + 1
                 set msgId to (id of msg) as string

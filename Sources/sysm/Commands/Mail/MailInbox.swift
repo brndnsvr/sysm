@@ -8,6 +8,9 @@ struct MailInbox: ParsableCommand {
         abstract: "List recent inbox messages"
     )
 
+    @Option(name: .long, help: "Filter by account name")
+    var account: String?
+
     @Option(name: .long, help: "Maximum messages to show (default: 20)")
     var limit: Int = 20
 
@@ -16,7 +19,7 @@ struct MailInbox: ParsableCommand {
 
     func run() throws {
         let service = Services.mail()
-        let messages = try service.getInboxMessages(limit: limit)
+        let messages = try service.getInboxMessages(accountName: account, limit: limit)
 
         if json {
             try OutputFormatter.printJSON(messages)

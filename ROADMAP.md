@@ -42,15 +42,15 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 
 | Command | Description |
 |---------|-------------|
-| `unread` | List unread messages |
-| `inbox [--limit N]` | Show recent inbox messages |
+| `unread [--account NAME]` | List unread messages |
+| `inbox [--account NAME] [--limit N]` | Show recent inbox messages |
 | `read <id>` | Display message content |
-| `search <query>` | Search messages |
+| `search <query> [--account NAME]` | Search messages |
 | `accounts` | List configured accounts |
 | `draft` | Create new draft (opens Mail.app) |
 
 **Status:** Complete
-**Notes:** Uses AppleScript via MailService. Supports `--json` output on all query commands.
+**Notes:** Uses AppleScript via MailService. Supports `--json` output on all query commands. Use `--account` to filter by account name (as shown in `sysm mail accounts`).
 
 ---
 
