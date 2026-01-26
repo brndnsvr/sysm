@@ -21,6 +21,7 @@ set -euo pipefail
 #
 # Options:
 #   --prefix PATH   Install prefix (default: ~/bin)
+#   --skip-tests    Skip test suite (for systems without full Xcode)
 #   --dry-run       Show what would happen without doing it
 #   -h, --help      Show this help
 # =============================================================================
@@ -38,6 +39,7 @@ HOMEBREW_TAP=""       # e.g., "username/homebrew-tap"
 # Runtime options
 PREFIX="${DEFAULT_PREFIX}"
 DRY_RUN=false
+SKIP_TESTS=false
 
 # Colors (if terminal supports them)
 if [[ -t 1 ]]; then
@@ -131,12 +133,28 @@ cmd_release() {
 
 cmd_test() {
     log "Running tests..."
+
+    # Check if tests should be skipped
+    if [[ "$SKIP_TESTS" == "true" ]]; then
+        log_warn "Tests skipped (--skip-tests)"
+        return 0
+    fi
+
     check_swift
     cd "$PROJECT_ROOT"
 
     # Check if Tests directory exists with actual test files
     if [[ ! -d "${PROJECT_ROOT}/Tests" ]] || [[ -z "$(ls -A "${PROJECT_ROOT}/Tests" 2>/dev/null)" ]]; then
         log_warn "No tests found (Tests directory empty or missing)"
+        return 0
+    fi
+
+    # Check if XCTest is available (requires full Xcode, not just Command Line Tools)
+    if ! xcode-select -p 2>/dev/null | grep -q "Xcode.app"; then
+        log_warn "Full Xcode not detected (only Command Line Tools installed)"
+        log_warn "XCTest requires full Xcode. Skipping tests."
+        log_warn "To run tests, install Xcode from the App Store"
+        log_warn "Or use --skip-tests to silence this warning"
         return 0
     fi
 
@@ -331,6 +349,10 @@ main() {
                 ;;
             --dry-run)
                 DRY_RUN=true
+                shift
+                ;;
+            --skip-tests)
+                SKIP_TESTS=true
                 shift
                 ;;
             -h|--help)
