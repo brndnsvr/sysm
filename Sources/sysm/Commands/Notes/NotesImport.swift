@@ -14,6 +14,9 @@ struct NotesImport: ParsableCommand {
     @Option(name: .long, help: "Output directory for markdown files")
     var output: String = "~/_inbox"
 
+    @Option(name: .long, parsing: .upToNextOption, help: "Exclude notes with titles containing pattern (case-insensitive, repeatable)")
+    var exclude: [String] = []
+
     @Flag(name: .long, help: "Show what would be imported without actually importing")
     var dryRun = false
 
@@ -25,14 +28,26 @@ struct NotesImport: ParsableCommand {
         let exporter = MarkdownExporter(outputDir: output)
 
         let notes = try service.getNotes(from: folder)
-        let results = try exporter.exportNotes(notes, dryRun: dryRun)
+
+        // Filter out excluded notes
+        let filteredNotes = notes.filter { note in
+            !exclude.contains { pattern in
+                note.name.localizedCaseInsensitiveContains(pattern)
+            }
+        }
+
+        let results = try exporter.exportNotes(filteredNotes, dryRun: dryRun)
 
         if json {
             let jsonResults = results.map { ["name": $0.note.name, "path": $0.path.path] }
             try OutputFormatter.printJSON(jsonResults)
         } else {
             if results.isEmpty {
-                print("No new notes to import from '\(folder)'")
+                if exclude.isEmpty {
+                    print("No new notes to import from '\(folder)'")
+                } else {
+                    print("No new notes to import from '\(folder)' (excluding \(exclude.count) pattern(s))")
+                }
             } else {
                 let action = dryRun ? "Would import" : "Imported"
                 print("\(action) \(results.count) note(s) from '\(folder)':")
