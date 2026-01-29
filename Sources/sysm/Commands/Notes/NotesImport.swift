@@ -17,6 +17,9 @@ struct NotesImport: ParsableCommand {
     @Option(name: .long, parsing: .upToNextOption, help: "Exclude notes with titles containing pattern (case-insensitive, repeatable)")
     var exclude: [String] = []
 
+    @Flag(name: .long, help: "Delete notes from Apple Notes after successful import")
+    var delete = false
+
     @Flag(name: .long, help: "Show what would be imported without actually importing")
     var dryRun = false
 
@@ -38,6 +41,13 @@ struct NotesImport: ParsableCommand {
 
         let results = try exporter.exportNotes(filteredNotes, dryRun: dryRun)
 
+        // Delete imported notes from Apple Notes if requested
+        if delete && !dryRun && !results.isEmpty {
+            for (note, _) in results {
+                try service.deleteNote(id: note.id)
+            }
+        }
+
         if json {
             let jsonResults = results.map { ["name": $0.note.name, "path": $0.path.path] }
             try OutputFormatter.printJSON(jsonResults)
@@ -50,7 +60,8 @@ struct NotesImport: ParsableCommand {
                 }
             } else {
                 let action = dryRun ? "Would import" : "Imported"
-                print("\(action) \(results.count) note(s) from '\(folder)':")
+                let deleteAction = delete && !dryRun ? " and deleted from Apple Notes" : ""
+                print("\(action) \(results.count) note(s) from '\(folder)'\(deleteAction):")
                 for (note, path) in results {
                     print("  - \(note.name) -> \(path.lastPathComponent)")
                 }
@@ -58,6 +69,9 @@ struct NotesImport: ParsableCommand {
                 if dryRun {
                     print("")
                     print("Run without --dry-run to actually import")
+                    if delete {
+                        print("Notes will be deleted from Apple Notes when not in dry-run mode")
+                    }
                 }
             }
         }

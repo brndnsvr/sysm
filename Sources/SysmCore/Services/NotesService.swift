@@ -91,17 +91,21 @@ public struct NotesService: NotesServiceProtocol {
         let escapedFolder = AppleScriptRunner.escape(folder)
 
         // Batch fetch all notes in a single AppleScript call
+        // Note: We use the passed-in folder name directly instead of querying
+        // (name of container of n) because that property doesn't resolve correctly
+        // inside the loop in some AppleScript contexts.
         let script = """
         tell application "Notes"
             try
                 set targetFolder to folder "\(escapedFolder)"
+                set folderName to name of targetFolder
                 set output to ""
                 repeat with n in notes of targetFolder
                     if output is not "" then set output to output & "###NOTE###"
                     set noteData to ""
                     set noteData to noteData & (id of n) & "|||FIELD|||"
                     set noteData to noteData & (name of n) & "|||FIELD|||"
-                    set noteData to noteData & (name of container of n) & "|||FIELD|||"
+                    set noteData to noteData & folderName & "|||FIELD|||"
                     set noteData to noteData & (body of n) & "|||FIELD|||"
                     set noteData to noteData & ((creation date of n) as string) & "|||FIELD|||"
                     set noteData to noteData & ((modification date of n) as string)
