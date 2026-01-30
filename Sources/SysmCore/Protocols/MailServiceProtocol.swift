@@ -3,7 +3,7 @@ import Foundation
 /// Protocol defining mail service operations for accessing macOS Mail via AppleScript.
 ///
 /// Implementations provide read access to the user's email accounts and messages,
-/// supporting inbox queries, search, and draft creation.
+/// supporting inbox queries, search, draft creation, and message management.
 public protocol MailServiceProtocol: Sendable {
     /// Retrieves all configured mail accounts.
     /// - Returns: Array of mail accounts.
@@ -28,18 +28,81 @@ public protocol MailServiceProtocol: Sendable {
     /// - Returns: The message detail if found, nil otherwise.
     func getMessage(id: String) throws -> MailMessageDetail?
 
-    /// Searches messages by query.
-    /// - Parameters:
-    ///   - accountName: Optional account name to filter messages.
-    ///   - query: Search query string.
-    ///   - limit: Maximum number of results.
-    /// - Returns: Array of matching messages.
-    func searchMessages(accountName: String?, query: String, limit: Int) throws -> [MailMessage]
-
     /// Creates a new draft message.
     /// - Parameters:
     ///   - to: Optional recipient email.
     ///   - subject: Optional email subject.
     ///   - body: Optional email body.
     func createDraft(to: String?, subject: String?, body: String?) throws
+
+    // MARK: - Message Management
+
+    /// Marks a message as read or unread.
+    /// - Parameters:
+    ///   - id: The message ID.
+    ///   - read: True to mark as read, false to mark as unread.
+    func markMessage(id: String, read: Bool) throws
+
+    /// Deletes a message.
+    /// - Parameter id: The message ID.
+    func deleteMessage(id: String) throws
+
+    /// Flags or unflags a message.
+    /// - Parameters:
+    ///   - id: The message ID.
+    ///   - flagged: True to flag, false to unflag.
+    func flagMessage(id: String, flagged: Bool) throws
+
+    /// Moves a message to a different mailbox.
+    /// - Parameters:
+    ///   - id: The message ID.
+    ///   - toMailbox: The target mailbox name.
+    ///   - accountName: Optional account name for the target mailbox.
+    func moveMessage(id: String, toMailbox: String, accountName: String?) throws
+
+    // MARK: - Mailbox Operations
+
+    /// Retrieves all mailboxes.
+    /// - Parameter accountName: Optional account name to filter mailboxes.
+    /// - Returns: Array of mailboxes.
+    func getMailboxes(accountName: String?) throws -> [MailMailbox]
+
+    // MARK: - Enhanced Search
+
+    /// Searches messages with advanced filtering options.
+    /// - Parameters:
+    ///   - accountName: Optional account name to filter messages.
+    ///   - query: Optional search query for subject/sender.
+    ///   - bodyQuery: Optional search query for message body.
+    ///   - afterDate: Optional filter for messages after this date.
+    ///   - beforeDate: Optional filter for messages before this date.
+    ///   - limit: Maximum number of results.
+    /// - Returns: Array of matching messages.
+    func searchMessages(
+        accountName: String?,
+        query: String?,
+        bodyQuery: String?,
+        afterDate: Date?,
+        beforeDate: Date?,
+        limit: Int
+    ) throws -> [MailMessage]
+
+    // MARK: - Send Mail
+
+    /// Sends an email message.
+    /// - Parameters:
+    ///   - to: Recipient email address.
+    ///   - cc: Optional CC recipient.
+    ///   - bcc: Optional BCC recipient.
+    ///   - subject: Email subject.
+    ///   - body: Email body.
+    ///   - accountName: Optional account to send from.
+    func sendMessage(
+        to: String,
+        cc: String?,
+        bcc: String?,
+        subject: String,
+        body: String,
+        accountName: String?
+    ) throws
 }

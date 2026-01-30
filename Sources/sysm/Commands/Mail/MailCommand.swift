@@ -13,6 +13,12 @@ struct MailCommand: ParsableCommand {
             MailSearch.self,
             MailAccounts.self,
             MailDraft.self,
+            MailMark.self,
+            MailDelete.self,
+            MailMailboxes.self,
+            MailMove.self,
+            MailFlag.self,
+            MailSend.self,
         ]
     )
 }
