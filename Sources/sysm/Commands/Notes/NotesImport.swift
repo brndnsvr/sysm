@@ -2,6 +2,26 @@ import ArgumentParser
 import Foundation
 import SysmCore
 
+// MARK: - Output Models
+
+private struct NotesImportResult: Encodable {
+    let imported: [ImportedNote]
+    let deleteFailures: [DeleteFailure]?
+}
+
+private struct ImportedNote: Encodable {
+    let name: String
+    let path: String
+}
+
+private struct DeleteFailure: Encodable {
+    let name: String
+    let error: String
+    let errorType: String
+}
+
+// MARK: - Command
+
 struct NotesImport: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "import",
@@ -39,18 +59,45 @@ struct NotesImport: ParsableCommand {
             }
         }
 
-        let results = try exporter.exportNotes(filteredNotes, dryRun: dryRun)
+        // When --delete is used, defer tracking until after successful deletion
+        let results = try exporter.exportNotes(filteredNotes, dryRun: dryRun, deferTracking: delete)
 
         // Delete imported notes from Apple Notes if requested
+        var deleteFailures: [(note: Note, error: Error)] = []
+        var successfullyDeletedIds: [String] = []
+
         if delete && !dryRun && !results.isEmpty {
             for (note, _) in results {
-                try service.deleteNote(id: note.id)
+                do {
+                    try service.deleteNote(id: note.id)
+                    successfullyDeletedIds.append(note.id)
+                } catch {
+                    deleteFailures.append((note: note, error: error))
+                }
+            }
+
+            // Only track notes that were successfully deleted
+            if !successfullyDeletedIds.isEmpty {
+                try exporter.markAsImported(successfullyDeletedIds)
+            }
+        } else if !delete && !dryRun {
+            // When not deleting, track all exported notes immediately
+            let exportedIds = results.map { $0.note.id }
+            if !exportedIds.isEmpty {
+                try exporter.markAsImported(exportedIds)
             }
         }
 
         if json {
-            let jsonResults = results.map { ["name": $0.note.name, "path": $0.path.path] }
-            try OutputFormatter.printJSON(jsonResults)
+            let importedNotes = results.map { ImportedNote(name: $0.note.name, path: $0.path.path) }
+            let failures: [DeleteFailure]? = deleteFailures.isEmpty ? nil : deleteFailures.map {
+                DeleteFailure(
+                    name: $0.note.name,
+                    error: $0.error.localizedDescription,
+                    errorType: String(describing: type(of: $0.error))
+                )
+            }
+            try OutputFormatter.printJSON(NotesImportResult(imported: importedNotes, deleteFailures: failures))
         } else {
             if results.isEmpty {
                 if exclude.isEmpty {
@@ -59,11 +106,28 @@ struct NotesImport: ParsableCommand {
                     print("No new notes to import from '\(folder)' (excluding \(exclude.count) pattern(s))")
                 }
             } else {
+                let deletedCount = delete && !dryRun ? successfullyDeletedIds.count : 0
                 let action = dryRun ? "Would import" : "Imported"
-                let deleteAction = delete && !dryRun ? " and deleted from Apple Notes" : ""
+                var deleteAction = ""
+                if delete && !dryRun {
+                    if deleteFailures.isEmpty {
+                        deleteAction = " and deleted from Apple Notes"
+                    } else if deletedCount > 0 {
+                        deleteAction = " (deleted \(deletedCount) from Apple Notes)"
+                    }
+                }
                 print("\(action) \(results.count) note(s) from '\(folder)'\(deleteAction):")
                 for (note, path) in results {
                     print("  - \(note.name) -> \(path.lastPathComponent)")
+                }
+
+                if !deleteFailures.isEmpty {
+                    print("")
+                    print("Partial success: deleted \(deletedCount) of \(results.count) note(s)")
+                    print("Failed to delete \(deleteFailures.count) note(s):")
+                    for (note, error) in deleteFailures {
+                        print("  - \(note.name): \(error.localizedDescription)")
+                    }
                 }
 
                 if dryRun {
@@ -74,6 +138,11 @@ struct NotesImport: ParsableCommand {
                     }
                 }
             }
+        }
+
+        if !deleteFailures.isEmpty {
+            // Exit code 2 for partial success: imports OK, some deletes failed
+            throw ExitCode(2)
         }
     }
 }

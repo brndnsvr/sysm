@@ -38,7 +38,13 @@ public struct MarkdownExporter {
         return fileURL
     }
 
-    public func exportNotes(_ notes: [Note], dryRun: Bool = false) throws -> [(note: Note, path: URL)] {
+    /// Export notes to markdown files
+    /// - Parameters:
+    ///   - notes: Notes to export
+    ///   - dryRun: If true, don't actually write files
+    ///   - deferTracking: If true, don't update tracking file (caller will use `markAsImported` later)
+    /// - Returns: Array of exported notes with their file paths
+    public func exportNotes(_ notes: [Note], dryRun: Bool = false, deferTracking: Bool = false) throws -> [(note: Note, path: URL)] {
         var results: [(Note, URL)] = []
         var importedIds = loadImportedIds()
 
@@ -51,16 +57,27 @@ public struct MarkdownExporter {
             let path = try exportNote(note, dryRun: dryRun)
             results.append((note, path))
 
-            if !dryRun {
+            if !dryRun && !deferTracking {
                 importedIds.insert(note.id)
             }
         }
 
-        if !dryRun {
+        if !dryRun && !deferTracking {
             try saveImportedIds(importedIds)
         }
 
         return results
+    }
+
+    /// Mark notes as imported after external confirmation (e.g., after successful deletion)
+    /// - Parameter ids: Note IDs to mark as imported
+    public func markAsImported(_ ids: [String]) throws {
+        guard !ids.isEmpty else { return }
+        var importedIds = loadImportedIds()
+        for id in ids {
+            importedIds.insert(id)
+        }
+        try saveImportedIds(importedIds)
     }
 
     public func checkForNew(_ notes: [Note]) -> [Note] {
