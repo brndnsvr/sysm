@@ -1,6 +1,6 @@
 import Foundation
 
-public class CacheService {
+public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     private let cachePath: URL
 
     public init() {

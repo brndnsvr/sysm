@@ -12,7 +12,7 @@ struct RemindersDone: AsyncParsableCommand {
     var name: String
 
     func run() async throws {
-        let cache = CacheService()
+        let cache = Services.cache()
         let completed = try cache.completeTracked(name: name)
 
         if completed {

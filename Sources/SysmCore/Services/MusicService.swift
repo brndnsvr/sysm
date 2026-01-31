@@ -2,6 +2,10 @@ import Foundation
 
 public struct MusicService: MusicServiceProtocol {
 
+    private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+
+    public init() {}
+
     // MARK: - Playback Control
 
     public func play() throws {
@@ -127,7 +131,7 @@ public struct MusicService: MusicServiceProtocol {
     }
 
     public func searchLibrary(query: String, limit: Int = 20) throws -> [Track] {
-        let escapedQuery = AppleScriptRunner.escape(query)
+        let escapedQuery = appleScript.escape(query)
         let script = """
         tell application "Music"
             set results to search library playlist 1 for "\(escapedQuery)"
@@ -205,7 +209,7 @@ public struct MusicService: MusicServiceProtocol {
     // MARK: - Playback Controls
 
     public func playPlaylist(_ name: String) throws {
-        let escapedName = AppleScriptRunner.escape(name)
+        let escapedName = appleScript.escape(name)
         let script = """
         tell application "Music"
             play playlist "\(escapedName)"
@@ -215,7 +219,7 @@ public struct MusicService: MusicServiceProtocol {
     }
 
     public func playTrack(_ query: String) throws {
-        let escapedQuery = AppleScriptRunner.escape(query)
+        let escapedQuery = appleScript.escape(query)
         let script = """
         tell application "Music"
             set results to search library playlist 1 for "\(escapedQuery)"
@@ -230,7 +234,7 @@ public struct MusicService: MusicServiceProtocol {
     }
 
     public func playNext(_ query: String) throws {
-        let escapedQuery = AppleScriptRunner.escape(query)
+        let escapedQuery = appleScript.escape(query)
         let script = """
         tell application "Music"
             set results to search library playlist 1 for "\(escapedQuery)"
@@ -252,7 +256,7 @@ public struct MusicService: MusicServiceProtocol {
 
     private func runAppleScript(_ script: String) throws -> String {
         do {
-            return try AppleScriptRunner.run(script, identifier: "music")
+            return try appleScript.run(script, identifier: "music")
         } catch AppleScriptError.executionFailed(let message) {
             if message.contains("not running") {
                 throw MusicError.musicNotRunning

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct LaunchdService {
+public struct LaunchdService: LaunchdServiceProtocol {
 
     // MARK: - Types
 

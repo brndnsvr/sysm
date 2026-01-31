@@ -1,15 +1,13 @@
 import Foundation
 
-public struct MarkdownExporter {
-    public let outputDir: URL
-    public let trackingFile: URL
+public struct MarkdownExporter: MarkdownExporterProtocol {
 
-    public init(outputDir: String) {
-        self.outputDir = URL(fileURLWithPath: (outputDir as NSString).expandingTildeInPath)
-        self.trackingFile = self.outputDir.appendingPathComponent(".imported_notes.json")
-    }
+    public init() {}
 
-    public func loadImportedIds() -> Set<String> {
+    // MARK: - Protocol Methods
+
+    public func loadImportedIds(outputDir: URL) -> Set<String> {
+        let trackingFile = outputDir.appendingPathComponent(".imported_notes.json")
         guard let data = try? Data(contentsOf: trackingFile),
               let ids = try? JSONDecoder().decode([String].self, from: data) else {
             return []
@@ -17,12 +15,13 @@ public struct MarkdownExporter {
         return Set(ids)
     }
 
-    public func saveImportedIds(_ ids: Set<String>) throws {
+    public func saveImportedIds(_ ids: Set<String>, outputDir: URL) throws {
+        let trackingFile = outputDir.appendingPathComponent(".imported_notes.json")
         let data = try JSONEncoder().encode(Array(ids))
         try data.write(to: trackingFile)
     }
 
-    public func exportNote(_ note: Note, dryRun: Bool = false) throws -> URL {
+    public func exportNote(_ note: Note, outputDir: URL, dryRun: Bool = false) throws -> URL {
         let filename = "\(note.sanitizedName).md"
         let fileURL = outputDir.appendingPathComponent(filename)
 
@@ -41,12 +40,13 @@ public struct MarkdownExporter {
     /// Export notes to markdown files
     /// - Parameters:
     ///   - notes: Notes to export
+    ///   - outputDir: Output directory for markdown files
     ///   - dryRun: If true, don't actually write files
     ///   - deferTracking: If true, don't update tracking file (caller will use `markAsImported` later)
     /// - Returns: Array of exported notes with their file paths
-    public func exportNotes(_ notes: [Note], dryRun: Bool = false, deferTracking: Bool = false) throws -> [(note: Note, path: URL)] {
+    public func exportNotes(_ notes: [Note], outputDir: URL, dryRun: Bool = false, deferTracking: Bool = false) throws -> [(note: Note, path: URL)] {
         var results: [(Note, URL)] = []
-        var importedIds = loadImportedIds()
+        var importedIds = loadImportedIds(outputDir: outputDir)
 
         for note in notes {
             // Skip already imported notes
@@ -54,7 +54,7 @@ public struct MarkdownExporter {
                 continue
             }
 
-            let path = try exportNote(note, dryRun: dryRun)
+            let path = try exportNote(note, outputDir: outputDir, dryRun: dryRun)
             results.append((note, path))
 
             if !dryRun && !deferTracking {
@@ -63,25 +63,27 @@ public struct MarkdownExporter {
         }
 
         if !dryRun && !deferTracking {
-            try saveImportedIds(importedIds)
+            try saveImportedIds(importedIds, outputDir: outputDir)
         }
 
         return results
     }
 
     /// Mark notes as imported after external confirmation (e.g., after successful deletion)
-    /// - Parameter ids: Note IDs to mark as imported
-    public func markAsImported(_ ids: [String]) throws {
+    /// - Parameters:
+    ///   - ids: Note IDs to mark as imported
+    ///   - outputDir: Output directory containing the tracking file
+    public func markAsImported(_ ids: [String], outputDir: URL) throws {
         guard !ids.isEmpty else { return }
-        var importedIds = loadImportedIds()
+        var importedIds = loadImportedIds(outputDir: outputDir)
         for id in ids {
             importedIds.insert(id)
         }
-        try saveImportedIds(importedIds)
+        try saveImportedIds(importedIds, outputDir: outputDir)
     }
 
-    public func checkForNew(_ notes: [Note]) -> [Note] {
-        let importedIds = loadImportedIds()
+    public func checkForNew(_ notes: [Note], outputDir: URL) -> [Note] {
+        let importedIds = loadImportedIds(outputDir: outputDir)
         return notes.filter { !importedIds.contains($0.id) }
     }
 }

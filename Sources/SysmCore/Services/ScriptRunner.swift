@@ -1,6 +1,6 @@
 import Foundation
 
-public struct ScriptRunner {
+public struct ScriptRunner: ScriptRunnerProtocol {
 
     public init() {}
 

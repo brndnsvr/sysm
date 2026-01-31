@@ -12,7 +12,7 @@ struct RemindersTracked: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        let cache = CacheService()
+        let cache = Services.cache()
         let tracked = cache.getTrackedReminders()
 
         if json {

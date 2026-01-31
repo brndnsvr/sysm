@@ -13,6 +13,10 @@ public struct MailService: MailServiceProtocol {
     private static let unreadScanMultiplier = 5
     private static let searchScanMultiplier = 10
 
+    private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+
+    public init() {}
+
     // MARK: - Accounts
 
     public func getAccounts() throws -> [MailAccount] {
@@ -636,7 +640,7 @@ public struct MailService: MailServiceProtocol {
 
     private func runAppleScript(_ script: String) throws -> String {
         do {
-            return try AppleScriptRunner.run(script, identifier: "mail")
+            return try appleScript.run(script, identifier: "mail")
         } catch AppleScriptError.executionFailed(let message) {
             if message.contains("not running") {
                 throw MailError.mailNotRunning
@@ -646,7 +650,7 @@ public struct MailService: MailServiceProtocol {
     }
 
     private func escapeForAppleScript(_ string: String) -> String {
-        AppleScriptRunner.escape(string)
+        appleScript.escape(string)
     }
 }
 

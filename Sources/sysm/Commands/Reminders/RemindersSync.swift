@@ -9,8 +9,8 @@ struct RemindersSync: AsyncParsableCommand {
     )
 
     func run() async throws {
-        let cache = CacheService()
-        let trigger = TriggerService()
+        let cache = Services.cache()
+        let trigger = Services.trigger()
 
         let tracked = cache.getTrackedReminders()
         try trigger.syncTrackedReminders(tracked)

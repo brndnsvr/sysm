@@ -2,6 +2,10 @@ import Foundation
 
 public struct FocusService: FocusServiceProtocol {
 
+    private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+
+    public init() {}
+
     // MARK: - Status
 
     public func getStatus() throws -> FocusStatusInfo {
@@ -237,14 +241,10 @@ public struct FocusService: FocusServiceProtocol {
     }
 
     private func runAppleScript(_ script: String) throws -> String {
-        let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent("sysm-focus-\(UUID().uuidString).scpt")
-        try script.write(to: tempFile, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: tempFile) }
-
         do {
-            return try Shell.run("/usr/bin/osascript", args: [tempFile.path])
-        } catch Shell.Error.executionFailed(_, let stderr) {
-            throw FocusError.appleScriptError(stderr)
+            return try appleScript.run(script, identifier: "focus")
+        } catch AppleScriptError.executionFailed(let message) {
+            throw FocusError.appleScriptError(message)
         }
     }
 }

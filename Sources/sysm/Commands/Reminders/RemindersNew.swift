@@ -13,7 +13,7 @@ struct RemindersNew: AsyncParsableCommand {
 
     func run() async throws {
         let reminderService = Services.reminders()
-        let cacheService = CacheService()
+        let cacheService = Services.cache()
 
         let allReminders = try await reminderService.getReminders(listName: nil, includeCompleted: false)
         let newReminders = cacheService.getNewReminders(currentReminders: allReminders)

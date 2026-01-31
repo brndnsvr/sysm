@@ -30,7 +30,7 @@ struct ScheduleLogs: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let service = LaunchdService()
+        let service = Services.launchd()
         let (stdout, stderrOut) = try service.getJobLogs(name: name, lines: lines)
 
         if json {

@@ -19,7 +19,7 @@ struct ScheduleList: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let service = LaunchdService()
+        let service = Services.launchd()
         let jobs = try service.listJobs()
 
         if jobs.isEmpty {

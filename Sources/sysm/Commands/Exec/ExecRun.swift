@@ -69,7 +69,7 @@ struct ExecRun: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let runner = ScriptRunner()
+        let runner = Services.scriptRunner()
 
         // Determine script type
         let scriptType = try determineScriptType()
@@ -85,7 +85,8 @@ struct ExecRun: ParsableCommand {
                 code: codeString,
                 scriptType: type,
                 args: args,
-                timeout: TimeInterval(timeout)
+                timeout: TimeInterval(timeout),
+                env: [:]
             )
         } else if let scriptPath = script {
             // Run script file
@@ -102,7 +103,8 @@ struct ExecRun: ParsableCommand {
                 path: expandedPath,
                 args: args,
                 scriptType: scriptType,
-                timeout: TimeInterval(timeout)
+                timeout: TimeInterval(timeout),
+                env: [:]
             )
         } else {
             throw ExecError.noInput

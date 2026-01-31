@@ -11,10 +11,14 @@ import Foundation
 ///
 /// ## Example
 /// ```swift
-/// DateParser.parse("tomorrow 3pm")  // Returns tomorrow at 3:00 PM
-/// DateParser.parse("next friday")   // Returns next Friday at midnight
+/// let parser = Services.dateParser()
+/// parser.parse("tomorrow 3pm")  // Returns tomorrow at 3:00 PM
+/// parser.parse("next friday")   // Returns next Friday at midnight
 /// ```
-public struct DateParser {
+public struct DateParser: DateParserProtocol {
+
+    public init() {}
+
     // MARK: - Cached Regex Patterns
 
     private static let timePatterns: [NSRegularExpression] = {
@@ -32,7 +36,7 @@ public struct DateParser {
 
     // MARK: - Day Mappings
 
-    static let daysOfWeek: [String: Int] = [
+    private static let daysOfWeek: [String: Int] = [
         "sunday": 1, "sun": 1,
         "monday": 2, "mon": 2,
         "tuesday": 3, "tue": 3, "tues": 3,
@@ -42,10 +46,12 @@ public struct DateParser {
         "saturday": 7, "sat": 7,
     ]
 
+    // MARK: - Instance Methods (Protocol Conformance)
+
     /// Parses a natural language date string.
     /// - Parameter input: The date string to parse.
     /// - Returns: The parsed date, or nil if parsing fails.
-    public static func parse(_ input: String) -> Date? {
+    public func parse(_ input: String) -> Date? {
         let text = input.lowercased().trimmingCharacters(in: .whitespaces)
         let now = Date()
         let calendar = Foundation.Calendar.current
@@ -61,7 +67,7 @@ public struct DateParser {
 
         if text.hasPrefix("next ") {
             let dayPart = text.replacingOccurrences(of: "next ", with: "").components(separatedBy: " ").first ?? ""
-            if let targetDay = daysOfWeek[dayPart] {
+            if let targetDay = Self.daysOfWeek[dayPart] {
                 let currentDay = calendar.component(.weekday, from: now)
                 var daysToAdd = targetDay - currentDay
                 if daysToAdd <= 0 {
@@ -72,7 +78,7 @@ public struct DateParser {
             }
         }
 
-        for (dayName, dayNum) in daysOfWeek {
+        for (dayName, dayNum) in Self.daysOfWeek {
             if text.hasPrefix(dayName) || text.contains(" \(dayName)") {
                 let currentDay = calendar.component(.weekday, from: now)
                 var daysToAdd = dayNum - currentDay
@@ -100,11 +106,11 @@ public struct DateParser {
     ///   - text: Text potentially containing a time specification.
     ///   - baseDate: The base date to apply the time to.
     /// - Returns: A new date with the parsed time, or nil if no time found.
-    public static func parseTime(from text: String, baseDate: Date) -> Date? {
+    public func parseTime(from text: String, baseDate: Date) -> Date? {
         let calendar = Foundation.Calendar.current
         var components = calendar.dateComponents([.year, .month, .day], from: baseDate)
 
-        for regex in timePatterns {
+        for regex in Self.timePatterns {
             if let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
 
                 if let hourRange = Range(match.range(at: 1), in: text) {
@@ -141,7 +147,7 @@ public struct DateParser {
     /// Parses an ISO 8601 formatted date (YYYY-MM-DD).
     /// - Parameter text: The ISO date string.
     /// - Returns: The parsed date, or nil if invalid.
-    public static func parseISO(_ text: String) -> Date? {
+    public func parseISO(_ text: String) -> Date? {
         if let date = DateFormatters.isoDate.date(from: text.components(separatedBy: " ").first ?? text) {
             return parseTime(from: text, baseDate: date) ?? date
         }
@@ -151,8 +157,8 @@ public struct DateParser {
     /// Parses a slash-formatted date (M/D or M/D/YY).
     /// - Parameter text: The slash date string.
     /// - Returns: The parsed date, or nil if invalid.
-    public static func parseSlashDate(_ text: String) -> Date? {
-        guard let regex = slashDateRegex,
+    public func parseSlashDate(_ text: String) -> Date? {
+        guard let regex = Self.slashDateRegex,
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let monthRange = Range(match.range(at: 1), in: text),
               let dayRange = Range(match.range(at: 2), in: text) else {
@@ -175,5 +181,31 @@ public struct DateParser {
         components.day = day
 
         return Foundation.Calendar.current.date(from: components)
+    }
+
+    // MARK: - Deprecated Static Wrappers
+
+    /// Parses a natural language date string.
+    @available(*, deprecated, message: "Use Services.dateParser().parse() instead")
+    public static func parse(_ input: String) -> Date? {
+        DateParser().parse(input)
+    }
+
+    /// Extracts and parses a time component from text.
+    @available(*, deprecated, message: "Use Services.dateParser().parseTime() instead")
+    public static func parseTime(from text: String, baseDate: Date) -> Date? {
+        DateParser().parseTime(from: text, baseDate: baseDate)
+    }
+
+    /// Parses an ISO 8601 formatted date (YYYY-MM-DD).
+    @available(*, deprecated, message: "Use Services.dateParser().parseISO() instead")
+    public static func parseISO(_ text: String) -> Date? {
+        DateParser().parseISO(text)
+    }
+
+    /// Parses a slash-formatted date (M/D or M/D/YY).
+    @available(*, deprecated, message: "Use Services.dateParser().parseSlashDate() instead")
+    public static func parseSlashDate(_ text: String) -> Date? {
+        DateParser().parseSlashDate(text)
     }
 }

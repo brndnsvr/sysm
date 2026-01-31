@@ -1,6 +1,6 @@
 import Foundation
 
-public class TriggerService {
+public final class TriggerService: TriggerServiceProtocol, @unchecked Sendable {
     private let triggerPath: URL
 
     /// Initialize TriggerService with configurable path.

@@ -14,27 +14,6 @@ Active work. Limit to ~3 tasks for focus.
 
 Ready to start or blocked.
 
-### T-001: Register utility services in ServiceContainer
-
-> **Created:** 2025-01-31
-> **Labels:** refactor, infra
-
-Several utility services exist but aren't registered in ServiceContainer, reducing testability:
-
-- [ ] `CacheService`
-- [ ] `DateParser`
-- [ ] `LaunchdService`
-- [ ] `TriggerService`
-- [ ] `ScriptRunner`
-- [ ] `AppleScriptRunner`
-- [ ] `MarkdownExporter`
-
-Either create protocols and register for testability, or document as internal utilities not intended for DI.
-
-**Files:** `Sources/SysmCore/Services/ServiceContainer.swift`, each utility service file
-
----
-
 ### T-002: Decouple nested types from service protocols
 
 > **Created:** 2025-01-31
@@ -87,3 +66,25 @@ Create `/docs/adr/` directory with markdown files following ADR format.
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-001: Register utility services in ServiceContainer
+
+> **Created:** 2025-01-31
+> **Updated:** 2025-01-31
+> **Labels:** refactor, infra
+
+Registered 7 utility services in ServiceContainer with protocols for dependency injection and testability:
+
+- [x] `ScriptRunner` → `ScriptRunnerProtocol`
+- [x] `AppleScriptRunner` → `AppleScriptRunnerProtocol` (static methods converted to instance, deprecated wrappers added)
+- [x] `LaunchdService` → `LaunchdServiceProtocol`
+- [x] `CacheService` → `CacheServiceProtocol` (`@unchecked Sendable` for class)
+- [x] `MarkdownExporter` → `MarkdownExporterProtocol` (API refactored: outputDir moved to method params)
+- [x] `TriggerService` → `TriggerServiceProtocol` (`@unchecked Sendable` for class)
+- [x] `DateParser` → `DateParserProtocol` (static methods converted to instance, deprecated wrappers added)
+
+**Protocols created:** `Sources/SysmCore/Protocols/{ScriptRunner,AppleScriptRunner,Launchd,Cache,MarkdownExporter,Trigger,DateParser}Protocol.swift`
+
+**ServiceContainer updated:** Factory, cache, accessor, and reset for each service.
+
+**Commands updated:** All call sites now use `Services.xxx()` pattern.

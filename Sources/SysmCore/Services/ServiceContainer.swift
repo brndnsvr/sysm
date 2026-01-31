@@ -29,6 +29,13 @@ public final class ServiceContainer: @unchecked Sendable {
     public var pluginFactory: () -> any PluginManagerProtocol = { PluginManager() }
     public var weatherFactory: () -> any WeatherServiceProtocol = { WeatherService() }
     public var weatherKitFactory: () -> any WeatherServiceProtocol = { WeatherKitService() }
+    public var scriptRunnerFactory: () -> any ScriptRunnerProtocol = { ScriptRunner() }
+    public var appleScriptRunnerFactory: () -> any AppleScriptRunnerProtocol = { AppleScriptRunner() }
+    public var launchdFactory: () -> any LaunchdServiceProtocol = { LaunchdService() }
+    public var cacheFactory: () -> any CacheServiceProtocol = { CacheService() }
+    public var markdownExporterFactory: () -> any MarkdownExporterProtocol = { MarkdownExporter() }
+    public var triggerFactory: () -> any TriggerServiceProtocol = { TriggerService() }
+    public var dateParserFactory: () -> any DateParserProtocol = { DateParser() }
 
     // MARK: - Cached Instances
 
@@ -49,6 +56,13 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _plugins: (any PluginManagerProtocol)?
     private var _weather: (any WeatherServiceProtocol)?
     private var _weatherKit: (any WeatherServiceProtocol)?
+    private var _scriptRunner: (any ScriptRunnerProtocol)?
+    private var _appleScriptRunner: (any AppleScriptRunnerProtocol)?
+    private var _launchd: (any LaunchdServiceProtocol)?
+    private var _cache: (any CacheServiceProtocol)?
+    private var _markdownExporter: (any MarkdownExporterProtocol)?
+    private var _trigger: (any TriggerServiceProtocol)?
+    private var _dateParser: (any DateParserProtocol)?
 
     // MARK: - Service Accessors
 
@@ -171,6 +185,55 @@ public final class ServiceContainer: @unchecked Sendable {
         return _weatherKit!
     }
 
+    public func scriptRunner() -> any ScriptRunnerProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _scriptRunner == nil { _scriptRunner = scriptRunnerFactory() }
+        return _scriptRunner!
+    }
+
+    public func appleScriptRunner() -> any AppleScriptRunnerProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _appleScriptRunner == nil { _appleScriptRunner = appleScriptRunnerFactory() }
+        return _appleScriptRunner!
+    }
+
+    public func launchd() -> any LaunchdServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _launchd == nil { _launchd = launchdFactory() }
+        return _launchd!
+    }
+
+    public func cache() -> any CacheServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _cache == nil { _cache = cacheFactory() }
+        return _cache!
+    }
+
+    public func markdownExporter() -> any MarkdownExporterProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _markdownExporter == nil { _markdownExporter = markdownExporterFactory() }
+        return _markdownExporter!
+    }
+
+    public func trigger() -> any TriggerServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _trigger == nil { _trigger = triggerFactory() }
+        return _trigger!
+    }
+
+    public func dateParser() -> any DateParserProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _dateParser == nil { _dateParser = dateParserFactory() }
+        return _dateParser!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -197,6 +260,13 @@ public final class ServiceContainer: @unchecked Sendable {
         pluginFactory = { PluginManager() }
         weatherFactory = { WeatherService() }
         weatherKitFactory = { WeatherKitService() }
+        scriptRunnerFactory = { ScriptRunner() }
+        appleScriptRunnerFactory = { AppleScriptRunner() }
+        launchdFactory = { LaunchdService() }
+        cacheFactory = { CacheService() }
+        markdownExporterFactory = { MarkdownExporter() }
+        triggerFactory = { TriggerService() }
+        dateParserFactory = { DateParser() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -228,6 +298,13 @@ public final class ServiceContainer: @unchecked Sendable {
         _plugins = nil
         _weather = nil
         _weatherKit = nil
+        _scriptRunner = nil
+        _appleScriptRunner = nil
+        _launchd = nil
+        _cache = nil
+        _markdownExporter = nil
+        _trigger = nil
+        _dateParser = nil
     }
 
     private init() {}

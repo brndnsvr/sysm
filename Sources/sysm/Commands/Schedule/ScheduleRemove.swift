@@ -21,7 +21,7 @@ struct ScheduleRemove: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let service = LaunchdService()
+        let service = Services.launchd()
 
         // Verify job exists first
         _ = try service.getJob(name: name)

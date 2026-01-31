@@ -12,7 +12,7 @@ struct RemindersUntrack: AsyncParsableCommand {
     var name: String
 
     func run() async throws {
-        let cache = CacheService()
+        let cache = Services.cache()
         let removed = try cache.untrackReminder(name: name)
 
         if removed {
