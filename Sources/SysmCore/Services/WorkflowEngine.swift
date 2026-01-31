@@ -387,11 +387,12 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
         while attempts <= maxRetries {
             attempts += 1
 
-            let runner = ScriptRunner()
+            let runner = Services.scriptRunner()
             do {
                 lastResult = try runner.runCode(
                     code: expandedCommand,
                     scriptType: shellType,
+                    args: [],
                     timeout: timeout,
                     env: context.env
                 )

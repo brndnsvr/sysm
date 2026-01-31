@@ -48,7 +48,8 @@ struct NotesImport: ParsableCommand {
 
     func run() throws {
         let service = Services.notes()
-        let exporter = MarkdownExporter(outputDir: output)
+        let exporter = Services.markdownExporter()
+        let outputDir = URL(fileURLWithPath: (output as NSString).expandingTildeInPath)
 
         let notes = try service.getNotes(from: folder)
 
@@ -60,7 +61,7 @@ struct NotesImport: ParsableCommand {
         }
 
         // When --delete is used, defer tracking until after successful deletion
-        let results = try exporter.exportNotes(filteredNotes, dryRun: dryRun, deferTracking: delete)
+        let results = try exporter.exportNotes(filteredNotes, outputDir: outputDir, dryRun: dryRun, deferTracking: delete)
 
         // Delete imported notes from Apple Notes if requested
         var deleteFailures: [(note: Note, error: Error)] = []
@@ -78,13 +79,13 @@ struct NotesImport: ParsableCommand {
 
             // Only track notes that were successfully deleted
             if !successfullyDeletedIds.isEmpty {
-                try exporter.markAsImported(successfullyDeletedIds)
+                try exporter.markAsImported(successfullyDeletedIds, outputDir: outputDir)
             }
         } else if !delete && !dryRun {
             // When not deleting, track all exported notes immediately
             let exportedIds = results.map { $0.note.id }
             if !exportedIds.isEmpty {
-                try exporter.markAsImported(exportedIds)
+                try exporter.markAsImported(exportedIds, outputDir: outputDir)
             }
         }
 

@@ -19,10 +19,11 @@ struct NotesCheck: ParsableCommand {
 
     func run() throws {
         let service = Services.notes()
-        let exporter = MarkdownExporter(outputDir: output)
+        let exporter = Services.markdownExporter()
+        let outputDir = URL(fileURLWithPath: (output as NSString).expandingTildeInPath)
 
         let notes = try service.getNotes(from: folder)
-        let newNotes = exporter.checkForNew(notes)
+        let newNotes = exporter.checkForNew(notes, outputDir: outputDir)
 
         if json {
             try OutputFormatter.printJSON(newNotes)

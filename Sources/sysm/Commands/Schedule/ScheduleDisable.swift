@@ -16,7 +16,7 @@ struct ScheduleDisable: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let service = LaunchdService()
+        let service = Services.launchd()
         try service.disableJob(name: name)
         print("Disabled scheduled job: \(name)")
     }

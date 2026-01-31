@@ -12,7 +12,7 @@ struct RemindersDismiss: AsyncParsableCommand {
     var name: String
 
     func run() async throws {
-        let cache = CacheService()
+        let cache = Services.cache()
         try cache.dismissReminder(name: name)
         print("Dismissed: \(name)")
     }

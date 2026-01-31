@@ -1,11 +1,15 @@
 import Foundation
 
 /// Shared utility for AppleScript execution with proper escaping
-public struct AppleScriptRunner {
+public struct AppleScriptRunner: AppleScriptRunnerProtocol {
 
-    /// Escapes a string for safe interpolation into AppleScript
-    /// Prevents injection attacks by escaping special characters
-    public static func escape(_ string: String) -> String {
+    public init() {}
+
+    // MARK: - Instance Methods (Protocol Conformance)
+
+    /// Escapes a string for safe interpolation into AppleScript.
+    /// Prevents injection attacks by escaping special characters.
+    public func escape(_ string: String) -> String {
         string
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "\"", with: "\\\"")
@@ -14,21 +18,21 @@ public struct AppleScriptRunner {
             .replacingOccurrences(of: "\t", with: "\\t")
     }
 
-    /// Escapes a string for safe use in mdfind queries (single-quoted strings)
-    /// Prevents injection by escaping single quotes and backslashes
-    public static func escapeMdfind(_ string: String) -> String {
+    /// Escapes a string for safe use in mdfind queries (single-quoted strings).
+    /// Prevents injection by escaping single quotes and backslashes.
+    public func escapeMdfind(_ string: String) -> String {
         string
             .replacingOccurrences(of: "\\", with: "\\\\")
             .replacingOccurrences(of: "'", with: "\\'")
     }
 
-    /// Runs AppleScript and returns output
+    /// Runs AppleScript and returns output.
     /// - Parameters:
-    ///   - script: The AppleScript to execute
-    ///   - identifier: Optional identifier for temp file naming (for debugging)
-    /// - Returns: The script output as a string
-    /// - Throws: AppleScriptError.executionFailed if script fails
-    public static func run(_ script: String, identifier: String = "generic") throws -> String {
+    ///   - script: The AppleScript to execute.
+    ///   - identifier: Optional identifier for temp file naming (for debugging).
+    /// - Returns: The script output as a string.
+    /// - Throws: AppleScriptError.executionFailed if script fails.
+    public func run(_ script: String, identifier: String = "generic") throws -> String {
         let tempFile = FileManager.default.temporaryDirectory
             .appendingPathComponent("sysm-\(identifier)-\(UUID().uuidString).scpt")
         try script.write(to: tempFile, atomically: true, encoding: .utf8)
@@ -56,6 +60,26 @@ public struct AppleScriptRunner {
 
         return String(data: outputData, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+    }
+
+    // MARK: - Deprecated Static Wrappers
+
+    /// Escapes a string for safe interpolation into AppleScript.
+    @available(*, deprecated, message: "Use Services.appleScriptRunner().escape() instead")
+    public static func escape(_ string: String) -> String {
+        AppleScriptRunner().escape(string)
+    }
+
+    /// Escapes a string for safe use in mdfind queries.
+    @available(*, deprecated, message: "Use Services.appleScriptRunner().escapeMdfind() instead")
+    public static func escapeMdfind(_ string: String) -> String {
+        AppleScriptRunner().escapeMdfind(string)
+    }
+
+    /// Runs AppleScript and returns output.
+    @available(*, deprecated, message: "Use Services.appleScriptRunner().run() instead")
+    public static func run(_ script: String, identifier: String = "generic") throws -> String {
+        try AppleScriptRunner().run(script, identifier: identifier)
     }
 }
 

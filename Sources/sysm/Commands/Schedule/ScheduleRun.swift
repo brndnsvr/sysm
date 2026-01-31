@@ -16,7 +16,7 @@ struct ScheduleRun: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let service = LaunchdService()
+        let service = Services.launchd()
         try service.runJobNow(name: name)
         print("Triggered job: \(name)")
         print("Check logs with: sysm schedule logs \(name)")

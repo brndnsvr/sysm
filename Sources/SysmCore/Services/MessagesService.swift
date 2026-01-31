@@ -2,6 +2,10 @@ import Foundation
 
 public struct MessagesService: MessagesServiceProtocol {
 
+    private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+
+    public init() {}
+
     // MARK: - Send Message
 
     public func sendMessage(to recipient: String, message: String) throws {
@@ -100,35 +104,15 @@ public struct MessagesService: MessagesServiceProtocol {
     // MARK: - Private Helpers
 
     private func runAppleScript(_ script: String) throws -> String {
-        let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent("sysm-messages-\(UUID().uuidString).scpt")
-        try script.write(to: tempFile, atomically: true, encoding: .utf8)
-        defer { try? FileManager.default.removeItem(at: tempFile) }
-
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        task.arguments = [tempFile.path]
-
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        task.standardOutput = outputPipe
-        task.standardError = errorPipe
-
-        try task.run()
-        task.waitUntilExit()
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-
-        if task.terminationStatus != 0 {
-            let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"
-            throw MessagesError.appleScriptError(errorMessage)
+        do {
+            return try appleScript.run(script, identifier: "messages")
+        } catch AppleScriptError.executionFailed(let message) {
+            throw MessagesError.appleScriptError(message)
         }
-
-        return String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
     private func escapeForAppleScript(_ string: String) -> String {
-        AppleScriptRunner.escape(string)
+        appleScript.escape(string)
     }
 }
 

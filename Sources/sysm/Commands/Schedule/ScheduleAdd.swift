@@ -50,7 +50,7 @@ struct ScheduleAdd: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let service = LaunchdService()
+        let service = Services.launchd()
 
         let job = try service.createJob(
             name: name,
@@ -59,6 +59,7 @@ struct ScheduleAdd: ParsableCommand {
             interval: every,
             runAtLoad: runAtLoad,
             workingDirectory: workdir,
+            env: nil,
             force: force
         )
 

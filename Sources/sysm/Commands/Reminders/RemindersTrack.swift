@@ -15,7 +15,7 @@ struct RemindersTrack: AsyncParsableCommand {
     var project: String?
 
     func run() async throws {
-        let cache = CacheService()
+        let cache = Services.cache()
         try cache.trackReminder(name: name, project: project)
 
         var msg = "Tracking: \(name)"

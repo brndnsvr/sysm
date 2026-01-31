@@ -4,6 +4,10 @@ public struct SpotlightService: SpotlightServiceProtocol {
     private let mdfindPath = "/usr/bin/mdfind"
     private let mdlsPath = "/usr/bin/mdls"
 
+    private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+
+    public init() {}
+
     // MARK: - Search Result Model
 
     public struct SearchResult: Codable {
@@ -81,7 +85,7 @@ public struct SpotlightService: SpotlightServiceProtocol {
             args.append(contentsOf: ["-onlyin", scope])
         }
 
-        let escapedKind = AppleScriptRunner.escapeMdfind(kindValue)
+        let escapedKind = appleScript.escapeMdfind(kindValue)
         args.append("kMDItemKind == '\(escapedKind)'")
 
         let paths = try runMdfind(args, limit: limit)

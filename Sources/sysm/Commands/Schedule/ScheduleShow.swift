@@ -21,7 +21,7 @@ struct ScheduleShow: ParsableCommand {
     // MARK: - Execution
 
     func run() throws {
-        let service = LaunchdService()
+        let service = Services.launchd()
         let job = try service.getJob(name: name)
 
         if json {

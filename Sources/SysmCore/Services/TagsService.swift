@@ -4,6 +4,10 @@ public struct TagsService: TagsServiceProtocol {
     private let tagAttribute = "com.apple.metadata:_kMDItemUserTags"
     private let mdfindPath = "/usr/bin/mdfind"
 
+    private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+
+    public init() {}
+
     // MARK: - Tag Model
 
     public struct FinderTag: Codable, Equatable {
@@ -114,7 +118,7 @@ public struct TagsService: TagsServiceProtocol {
     // MARK: - Find Files by Tag
 
     public func findByTag(name: String, scope: String? = nil) throws -> [String] {
-        let escapedName = AppleScriptRunner.escapeMdfind(name)
+        let escapedName = appleScript.escapeMdfind(name)
         var args = ["kMDItemUserTags == '\(escapedName)'"]
         if let scope = scope {
             args.insert("-onlyin", at: 0)

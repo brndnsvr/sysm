@@ -2,6 +2,10 @@ import Foundation
 
 public struct NotesService: NotesServiceProtocol {
 
+    private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+
+    public init() {}
+
     public func listFolders() throws -> [String] {
         let script = """
         tell application "Notes"
@@ -19,7 +23,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func listNotes(folder: String? = nil) throws -> [(name: String, folder: String, id: String)] {
-        let folderFilter = folder.map { "folder \"\(AppleScriptRunner.escape($0))\"" } ?? "default folder"
+        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
 
         let script = """
         tell application "Notes"
@@ -57,7 +61,7 @@ public struct NotesService: NotesServiceProtocol {
         let script = """
         tell application "Notes"
             try
-                set n to note id "\(AppleScriptRunner.escape(id))"
+                set n to note id "\(appleScript.escape(id))"
                 set noteData to ""
                 set noteData to noteData & (name of n) & "|||FIELD|||"
                 set noteData to noteData & (name of container of n) & "|||FIELD|||"
@@ -88,7 +92,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func getNotes(from folder: String) throws -> [Note] {
-        let escapedFolder = AppleScriptRunner.escape(folder)
+        let escapedFolder = appleScript.escape(folder)
 
         // Batch fetch all notes in a single AppleScript call
         // Note: We use the passed-in folder name directly instead of querying
@@ -136,7 +140,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func countNotes(folder: String? = nil) throws -> Int {
-        let folderFilter = folder.map { "folder \"\(AppleScriptRunner.escape($0))\"" } ?? "default folder"
+        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
 
         let script = """
         tell application "Notes"
@@ -153,9 +157,9 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func createNote(name: String, body: String, folder: String? = nil) throws -> String {
-        let escapedName = AppleScriptRunner.escape(name)
-        let escapedBody = AppleScriptRunner.escape(body)
-        let folderRef = folder.map { "folder \"\(AppleScriptRunner.escape($0))\"" } ?? "default folder"
+        let escapedName = appleScript.escape(name)
+        let escapedBody = appleScript.escape(body)
+        let folderRef = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
 
         let script = """
         tell application "Notes"
@@ -169,14 +173,14 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func updateNote(id: String, name: String?, body: String?) throws {
-        let escapedId = AppleScriptRunner.escape(id)
+        let escapedId = appleScript.escape(id)
 
         var updates: [String] = []
         if let name = name {
-            updates.append("set name of n to \"\(AppleScriptRunner.escape(name))\"")
+            updates.append("set name of n to \"\(appleScript.escape(name))\"")
         }
         if let body = body {
-            updates.append("set body of n to \"\(AppleScriptRunner.escape(body))\"")
+            updates.append("set body of n to \"\(appleScript.escape(body))\"")
         }
 
         guard !updates.isEmpty else { return }
@@ -192,7 +196,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func deleteNote(id: String) throws {
-        let escapedId = AppleScriptRunner.escape(id)
+        let escapedId = appleScript.escape(id)
 
         let script = """
         tell application "Notes"
@@ -204,7 +208,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func createFolder(name: String) throws {
-        let escapedName = AppleScriptRunner.escape(name)
+        let escapedName = appleScript.escape(name)
 
         let script = """
         tell application "Notes"
@@ -216,7 +220,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func deleteFolder(name: String) throws {
-        let escapedName = AppleScriptRunner.escape(name)
+        let escapedName = appleScript.escape(name)
 
         let script = """
         tell application "Notes"
@@ -229,7 +233,7 @@ public struct NotesService: NotesServiceProtocol {
 
     private func runAppleScript(_ script: String) throws -> String {
         do {
-            return try AppleScriptRunner.run(script, identifier: "notes")
+            return try appleScript.run(script, identifier: "notes")
         } catch AppleScriptError.executionFailed(let message) {
             throw NotesError.appleScriptError(message)
         }
