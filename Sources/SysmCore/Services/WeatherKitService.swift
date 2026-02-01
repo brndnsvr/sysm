@@ -1,9 +1,13 @@
+import CoreLocation
 import Foundation
 import WeatherKit
-@preconcurrency import CoreLocation
 
 /// WeatherKit-based weather service (requires code signing with WeatherKit entitlement)
-public struct WeatherKitService: WeatherServiceProtocol {
+///
+/// Uses actor isolation to safely manage the CLGeocoder instance which has internal state.
+/// This follows the same pattern as CalendarService and ContactsService which also
+/// use actors for framework-based services with stateful components.
+public actor WeatherKitService: WeatherServiceProtocol {
 
     private let geocoder = CLGeocoder()
 

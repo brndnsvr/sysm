@@ -14,19 +14,6 @@ Active work. Limit to ~3 tasks for focus.
 
 Ready to start or blocked.
 
-### T-003: Evaluate WeatherKitService concurrency model
-
-> **Created:** 2025-01-31
-> **Labels:** refactor
-
-WeatherKitService uses `@MainActor` on a struct, inconsistent with other framework-based services that use actors.
-
-- [ ] Review current implementation
-- [ ] Evaluate refactoring to actor pattern like CalendarService, ContactsService
-- [ ] Document decision if keeping current approach
-
-**File:** `Sources/SysmCore/Services/WeatherKitService.swift`
-
 ## Backlog
 
 Prioritized future work (top = highest priority).
@@ -47,6 +34,28 @@ Create `/docs/adr/` directory with markdown files following ADR format.
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-003: Evaluate WeatherKitService concurrency model
+
+> **Created:** 2025-01-31
+> **Updated:** 2025-02-01
+> **Labels:** refactor
+
+Converted WeatherKitService from struct to actor for consistency with other framework-based services.
+
+**Analysis:**
+- WeatherKitService held a `CLGeocoder` instance with internal mutable state
+- Used `@preconcurrency import CoreLocation` to suppress Sendable warnings (hiding a real concern)
+- CalendarService and ContactsService both use actors for similar framework-based services
+
+**Resolution:**
+- [x] Converted `struct WeatherKitService` → `actor WeatherKitService`
+- [x] Removed `@preconcurrency` import workaround
+- [x] Added documentation explaining the actor choice
+
+WeatherService (Open-Meteo) kept as struct since it's truly stateless (only uses URLSession.shared).
+
+---
 
 ### T-002: Decouple nested types from service protocols
 
