@@ -14,25 +14,6 @@ Active work. Limit to ~3 tasks for focus.
 
 Ready to start or blocked.
 
-### T-002: Decouple nested types from service protocols
-
-> **Created:** 2025-01-31
-> **Labels:** refactor
-
-Protocol return types are coupled to concrete implementations via nested types:
-
-**PhotosServiceProtocol:**
-- [ ] Move `PhotosService.PhotoAlbum` to `/Models/`
-- [ ] Move `PhotosService.PhotoAsset` to `/Models/`
-
-**WorkflowEngineProtocol:**
-- [ ] Move `WorkflowEngine.Workflow` to `/Models/`
-- [ ] Move `WorkflowEngine.Step` to `/Models/`
-
-Update protocols to reference standalone types.
-
----
-
 ### T-003: Evaluate WeatherKitService concurrency model
 
 > **Created:** 2025-01-31
@@ -66,6 +47,29 @@ Create `/docs/adr/` directory with markdown files following ADR format.
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-002: Decouple nested types from service protocols
+
+> **Created:** 2025-01-31
+> **Updated:** 2025-01-31
+> **Labels:** refactor
+
+Moved nested types to standalone models in `/Models/` for proper protocol abstraction:
+
+**PhotosServiceProtocol:**
+- [x] `PhotosService.PhotoAlbum` → `PhotoAlbum` in `Models/PhotoAlbum.swift`
+- [x] `PhotosService.PhotoAsset` → `PhotoAsset` in `Models/PhotoAsset.swift`
+- [x] `PhotosService.AssetMetadata` → `AssetMetadata` in `Models/PhotoAsset.swift`
+
+**WorkflowEngineProtocol:**
+- [x] `WorkflowEngine.Workflow` → `Workflow` in `Models/Workflow.swift`
+- [x] `WorkflowEngine.Step` → `WorkflowStep` in `Models/Workflow.swift`
+- [x] `WorkflowEngine.WorkflowResult` → `WorkflowResult` in `Models/Workflow.swift`
+- [x] `WorkflowEngine.ValidationResult` → `WorkflowValidationResult` in `Models/Workflow.swift`
+
+Protocols now reference standalone types. Services updated to use external models.
+
+---
 
 ### T-001: Register utility services in ServiceContainer
 

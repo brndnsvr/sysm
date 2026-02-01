@@ -11,31 +11,31 @@ public protocol PhotosServiceProtocol: Sendable {
 
     /// Lists all photo albums.
     /// - Returns: Array of albums.
-    func listAlbums() async throws -> [PhotosService.PhotoAlbum]
+    func listAlbums() async throws -> [PhotoAlbum]
 
     /// Lists photos, optionally filtered by album.
     /// - Parameters:
     ///   - albumId: Optional album identifier to filter by.
     ///   - limit: Maximum number of photos to return.
     /// - Returns: Array of photo assets.
-    func listPhotos(albumId: String?, limit: Int) async throws -> [PhotosService.PhotoAsset]
+    func listPhotos(albumId: String?, limit: Int) async throws -> [PhotoAsset]
 
     /// Lists videos, optionally filtered by album.
     /// - Parameters:
     ///   - albumId: Optional album identifier to filter by.
     ///   - limit: Maximum number of videos to return.
     /// - Returns: Array of video assets.
-    func listVideos(albumId: String?, limit: Int) async throws -> [PhotosService.PhotoAsset]
+    func listVideos(albumId: String?, limit: Int) async throws -> [PhotoAsset]
 
     /// Retrieves recently added photos.
     /// - Parameter limit: Maximum number of photos to return.
     /// - Returns: Array of recent photo assets.
-    func getRecentPhotos(limit: Int) async throws -> [PhotosService.PhotoAsset]
+    func getRecentPhotos(limit: Int) async throws -> [PhotoAsset]
 
     /// Retrieves recently added videos.
     /// - Parameter limit: Maximum number of videos to return.
     /// - Returns: Array of recent video assets.
-    func getRecentVideos(limit: Int) async throws -> [PhotosService.PhotoAsset]
+    func getRecentVideos(limit: Int) async throws -> [PhotoAsset]
 
     /// Searches photos by date range.
     /// - Parameters:
@@ -43,7 +43,7 @@ public protocol PhotosServiceProtocol: Sendable {
     ///   - to: End date.
     ///   - limit: Maximum number of photos to return.
     /// - Returns: Array of photos within the date range.
-    func searchByDate(from: Date, to: Date, limit: Int) async throws -> [PhotosService.PhotoAsset]
+    func searchByDate(from: Date, to: Date, limit: Int) async throws -> [PhotoAsset]
 
     /// Exports a photo to a file.
     /// - Parameters:
@@ -60,5 +60,5 @@ public protocol PhotosServiceProtocol: Sendable {
     /// Gets metadata for an asset (EXIF, location, camera info).
     /// - Parameter assetId: The asset identifier.
     /// - Returns: Metadata for the asset.
-    func getMetadata(assetId: String) async throws -> PhotosService.AssetMetadata
+    func getMetadata(assetId: String) async throws -> AssetMetadata
 }

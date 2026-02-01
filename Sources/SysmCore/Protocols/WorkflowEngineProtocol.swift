@@ -8,12 +8,17 @@ public protocol WorkflowEngineProtocol: Sendable {
     /// Lists all workflows in a directory.
     /// - Parameter directory: Optional directory to search (defaults to ~/.sysm/workflows).
     /// - Returns: Array of tuples with workflow path and parsed workflow.
-    func listWorkflows(in directory: String?) throws -> [(path: String, workflow: WorkflowEngine.Workflow)]
+    func listWorkflows(in directory: String?) throws -> [(path: String, workflow: Workflow)]
 
     /// Loads a workflow from a file.
     /// - Parameter path: Path to the workflow YAML file.
     /// - Returns: The parsed workflow.
-    func load(path: String) throws -> WorkflowEngine.Workflow
+    func load(path: String) throws -> Workflow
+
+    /// Parses a workflow from YAML content.
+    /// - Parameter yaml: The YAML content to parse.
+    /// - Returns: The parsed workflow.
+    func parse(yaml: String) throws -> Workflow
 
     /// Executes a workflow.
     /// - Parameters:
@@ -21,10 +26,10 @@ public protocol WorkflowEngineProtocol: Sendable {
     ///   - dryRun: If true, simulates execution without making changes.
     ///   - verbose: If true, outputs detailed execution information.
     /// - Returns: Execution result with step outcomes.
-    func run(workflow: WorkflowEngine.Workflow, dryRun: Bool, verbose: Bool) throws -> WorkflowEngine.WorkflowResult
+    func run(workflow: Workflow, dryRun: Bool, verbose: Bool) throws -> WorkflowResult
 
     /// Validates a workflow for correctness.
     /// - Parameter workflow: The workflow to validate.
     /// - Returns: Validation result with any errors or warnings.
-    func validate(workflow: WorkflowEngine.Workflow) -> WorkflowEngine.ValidationResult
+    func validate(workflow: Workflow) -> WorkflowValidationResult
 }

@@ -3,162 +3,7 @@ import Yams
 
 public struct WorkflowEngine: WorkflowEngineProtocol {
 
-    // MARK: - Types
-
-    public struct Workflow: Codable {
-        public let name: String
-        public let description: String?
-        public let version: String?
-        public let author: String?
-        public let triggers: [Trigger]?
-        public let env: [String: String]?
-        public let steps: [Step]
-        public let onError: [ErrorHandler]?
-
-        enum CodingKeys: String, CodingKey {
-            case name, description, version, author, triggers, env, steps
-            case onError = "on_error"
-        }
-    }
-
-    public struct Trigger: Codable {
-        public let schedule: String?
-        public let manual: Bool?
-        public let event: String?
-    }
-
-    public struct Step: Codable {
-        public let name: String
-        public let run: String
-        public let shell: String?
-        public let output: String?
-        public let when: String?
-        public let timeout: Int?
-        public let continueOnError: Bool?
-        public let retries: Int?
-        public let retryDelay: Int?
-
-        enum CodingKeys: String, CodingKey {
-            case name, run, shell, output, when, timeout
-            case continueOnError = "continue_on_error"
-            case retries
-            case retryDelay = "retry_delay"
-        }
-    }
-
-    public struct ErrorHandler: Codable {
-        public let notify: String?
-        public let run: String?
-    }
-
-    public struct ExecutionContext {
-        public var variables: [String: Any]
-        public var env: [String: String]
-        public var workingDirectory: String
-
-        public init(workingDirectory: String = FileManager.default.currentDirectoryPath) {
-            self.variables = [:]
-            self.env = ProcessInfo.processInfo.environment
-            self.workingDirectory = workingDirectory
-        }
-
-        public mutating func set(_ key: String, value: Any) {
-            variables[key] = value
-        }
-
-        public func get(_ key: String) -> Any? {
-            return variables[key]
-        }
-    }
-
-    public struct StepResult: Codable {
-        public let name: String
-        public let success: Bool
-        public let exitCode: Int32
-        public let stdout: String
-        public let stderr: String
-        public let duration: Double
-        public let skipped: Bool
-
-        public static func skipped(name: String) -> StepResult {
-            return StepResult(
-                name: name,
-                success: true,
-                exitCode: 0,
-                stdout: "",
-                stderr: "",
-                duration: 0,
-                skipped: true
-            )
-        }
-    }
-
-    public struct WorkflowResult: Codable {
-        public let workflow: String
-        public let success: Bool
-        public let totalDuration: Double
-        public let steps: [StepResult]
-        public let error: String?
-
-        public func formatted(verbose: Bool = false) -> String {
-            var output = ""
-            let status = success ? "SUCCESS" : "FAILED"
-            output += "Workflow: \(workflow)\n"
-            output += "Status: \(status)\n"
-            output += "Duration: \(String(format: "%.2f", totalDuration))s\n"
-            output += "Steps: \(steps.filter { !$0.skipped }.count)/\(steps.count)\n"
-
-            if verbose || !success {
-                output += "\nStep Details:\n"
-                for step in steps {
-                    let stepStatus = step.skipped ? "SKIPPED" : (step.success ? "OK" : "FAILED")
-                    output += "  - \(step.name): \(stepStatus)"
-                    if !step.skipped {
-                        output += " (\(String(format: "%.2f", step.duration))s)"
-                    }
-                    output += "\n"
-                    if verbose && !step.stdout.isEmpty {
-                        output += "    stdout: \(step.stdout.prefix(200))\n"
-                    }
-                    if !step.success && !step.stderr.isEmpty {
-                        output += "    stderr: \(step.stderr)\n"
-                    }
-                }
-            }
-
-            if let error = error {
-                output += "\nError: \(error)\n"
-            }
-
-            return output
-        }
-    }
-
-    public enum WorkflowError: LocalizedError {
-        case fileNotFound(String)
-        case parseError(String)
-        case stepFailed(String, String)
-        case conditionFailed(String)
-        case invalidTemplate(String)
-        case timeout(String)
-
-        public var errorDescription: String? {
-            switch self {
-            case .fileNotFound(let path):
-                return "Workflow file not found: \(path)"
-            case .parseError(let message):
-                return "Failed to parse workflow: \(message)"
-            case .stepFailed(let step, let message):
-                return "Step '\(step)' failed: \(message)"
-            case .conditionFailed(let condition):
-                return "Condition evaluation failed: \(condition)"
-            case .invalidTemplate(let template):
-                return "Invalid template: \(template)"
-            case .timeout(let step):
-                return "Step '\(step)' timed out"
-            }
-        }
-    }
+    public init() {}
 
     // MARK: - Loading
 
@@ -181,34 +26,32 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
         }
     }
 
-    // MARK: - Validation
+    // MARK: - Internal Execution Context
 
-    public struct ValidationResult {
-        public let valid: Bool
-        public let errors: [String]
-        public let warnings: [String]
+    /// Internal context for workflow execution. Not exposed in protocol.
+    private struct ExecutionContext {
+        var variables: [String: Any]
+        var env: [String: String]
+        var workingDirectory: String
 
-        public func formatted() -> String {
-            var output = ""
-            if valid {
-                output += "Workflow is valid\n"
-            } else {
-                output += "Workflow has errors:\n"
-                for error in errors {
-                    output += "  ERROR: \(error)\n"
-                }
-            }
-            if !warnings.isEmpty {
-                output += "Warnings:\n"
-                for warning in warnings {
-                    output += "  WARN: \(warning)\n"
-                }
-            }
-            return output
+        init(workingDirectory: String = FileManager.default.currentDirectoryPath) {
+            self.variables = [:]
+            self.env = ProcessInfo.processInfo.environment
+            self.workingDirectory = workingDirectory
+        }
+
+        mutating func set(_ key: String, value: Any) {
+            variables[key] = value
+        }
+
+        func get(_ key: String) -> Any? {
+            return variables[key]
         }
     }
 
-    public func validate(workflow: Workflow) -> ValidationResult {
+    // MARK: - Validation
+
+    public func validate(workflow: Workflow) -> WorkflowValidationResult {
         var errors: [String] = []
         var warnings: [String] = []
 
@@ -269,7 +112,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
             }
         }
 
-        return ValidationResult(
+        return WorkflowValidationResult(
             valid: errors.isEmpty,
             errors: errors,
             warnings: warnings
@@ -285,7 +128,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
     ) throws -> WorkflowResult {
         let startTime = Date()
         var context = ExecutionContext()
-        var stepResults: [StepResult] = []
+        var stepResults: [WorkflowStepResult] = []
         var lastError: String?
 
         // Add workflow env to context
@@ -300,7 +143,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
             if let condition = step.when {
                 let shouldRun = evaluateCondition(condition, context: context)
                 if !shouldRun {
-                    stepResults.append(StepResult.skipped(name: step.name))
+                    stepResults.append(WorkflowStepResult.skipped(name: step.name))
                     if verbose {
                         print("Skipping step '\(step.name)' (condition not met)")
                     }
@@ -312,9 +155,9 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
                 print("Running step: \(step.name)")
             }
 
-            let result: StepResult
+            let result: WorkflowStepResult
             if dryRun {
-                result = StepResult(
+                result = WorkflowStepResult(
                     name: step.name,
                     success: true,
                     exitCode: 0,
@@ -366,7 +209,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
 
     // MARK: - Private
 
-    private func executeStep(_ step: Step, context: inout ExecutionContext) throws -> StepResult {
+    private func executeStep(_ step: WorkflowStep, context: inout ExecutionContext) throws -> WorkflowStepResult {
         let startTime = Date()
         let expandedCommand = expandTemplates(step.run, context: context)
 
@@ -406,7 +249,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
                 }
             } catch {
                 if attempts > maxRetries {
-                    return StepResult(
+                    return WorkflowStepResult(
                         name: step.name,
                         success: false,
                         exitCode: 1,
@@ -421,7 +264,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
         }
 
         guard let result = lastResult else {
-            return StepResult(
+            return WorkflowStepResult(
                 name: step.name,
                 success: false,
                 exitCode: 1,
@@ -432,7 +275,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
             )
         }
 
-        return StepResult(
+        return WorkflowStepResult(
             name: step.name,
             success: result.success,
             exitCode: result.exitCode,

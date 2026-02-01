@@ -27,7 +27,7 @@ struct WorkflowValidate: ParsableCommand {
         let engine = Services.workflow()
 
         // Load and parse
-        let workflow: WorkflowEngine.Workflow
+        let workflow: Workflow
         do {
             workflow = try engine.load(path: file)
         } catch {
