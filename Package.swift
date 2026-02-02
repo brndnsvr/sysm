@@ -16,6 +16,7 @@ let package = Package(
             name: "SysmCore",
             dependencies: [
                 .product(name: "Yams", package: "Yams"),
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/SysmCore",
             linkerSettings: [

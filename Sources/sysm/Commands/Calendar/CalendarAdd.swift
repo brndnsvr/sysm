@@ -57,14 +57,14 @@ struct CalendarAdd: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        guard let startDate = DateParser.parse(start) else {
+        guard let startDate = Services.dateParser().parse(start) else {
             throw CalendarError.invalidDateFormat(start)
         }
 
         let cal = Foundation.Calendar.current
         let endDate: Date
         if let endStr = end {
-            guard let parsed = DateParser.parse(endStr) else {
+            guard let parsed = Services.dateParser().parse(endStr) else {
                 throw CalendarError.invalidDateFormat(endStr)
             }
             endDate = parsed
@@ -85,7 +85,7 @@ struct CalendarAdd: AsyncParsableCommand {
         if let frequency = repeats {
             var recEndDate: Date? = nil
             if let untilStr = repeatUntil {
-                recEndDate = DateParser.parse(untilStr)
+                recEndDate = Services.dateParser().parse(untilStr)
             }
             recurrence = RecurrenceRule(
                 frequency: frequency,

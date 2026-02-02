@@ -24,14 +24,14 @@ struct CalendarList: AsyncParsableCommand {
     var showCalendar = false
 
     func run() async throws {
-        guard let startDate = DateParser.parse(date) else {
+        guard let startDate = Services.dateParser().parse(date) else {
             throw CalendarError.invalidDateFormat(date)
         }
 
         let cal = Foundation.Calendar.current
         let end: Date
         if let endDateStr = endDate {
-            guard let parsedEnd = DateParser.parse(endDateStr) else {
+            guard let parsedEnd = Services.dateParser().parse(endDateStr) else {
                 throw CalendarError.invalidDateFormat(endDateStr)
             }
             end = cal.date(byAdding: .day, value: 1, to: cal.startOfDay(for: parsedEnd))!

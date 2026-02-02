@@ -108,7 +108,7 @@ public actor ReminderService: ReminderServiceProtocol {
         reminder.calendar = calendar
 
         if let dueDateStr = dueDate {
-            if let parsedDate = DateParser.parse(dueDateStr) {
+            if let parsedDate = Services.dateParser().parse(dueDateStr) {
                 let dateComponents = Foundation.Calendar.current.dateComponents(
                     [.year, .month, .day, .hour, .minute],
                     from: parsedDate
@@ -162,7 +162,7 @@ public actor ReminderService: ReminderServiceProtocol {
         }
 
         if let dueDateStr = newDueDate {
-            if let parsedDate = DateParser.parse(dueDateStr) {
+            if let parsedDate = Services.dateParser().parse(dueDateStr) {
                 reminder.dueDateComponents = Foundation.Calendar.current.dateComponents(
                     [.year, .month, .day, .hour, .minute],
                     from: parsedDate

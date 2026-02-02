@@ -25,14 +25,14 @@ struct CalendarEdit: AsyncParsableCommand {
         var newEnd: Date?
 
         if let startStr = start {
-            guard let parsed = DateParser.parse(startStr) else {
+            guard let parsed = Services.dateParser().parse(startStr) else {
                 throw CalendarError.invalidDateFormat(startStr)
             }
             newStart = parsed
         }
 
         if let endStr = end {
-            guard let parsed = DateParser.parse(endStr) else {
+            guard let parsed = Services.dateParser().parse(endStr) else {
                 throw CalendarError.invalidDateFormat(endStr)
             }
             newEnd = parsed

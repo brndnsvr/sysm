@@ -52,7 +52,7 @@ struct RemindersAdd: AsyncParsableCommand {
         if let frequency = repeats {
             var recEndDate: Date? = nil
             if let untilStr = repeatUntil {
-                recEndDate = DateParser.parse(untilStr)
+                recEndDate = Services.dateParser().parse(untilStr)
             }
             recurrence = RecurrenceRule(
                 frequency: frequency,
