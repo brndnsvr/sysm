@@ -92,11 +92,11 @@ run() {
 }
 
 get_version() {
-    local version_file="${PROJECT_ROOT}/Sources/sysm/Sysm.swift"
+    local version_file="${PROJECT_ROOT}/VERSION"
     if [[ ! -f "$version_file" ]]; then
-        die "Version file not found: $version_file"
+        die "VERSION file not found: $version_file"
     fi
-    grep -o 'version: "[^"]*"' "$version_file" | sed 's/version: "\(.*\)"/\1/'
+    cat "$version_file" | tr -d '[:space:]'
 }
 
 check_swift() {
@@ -119,6 +119,10 @@ cmd_build() {
     log "Building debug binary..."
     check_swift
     cd "$PROJECT_ROOT"
+
+    # Generate version file
+    run "${SCRIPT_DIR}/generate-version.sh"
+
     run swift build
     log_success "Debug build complete"
 }
@@ -127,6 +131,10 @@ cmd_release() {
     log "Building release binary..."
     check_swift
     cd "$PROJECT_ROOT"
+
+    # Generate version file
+    run "${SCRIPT_DIR}/generate-version.sh"
+
     run swift build -c release
     log_success "Release build complete: .build/release/${BINARY_NAME}"
 }

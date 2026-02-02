@@ -189,6 +189,33 @@ let events = try await calendar.getTodayEvents()
 
 The `ServiceContainer` provides dependency injection, allowing test mocking and customization.
 
+## Development
+
+### Version Management
+
+Version is managed through the `VERSION` file in the project root. The version is automatically embedded into the binary during builds.
+
+```bash
+# Bump patch version (1.0.0 -> 1.0.1)
+./scripts/bump-version.sh patch
+
+# Bump minor version (1.0.0 -> 1.1.0)
+./scripts/bump-version.sh minor
+
+# Bump major version (1.0.0 -> 2.0.0)
+./scripts/bump-version.sh major
+
+# Set specific version
+./scripts/bump-version.sh 2.1.3
+```
+
+After bumping the version:
+1. Review: `git diff VERSION`
+2. Test: `./scripts/release.sh test`
+3. Commit: `git add VERSION && git commit -m 'chore: bump version to X.Y.Z'`
+4. Tag: `git tag vX.Y.Z`
+5. Push: `git push && git push --tags`
+
 ## Documentation
 
 - [ROADMAP.md](ROADMAP.md) - Detailed feature documentation and implementation notes

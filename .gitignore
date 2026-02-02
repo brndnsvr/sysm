@@ -10,6 +10,7 @@ xcuserdata/
 
 # Generated files (root completions/ directory only)
 /completions/
+Sources/sysm/Version.swift
 
 # OS files
 .DS_Store

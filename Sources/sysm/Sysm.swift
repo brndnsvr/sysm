@@ -7,7 +7,7 @@ struct Sysm: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "sysm",
         abstract: "Unified Apple ecosystem CLI",
-        version: "1.0.0",
+        version: appVersion,
         subcommands: [
             // Phase 1: Core PIM
             CalendarCommand.self,
