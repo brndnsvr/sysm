@@ -218,6 +218,7 @@ After bumping the version:
 
 ## Documentation
 
+- [Architecture Decision Records](docs/adr/README.md) - Key architectural decisions and rationale
 - [ROADMAP.md](ROADMAP.md) - Detailed feature documentation and implementation notes
 
 ## License

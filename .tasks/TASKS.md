@@ -18,22 +18,29 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-004: Add Architecture Decision Records (ADRs)
-
-> **Created:** 2025-01-31
-> **Labels:** docs
-
-Document key architectural decisions:
-
-- [ ] Actor vs Struct services - why framework-based use actors, AppleScript-based use structs
-- [ ] AppleScript vs Framework - decision criteria for each approach
-- [ ] ServiceContainer pattern - factory-based DI with lazy caching
-
-Create `/docs/adr/` directory with markdown files following ADR format.
-
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-004: Add Architecture Decision Records (ADRs)
+
+> **Created:** 2025-01-31
+> **Updated:** 2025-02-02
+> **Labels:** docs
+
+Created ADRs documenting three key architectural patterns:
+
+- [x] Actor vs Struct services - framework-based use actors, AppleScript-based use structs
+- [x] AppleScript vs Framework - decision criteria for each approach
+- [x] ServiceContainer pattern - factory-based DI with lazy caching
+
+**Files Created:**
+- `/docs/adr/README.md` - ADR index and guidelines
+- `/docs/adr/0001-actor-vs-struct.md` - Actor vs struct concurrency decision
+- `/docs/adr/0002-applescript-vs-framework.md` - Framework selection criteria
+- `/docs/adr/0003-service-container-di.md` - ServiceContainer DI pattern
+
+---
 
 ### T-003: Evaluate WeatherKitService concurrency model
 
