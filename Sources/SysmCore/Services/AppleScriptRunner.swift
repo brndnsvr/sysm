@@ -61,26 +61,6 @@ public struct AppleScriptRunner: AppleScriptRunnerProtocol {
         return String(data: outputData, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
-
-    // MARK: - Deprecated Static Wrappers
-
-    /// Escapes a string for safe interpolation into AppleScript.
-    @available(*, deprecated, message: "Use Services.appleScriptRunner().escape() instead")
-    public static func escape(_ string: String) -> String {
-        AppleScriptRunner().escape(string)
-    }
-
-    /// Escapes a string for safe use in mdfind queries.
-    @available(*, deprecated, message: "Use Services.appleScriptRunner().escapeMdfind() instead")
-    public static func escapeMdfind(_ string: String) -> String {
-        AppleScriptRunner().escapeMdfind(string)
-    }
-
-    /// Runs AppleScript and returns output.
-    @available(*, deprecated, message: "Use Services.appleScriptRunner().run() instead")
-    public static func run(_ script: String, identifier: String = "generic") throws -> String {
-        try AppleScriptRunner().run(script, identifier: identifier)
-    }
 }
 
 public enum AppleScriptError: LocalizedError {

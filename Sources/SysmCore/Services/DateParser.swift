@@ -182,30 +182,4 @@ public struct DateParser: DateParserProtocol {
 
         return Foundation.Calendar.current.date(from: components)
     }
-
-    // MARK: - Deprecated Static Wrappers
-
-    /// Parses a natural language date string.
-    @available(*, deprecated, message: "Use Services.dateParser().parse() instead")
-    public static func parse(_ input: String) -> Date? {
-        DateParser().parse(input)
-    }
-
-    /// Extracts and parses a time component from text.
-    @available(*, deprecated, message: "Use Services.dateParser().parseTime() instead")
-    public static func parseTime(from text: String, baseDate: Date) -> Date? {
-        DateParser().parseTime(from: text, baseDate: baseDate)
-    }
-
-    /// Parses an ISO 8601 formatted date (YYYY-MM-DD).
-    @available(*, deprecated, message: "Use Services.dateParser().parseISO() instead")
-    public static func parseISO(_ text: String) -> Date? {
-        DateParser().parseISO(text)
-    }
-
-    /// Parses a slash-formatted date (M/D or M/D/YY).
-    @available(*, deprecated, message: "Use Services.dateParser().parseSlashDate() instead")
-    public static func parseSlashDate(_ text: String) -> Date? {
-        DateParser().parseSlashDate(text)
-    }
 }

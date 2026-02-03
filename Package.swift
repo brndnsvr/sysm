@@ -32,9 +32,9 @@ let package = Package(
             path: "Sources/sysm"
         ),
         .testTarget(
-            name: "sysmTests",
+            name: "SysmCoreTests",
             dependencies: ["SysmCore"],
-            path: "Tests/sysmTests"
+            path: "Tests/SysmCoreTests"
         ),
     ]
 )
