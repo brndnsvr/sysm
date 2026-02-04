@@ -25,7 +25,7 @@ Completed tasks. Archive monthly or when this section gets long.
 ### T-005: Eliminate Dead Code (Test-Driven)
 
 > **Created:** 2025-02-02
-> **Updated:** 2025-02-02
+> **Updated:** 2025-02-04
 > **Labels:** refactor, cleanup, test
 
 Systematic dead code elimination with comprehensive test coverage:
@@ -38,23 +38,24 @@ Systematic dead code elimination with comprehensive test coverage:
 - [x] Evaluate and potentially remove TriggerService (single-use feature)
 - [x] Evaluate and potentially remove MarkdownExporter (minimal usage)
 - [x] Verify all removals don't break builds or tests
+- [x] Validate test suite on Xcode-enabled machine
 
 **Outcome:**
 - ✅ Removed 7 deprecated static wrapper methods
 - ✅ Zero usages confirmed via code review agents
 - ✅ Build verified successful
-- ✅ Created comprehensive test suites (4 files, 73 tests)
-- ℹ️ Tests require full Xcode (not just CLT) to run
+- ✅ Created comprehensive test suites (4 files, 72 tests)
+- ✅ All tests passing (validated 2025-02-04)
 - ℹ️ TriggerService and MarkdownExporter retained per user decision
 
 **Files Modified:**
 - `Sources/SysmCore/Services/AppleScriptRunner.swift` - Removed 3 deprecated static methods
 - `Sources/SysmCore/Services/DateParser.swift` - Removed 4 deprecated static methods
 - `Package.swift` - Added SysmCoreTests target
-- `Tests/SysmCoreTests/Services/AppleScriptRunnerTests.swift` - Created (145 lines, 17 tests)
-- `Tests/SysmCoreTests/Services/DateParserTests.swift` - Created (282 lines, 28 tests)
-- `Tests/SysmCoreTests/Services/TriggerServiceTests.swift` - Created (216 lines, 11 tests)
-- `Tests/SysmCoreTests/Services/MarkdownExporterTests.swift` - Created (285 lines, 17 tests)
+- `Tests/SysmCoreTests/Services/AppleScriptRunnerTests.swift` - 20 tests
+- `Tests/SysmCoreTests/Services/DateParserTests.swift` - 24 tests
+- `Tests/SysmCoreTests/Services/TriggerServiceTests.swift` - 9 tests
+- `Tests/SysmCoreTests/Services/MarkdownExporterTests.swift` - 19 tests
 
 ---
 
