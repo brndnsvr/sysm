@@ -1,6 +1,6 @@
 # Project Tasks
 
-> **Next ID:** T-006
+> **Next ID:** T-007
 
 ## Inbox
 
@@ -17,6 +17,31 @@ Ready to start or blocked.
 ## Backlog
 
 Prioritized future work (top = highest priority).
+
+### T-006: Fix DateParser "next [weekday]" Bug
+
+> **Created:** 2025-02-04
+> **Updated:** 2025-02-04
+> **Labels:** bug, parser
+
+DateParser incorrectly calculates "next [weekday]" dates, off by one day.
+
+**Issue:**
+- Input: "next friday" (when today is Tuesday Feb 4)
+- Expected: Friday, Feb 7
+- Actual: Thursday, Feb 6
+
+**Impact:**
+- Affects calendar event creation with relative weekday dates
+- Unit tests passed but didn't catch this edge case
+- Other date formats work correctly (ISO, slash dates, "tomorrow", "today")
+
+**Location:**
+- `Sources/SysmCore/Services/DateParser.swift` around line 182 (weekday calculation logic)
+
+**Testing:**
+- Reproduced via: `sysm calendar add "Test" --start "next friday 10am"`
+- Need additional test cases for relative weekday parsing
 
 ## Done
 
@@ -39,23 +64,36 @@ Systematic dead code elimination with comprehensive test coverage:
 - [x] Evaluate and potentially remove MarkdownExporter (minimal usage)
 - [x] Verify all removals don't break builds or tests
 - [x] Validate test suite on Xcode-enabled machine
+- [x] Real-world functional testing of refactored services
 
 **Outcome:**
 - ✅ Removed 7 deprecated static wrapper methods
 - ✅ Zero usages confirmed via code review agents
 - ✅ Build verified successful
-- ✅ Created comprehensive test suites (4 files, 72 tests)
-- ✅ All tests passing (validated 2025-02-04)
+- ✅ Created comprehensive test suites (4 files, 73 tests)
+- ✅ All tests passing (validated 2025-02-04 on Xcode machine)
+- ✅ Real-world validation completed (2025-02-04 on dev machine)
 - ℹ️ TriggerService and MarkdownExporter retained per user decision
+
+**Real-World Testing Results:**
+- **DateParser**: Tested via `sysm calendar add` with natural language dates
+  - ✅ "tomorrow 2pm" → Correct (Feb 5, 2026)
+  - ⚠️  "next friday" → Bug found (off by 1 day) - tracked in T-006
+  - ✅ "2/15 3pm" → Correct (Feb 15, 2026)
+- **TriggerService**: Tested via `sysm reminders sync`
+  - ✅ Successfully executed, proper empty state handling
+- **MarkdownExporter**: Tested via `sysm notes import --dry-run`
+  - ✅ Dry-run mode works correctly, proper JSON output
+- **AppleScriptRunner**: Implicitly validated (used by all commands)
 
 **Files Modified:**
 - `Sources/SysmCore/Services/AppleScriptRunner.swift` - Removed 3 deprecated static methods
 - `Sources/SysmCore/Services/DateParser.swift` - Removed 4 deprecated static methods
 - `Package.swift` - Added SysmCoreTests target
-- `Tests/SysmCoreTests/Services/AppleScriptRunnerTests.swift` - 20 tests
-- `Tests/SysmCoreTests/Services/DateParserTests.swift` - 24 tests
-- `Tests/SysmCoreTests/Services/TriggerServiceTests.swift` - 9 tests
-- `Tests/SysmCoreTests/Services/MarkdownExporterTests.swift` - 19 tests
+- `Tests/SysmCoreTests/Services/AppleScriptRunnerTests.swift` - 17 tests
+- `Tests/SysmCoreTests/Services/DateParserTests.swift` - 28 tests
+- `Tests/SysmCoreTests/Services/TriggerServiceTests.swift` - 11 tests
+- `Tests/SysmCoreTests/Services/MarkdownExporterTests.swift` - 17 tests
 
 ---
 
