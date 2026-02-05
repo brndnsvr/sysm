@@ -35,10 +35,10 @@ swift test               # Run tests
 
 ## Project Task Tracking
 
-This project uses a markdown-based task system in `.tasks/TASKS.md`.
+This project uses a markdown-based task system in `.task-tracking/TASKS.md`.
 
 **Quick Reference:**
-- All tasks: `.tasks/TASKS.md`
+- All tasks: `.task-tracking/TASKS.md`
 - Task IDs: T-001, T-002, etc. (never renumber)
 - Next ID: Top of TASKS.md
 
