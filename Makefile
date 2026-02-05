@@ -1,4 +1,4 @@
-.PHONY: build release bundle release-signed notarize release-notarized install install-signed install-notarized clean test help all-release completions install-completions
+.PHONY: build release bundle release-signed notarize release-notarized install install-signed install-notarized install-remote clean test help all-release completions install-completions
 
 # Default target
 all: release
@@ -104,6 +104,18 @@ install-notarized: release-notarized
 	@echo ""
 	@echo "Test with: sysm weather current \"New York\""
 
+# Remote installation variables
+REMOTE_HOST ?= <REMOTE_HOST>
+REMOTE_PREFIX ?= $(HOME)/bin
+
+# Build and install to remote host via SSH
+install-remote: release
+	@echo "Installing sysm to $(REMOTE_HOST):$(REMOTE_PREFIX)..."
+	ssh $(REMOTE_HOST) "mkdir -p $(REMOTE_PREFIX)"
+	scp .build/release/sysm $(REMOTE_HOST):$(REMOTE_PREFIX)/sysm
+	@echo "Installed to $(REMOTE_HOST):$(REMOTE_PREFIX)/sysm"
+	@echo "Test with: ssh $(REMOTE_HOST) sysm --help"
+
 # Uninstall
 uninstall:
 	sudo rm -rf /opt/sysm
@@ -158,6 +170,7 @@ help:
 	@echo "  make install            - Build and install to ~/bin (no signing)"
 	@echo "  make install-signed     - Build with ad-hoc signing (no WeatherKit)"
 	@echo "  make install-notarized  - Full pipeline: build, sign, notarize, install"
+	@echo "  make install-remote     - Build and install to remote host via SSH"
 	@echo "  make completions        - Regenerate shell completion scripts"
 	@echo "  make install-completions- Install zsh completions to system path"
 	@echo "  make clean              - Remove build artifacts"
