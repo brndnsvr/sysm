@@ -52,8 +52,16 @@ public struct DateParser: DateParserProtocol {
     /// - Parameter input: The date string to parse.
     /// - Returns: The parsed date, or nil if parsing fails.
     public func parse(_ input: String) -> Date? {
+        parse(input, now: Date())
+    }
+
+    /// Internal testable version of parse that accepts a custom reference date.
+    /// - Parameters:
+    ///   - input: The date string to parse.
+    ///   - now: The reference date to use for relative date calculations.
+    /// - Returns: The parsed date, or nil if parsing fails.
+    internal func parse(_ input: String, now: Date) -> Date? {
         let text = input.lowercased().trimmingCharacters(in: .whitespaces)
-        let now = Date()
         let calendar = Foundation.Calendar.current
 
         if text == "today" {
@@ -65,11 +73,17 @@ public struct DateParser: DateParserProtocol {
             return parseTime(from: text, baseDate: tomorrow) ?? tomorrow
         }
 
+        // Handle "next [weekday]" - returns the next occurrence of the specified weekday.
+        // "next" means we always skip today, even if today matches the target weekday.
+        // Examples:
+        //   - "next friday" on Tuesday → this Friday (3 days)
+        //   - "next friday" on Friday → next Friday (7 days, skip today)
         if text.hasPrefix("next ") {
             let dayPart = text.replacingOccurrences(of: "next ", with: "").components(separatedBy: " ").first ?? ""
             if let targetDay = Self.daysOfWeek[dayPart] {
                 let currentDay = calendar.component(.weekday, from: now)
                 var daysToAdd = targetDay - currentDay
+                // If target day has passed this week, or is today, move to next week
                 if daysToAdd <= 0 {
                     daysToAdd += 7
                 }
@@ -94,7 +108,7 @@ public struct DateParser: DateParserProtocol {
             return isoDate
         }
 
-        if let slashDate = parseSlashDate(text) {
+        if let slashDate = parseSlashDate(text, now: now) {
             return parseTime(from: text, baseDate: slashDate) ?? slashDate
         }
 
@@ -158,6 +172,15 @@ public struct DateParser: DateParserProtocol {
     /// - Parameter text: The slash date string.
     /// - Returns: The parsed date, or nil if invalid.
     public func parseSlashDate(_ text: String) -> Date? {
+        parseSlashDate(text, now: Date())
+    }
+
+    /// Internal testable version of parseSlashDate that accepts a custom reference date.
+    /// - Parameters:
+    ///   - text: The slash date string.
+    ///   - now: The reference date to use for determining the current year.
+    /// - Returns: The parsed date, or nil if invalid.
+    internal func parseSlashDate(_ text: String, now: Date) -> Date? {
         guard let regex = Self.slashDateRegex,
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
               let monthRange = Range(match.range(at: 1), in: text),
@@ -167,7 +190,7 @@ public struct DateParser: DateParserProtocol {
 
         let month = Int(text[monthRange]) ?? 1
         let day = Int(text[dayRange]) ?? 1
-        var year = Foundation.Calendar.current.component(.year, from: Date())
+        var year = Foundation.Calendar.current.component(.year, from: now)
 
         if match.numberOfRanges > 3, let yearRange = Range(match.range(at: 3), in: text) {
             if let y = Int(text[yearRange]) {
