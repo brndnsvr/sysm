@@ -43,6 +43,7 @@ What are the positive and negative outcomes of this decision?
 | [0001](0001-actor-vs-struct.md) | Actor vs Struct for Service Concurrency | Accepted | 2025-02-02 |
 | [0002](0002-applescript-vs-framework.md) | AppleScript vs Native Framework Selection | Accepted | 2025-02-02 |
 | [0003](0003-service-container-di.md) | ServiceContainer Dependency Injection Pattern | Accepted | 2025-02-02 |
+| [0004](0004-mail-mailbox-applescript-performance.md) | Mail Mailbox Listing via AppleScript | Accepted | 2026-02-05 |
 
 ## Creating New ADRs
 

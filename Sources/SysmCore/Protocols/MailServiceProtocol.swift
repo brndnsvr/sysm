@@ -23,10 +23,12 @@ public protocol MailServiceProtocol: Sendable {
     /// - Returns: Array of unread messages.
     func getUnreadMessages(accountName: String?, limit: Int) throws -> [MailMessage]
 
-    /// Retrieves a specific message by ID.
-    /// - Parameter id: The message ID.
+    /// Retrieves a specific message by ID with optional content truncation.
+    /// - Parameters:
+    ///   - id: The message ID.
+    ///   - maxContentLength: Maximum content length in characters, nil for full content.
     /// - Returns: The message detail if found, nil otherwise.
-    func getMessage(id: String) throws -> MailMessageDetail?
+    func getMessage(id: String, maxContentLength: Int?) throws -> MailMessageDetail?
 
     /// Creates a new draft message.
     /// - Parameters:
@@ -105,4 +107,10 @@ public protocol MailServiceProtocol: Sendable {
         body: String,
         accountName: String?
     ) throws
+}
+
+extension MailServiceProtocol {
+    public func getMessage(id: String) throws -> MailMessageDetail? {
+        try getMessage(id: id, maxContentLength: nil)
+    }
 }

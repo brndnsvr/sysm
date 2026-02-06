@@ -1,6 +1,6 @@
 # Project Tasks
 
-> **Next ID:** T-007
+> **Next ID:** T-009
 
 ## Inbox
 
@@ -9,6 +9,48 @@ Quick captures, triage to other lanes regularly.
 ## Inflight
 
 Active work. Limit to ~3 tasks for focus.
+
+### T-008: Fix --account Filter and Add accountName to MailMessage
+
+> **Created:** 2026-02-05
+> **Updated:** 2026-02-05
+> **Labels:** bug, feature
+
+Fix two blockers preventing per-account email processing:
+
+- [x] Fix `--account` AppleScript syntax: `inbox of (first account whose name is ...)` → `mailbox "INBOX" of account "..."`
+- [x] Add `accountName` field to `MailMessage` model
+- [x] Update 3 AppleScript scripts (inbox, unread, search) to fetch `name of account of mailbox of msg`
+- [x] Update 3 parsers for new field
+
+**Files Modified:**
+- `Sources/SysmCore/Services/MailService.swift` - Fixed 3 inboxSource constructions, added accountName to model/scripts/parsers
+
+---
+
+### T-007: Fix Mail Service Known Limitations
+
+> **Created:** 2026-02-05
+> **Updated:** 2026-02-05
+> **Labels:** feature, docs
+
+Fix 3 known limitations in the mail service:
+
+- [x] Add `messageId` (RFC 822 Message-ID) to MailMessage and MailMessageDetail models
+- [x] Update 4 AppleScript scripts to fetch `message id of msg`
+- [x] Update 4 Swift parsers for new field positions
+- [x] Add Message-ID display in MailRead text output
+- [x] Add `maxContentLength` param to getMessage() protocol + implementation
+- [x] Add `--max-content` flag to MailRead CLI
+- [x] Create ADR-0004 for mailbox AppleScript performance documentation
+- [x] Update ADR README index
+
+**Files Modified:**
+- `Sources/SysmCore/Services/MailService.swift` - Models, 4 scripts, 4 parsers, truncation, doc comment
+- `Sources/SysmCore/Protocols/MailServiceProtocol.swift` - New param + protocol extension
+- `Sources/sysm/Commands/Mail/MailRead.swift` - Message-ID display, --max-content flag
+- `docs/adr/0004-mail-mailbox-applescript-performance.md` - New ADR
+- `docs/adr/README.md` - Index update
 
 ## Next
 

@@ -46,7 +46,7 @@ public struct MailService: MailServiceProtocol {
         let inboxSource: String
         if let accountName = accountName {
             let escapedName = escapeForAppleScript(accountName)
-            inboxSource = "inbox of (first account whose name is \"\(escapedName)\")"
+            inboxSource = "mailbox \"INBOX\" of account \"\(escapedName)\""
         } else {
             inboxSource = "inbox"
         }
@@ -59,11 +59,19 @@ public struct MailService: MailServiceProtocol {
                 if msgCount >= \(limit) then exit repeat
                 set msgCount to msgCount + 1
                 set msgId to (id of msg) as string
+                set msgMessageId to ""
+                try
+                    set msgMessageId to message id of msg
+                end try
                 set msgSubject to subject of msg
                 set msgFrom to sender of msg
                 set msgDate to (date received of msg) as string
                 set isRead to (read status of msg) as string
-                set messageList to messageList & msgId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDate & "|||" & isRead & "###"
+                set msgAccount to ""
+                try
+                    set msgAccount to name of account of mailbox of msg
+                end try
+                set messageList to messageList & msgId & "|||" & msgMessageId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDate & "|||" & isRead & "|||" & msgAccount & "###"
             end repeat
             return messageList
         end tell
@@ -74,13 +82,15 @@ public struct MailService: MailServiceProtocol {
 
         return result.components(separatedBy: "###").compactMap { item -> MailMessage? in
             let parts = item.components(separatedBy: "|||")
-            guard parts.count >= 5 else { return nil }
+            guard parts.count >= 7 else { return nil }
             return MailMessage(
                 id: parts[0],
-                subject: parts[1],
-                from: parts[2],
-                dateReceived: parts[3],
-                isRead: parts[4] == "true"
+                messageId: parts[1],
+                subject: parts[2],
+                from: parts[3],
+                dateReceived: parts[4],
+                isRead: parts[5] == "true",
+                accountName: parts[6]
             )
         }
     }
@@ -91,7 +101,7 @@ public struct MailService: MailServiceProtocol {
         let inboxSource: String
         if let accountName = accountName {
             let escapedName = escapeForAppleScript(accountName)
-            inboxSource = "inbox of (first account whose name is \"\(escapedName)\")"
+            inboxSource = "mailbox \"INBOX\" of account \"\(escapedName)\""
         } else {
             inboxSource = "inbox"
         }
@@ -114,10 +124,18 @@ public struct MailService: MailServiceProtocol {
                     if read status of msg is false then
                         set foundCount to foundCount + 1
                         set msgId to (id of msg) as string
+                        set msgMessageId to ""
+                        try
+                            set msgMessageId to message id of msg
+                        end try
                         set msgSubject to subject of msg
                         set msgFrom to sender of msg
                         set msgDate to (date received of msg) as string
-                        set messageList to messageList & msgId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDate & "###"
+                        set msgAccount to ""
+                        try
+                            set msgAccount to name of account of mailbox of msg
+                        end try
+                        set messageList to messageList & msgId & "|||" & msgMessageId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDate & "|||" & msgAccount & "###"
                     end if
                 on error
                     -- Intentionally skip: message may be corrupt, locked, or inaccessible
@@ -132,24 +150,30 @@ public struct MailService: MailServiceProtocol {
 
         return result.components(separatedBy: "###").compactMap { item -> MailMessage? in
             let parts = item.components(separatedBy: "|||")
-            guard parts.count >= 4 else { return nil }
+            guard parts.count >= 6 else { return nil }
             return MailMessage(
                 id: parts[0],
-                subject: parts[1],
-                from: parts[2],
-                dateReceived: parts[3],
-                isRead: false
+                messageId: parts[1],
+                subject: parts[2],
+                from: parts[3],
+                dateReceived: parts[4],
+                isRead: false,
+                accountName: parts[5]
             )
         }
     }
 
     // MARK: - Read Message
 
-    public func getMessage(id: String) throws -> MailMessageDetail? {
+    public func getMessage(id: String, maxContentLength: Int? = nil) throws -> MailMessageDetail? {
         let script = """
         tell application "Mail"
             try
                 set msg to first message of inbox whose id is \(id)
+                set msgMessageId to ""
+                try
+                    set msgMessageId to message id of msg
+                end try
                 set msgSubject to subject of msg
                 set msgFrom to sender of msg
                 set msgTo to (address of to recipients of msg) as string
@@ -199,7 +223,7 @@ public struct MailService: MailServiceProtocol {
                     end repeat
                 end try
 
-                return msgSubject & "|||FIELD|||" & msgFrom & "|||FIELD|||" & msgTo & "|||FIELD|||" & msgDate & "|||FIELD|||" & msgContent & "|||FIELD|||" & msgIsRead & "|||FIELD|||" & msgIsFlagged & "|||FIELD|||" & msgCc & "|||FIELD|||" & msgReplyTo & "|||FIELD|||" & msgDateSent & "|||FIELD|||" & msgMailbox & "|||FIELD|||" & msgAccount & "|||FIELD|||" & attachmentInfo
+                return msgSubject & "|||FIELD|||" & msgFrom & "|||FIELD|||" & msgTo & "|||FIELD|||" & msgDate & "|||FIELD|||" & msgContent & "|||FIELD|||" & msgIsRead & "|||FIELD|||" & msgIsFlagged & "|||FIELD|||" & msgCc & "|||FIELD|||" & msgReplyTo & "|||FIELD|||" & msgDateSent & "|||FIELD|||" & msgMailbox & "|||FIELD|||" & msgAccount & "|||FIELD|||" & attachmentInfo & "|||FIELD|||" & msgMessageId
             on error
                 -- Intentionally skip: message may be corrupt, locked, or inaccessible
                 return ""
@@ -229,8 +253,14 @@ public struct MailService: MailServiceProtocol {
             }
         }
 
+        let rawContent = parts[4]
+        let content = maxContentLength.map { max in
+            rawContent.count > max ? String(rawContent.prefix(max)) : rawContent
+        } ?? rawContent
+
         return MailMessageDetail(
             id: id,
+            messageId: parts.count > 13 ? parts[13] : "",
             subject: parts[0],
             from: parts[1],
             to: parts[2],
@@ -239,7 +269,7 @@ public struct MailService: MailServiceProtocol {
             replyTo: parts.count > 8 && !parts[8].isEmpty ? parts[8] : nil,
             dateReceived: parts[3],
             dateSent: parts.count > 9 && !parts[9].isEmpty ? parts[9] : nil,
-            content: parts[4],
+            content: content,
             isRead: parts.count > 5 ? parts[5] == "true" : true,
             isFlagged: parts.count > 6 ? parts[6] == "true" : false,
             mailbox: parts.count > 10 && !parts[10].isEmpty ? parts[10] : nil,
@@ -326,6 +356,8 @@ public struct MailService: MailServiceProtocol {
 
     // MARK: - Mailboxes
 
+    /// Performance: AppleScript mailbox listing is ~7.4x faster than alternatives (JXA, shell).
+    /// See ADR-0004.
     public func getMailboxes(accountName: String? = nil) throws -> [MailMailbox] {
         let script: String
         if let accountName = accountName {
@@ -461,7 +493,7 @@ public struct MailService: MailServiceProtocol {
         let inboxSource: String
         if let accountName = accountName {
             let escapedName = escapeForAppleScript(accountName)
-            inboxSource = "inbox of (first account whose name is \"\(escapedName)\")"
+            inboxSource = "mailbox \"INBOX\" of account \"\(escapedName)\""
         } else {
             inboxSource = "inbox"
         }
@@ -542,9 +574,17 @@ public struct MailService: MailServiceProtocol {
                     if matchesDate and matchesQuery and matchesBody then
                         set foundCount to foundCount + 1
                         set msgId to (id of msg) as string
+                        set msgMessageId to ""
+                        try
+                            set msgMessageId to message id of msg
+                        end try
                         set msgDateStr to msgDate as string
                         set isRead to (read status of msg) as string
-                        set messageList to messageList & msgId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDateStr & "|||" & isRead & "###"
+                        set msgAccount to ""
+                        try
+                            set msgAccount to name of account of mailbox of msg
+                        end try
+                        set messageList to messageList & msgId & "|||" & msgMessageId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDateStr & "|||" & isRead & "|||" & msgAccount & "###"
                     end if
                 on error
                     -- Intentionally skip: message may be corrupt, locked, or inaccessible
@@ -559,13 +599,15 @@ public struct MailService: MailServiceProtocol {
 
         return result.components(separatedBy: "###").compactMap { item -> MailMessage? in
             let parts = item.components(separatedBy: "|||")
-            guard parts.count >= 5 else { return nil }
+            guard parts.count >= 7 else { return nil }
             return MailMessage(
                 id: parts[0],
-                subject: parts[1],
-                from: parts[2],
-                dateReceived: parts[3],
-                isRead: parts[4] == "true"
+                messageId: parts[1],
+                subject: parts[2],
+                from: parts[3],
+                dateReceived: parts[4],
+                isRead: parts[5] == "true",
+                accountName: parts[6]
             )
         }
     }
@@ -664,14 +706,17 @@ public struct MailAccount: Codable {
 
 public struct MailMessage: Codable {
     public let id: String
+    public let messageId: String
     public let subject: String
     public let from: String
     public let dateReceived: String
     public let isRead: Bool
+    public let accountName: String
 }
 
 public struct MailMessageDetail: Codable {
     public let id: String
+    public let messageId: String
     public let subject: String
     public let from: String
     public let to: String

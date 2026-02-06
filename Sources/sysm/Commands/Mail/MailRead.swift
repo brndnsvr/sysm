@@ -14,10 +14,13 @@ struct MailRead: ParsableCommand {
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
+    @Option(name: .long, help: "Maximum content length in characters")
+    var maxContent: Int?
+
     func run() throws {
         let service = Services.mail()
 
-        guard let message = try service.getMessage(id: id) else {
+        guard let message = try service.getMessage(id: id, maxContentLength: maxContent) else {
             fputs("Message not found: \(id)\n", stderr)
             throw ExitCode.failure
         }
@@ -34,6 +37,9 @@ struct MailRead: ParsableCommand {
             }
 
             print("Subject: \(message.subject)")
+            if !message.messageId.isEmpty {
+                print("Message-ID: \(message.messageId)")
+            }
             print("From: \(message.from)")
             print("To: \(message.to)")
             if let cc = message.cc {
@@ -62,6 +68,9 @@ struct MailRead: ParsableCommand {
             }
             print(String(repeating: "-", count: 60))
             print(message.content)
+            if let maxLen = maxContent, message.content.count >= maxLen {
+                print("[Content truncated to \(maxLen) characters]")
+            }
         }
     }
 
