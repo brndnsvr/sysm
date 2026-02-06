@@ -43,13 +43,7 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Inbox
 
     public func getInboxMessages(accountName: String? = nil, limit: Int = 20) throws -> [MailMessage] {
-        let inboxSource: String
-        if let accountName = accountName {
-            let escapedName = escapeForAppleScript(accountName)
-            inboxSource = "mailbox \"INBOX\" of account \"\(escapedName)\""
-        } else {
-            inboxSource = "inbox"
-        }
+        let inboxSource = inboxSourceExpression(accountName: accountName)
 
         let script = """
         tell application "Mail"
@@ -98,13 +92,7 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Unread
 
     public func getUnreadMessages(accountName: String? = nil, limit: Int = 50) throws -> [MailMessage] {
-        let inboxSource: String
-        if let accountName = accountName {
-            let escapedName = escapeForAppleScript(accountName)
-            inboxSource = "mailbox \"INBOX\" of account \"\(escapedName)\""
-        } else {
-            inboxSource = "inbox"
-        }
+        let inboxSource = inboxSourceExpression(accountName: accountName)
 
         // Use paginated approach to avoid timeout with large inboxes
         // The `whose` clause forces Mail to enumerate ALL messages before filtering,
@@ -490,13 +478,7 @@ public struct MailService: MailServiceProtocol {
             throw MailError.invalidDateRange
         }
 
-        let inboxSource: String
-        if let accountName = accountName {
-            let escapedName = escapeForAppleScript(accountName)
-            inboxSource = "mailbox \"INBOX\" of account \"\(escapedName)\""
-        } else {
-            inboxSource = "inbox"
-        }
+        let inboxSource = inboxSourceExpression(accountName: accountName)
 
         // Build conditional checks for AppleScript
         var conditionalChecks: [String] = []
@@ -688,6 +670,17 @@ public struct MailService: MailServiceProtocol {
                 throw MailError.mailNotRunning
             }
             throw MailError.appleScriptError(message)
+        }
+    }
+
+    /// Returns an AppleScript expression that resolves the inbox mailbox for an account.
+    /// Uses case-insensitive matching to handle "INBOX", "Inbox", etc.
+    private func inboxSourceExpression(accountName: String?) -> String {
+        if let accountName = accountName {
+            let escapedName = escapeForAppleScript(accountName)
+            return "(first mailbox of account \"\(escapedName)\" whose name is \"INBOX\")"
+        } else {
+            return "inbox"
         }
     }
 
