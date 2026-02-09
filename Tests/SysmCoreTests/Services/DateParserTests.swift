@@ -258,11 +258,11 @@ final class DateParserTests: XCTestCase {
     func testParse_NextFridayFromTuesday() {
         let calendar = Calendar.current
 
-        // Create Tuesday Feb 4, 2026
+        // Create Tuesday Feb 3, 2026
         var components = DateComponents()
         components.year = 2026
         components.month = 2
-        components.day = 4
+        components.day = 3
         components.hour = 9
         let tuesday = calendar.date(from: components)!
 
@@ -273,7 +273,7 @@ final class DateParserTests: XCTestCase {
             let resultComponents = calendar.dateComponents([.year, .month, .day, .weekday], from: date)
             XCTAssertEqual(resultComponents.year, 2026)
             XCTAssertEqual(resultComponents.month, 2)
-            XCTAssertEqual(resultComponents.day, 7, "Should be Friday Feb 7")
+            XCTAssertEqual(resultComponents.day, 6, "Should be Friday Feb 6")
             XCTAssertEqual(resultComponents.weekday, 6, "Should be Friday")
         }
     }
@@ -281,11 +281,11 @@ final class DateParserTests: XCTestCase {
     func testParse_NextFridayFromFriday() {
         let calendar = Calendar.current
 
-        // Create Friday Feb 7, 2026
+        // Create Friday Feb 6, 2026
         var components = DateComponents()
         components.year = 2026
         components.month = 2
-        components.day = 7
+        components.day = 6
         components.hour = 9
         let friday = calendar.date(from: components)!
 
@@ -296,18 +296,18 @@ final class DateParserTests: XCTestCase {
             let resultComponents = calendar.dateComponents([.year, .month, .day], from: date)
             XCTAssertEqual(resultComponents.year, 2026)
             XCTAssertEqual(resultComponents.month, 2)
-            XCTAssertEqual(resultComponents.day, 14, "Should be next Friday (Feb 14)")
+            XCTAssertEqual(resultComponents.day, 13, "Should be next Friday (Feb 13)")
         }
     }
 
     func testParse_NextFridayWithTime() {
         let calendar = Calendar.current
 
-        // Create Tuesday Feb 4, 2026
+        // Create Tuesday Feb 3, 2026
         var components = DateComponents()
         components.year = 2026
         components.month = 2
-        components.day = 4
+        components.day = 3
         components.hour = 9
         let tuesday = calendar.date(from: components)!
 
@@ -316,7 +316,7 @@ final class DateParserTests: XCTestCase {
 
         if let date = result {
             let resultComponents = calendar.dateComponents([.year, .month, .day, .hour], from: date)
-            XCTAssertEqual(resultComponents.day, 7, "Should be Feb 7")
+            XCTAssertEqual(resultComponents.day, 6, "Should be Feb 6")
             XCTAssertEqual(resultComponents.hour, 15, "Should be 3 PM")
         }
     }
@@ -326,21 +326,21 @@ final class DateParserTests: XCTestCase {
         let days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
         let expectedWeekdays = [1, 2, 3, 4, 5, 6, 7]
 
-        // Test from Tuesday Feb 4, 2026
+        // Test from Wednesday Feb 4, 2026
         var components = DateComponents()
         components.year = 2026
         components.month = 2
         components.day = 4
-        let tuesday = calendar.date(from: components)!
+        let wednesday = calendar.date(from: components)!
 
         for (day, expectedWeekday) in zip(days, expectedWeekdays) {
-            let result = parser.parse("next \(day)", now: tuesday)
+            let result = parser.parse("next \(day)", now: wednesday)
             XCTAssertNotNil(result, "next \(day) should parse")
 
             if let date = result {
                 let weekday = calendar.component(.weekday, from: date)
                 XCTAssertEqual(weekday, expectedWeekday, "next \(day) should be weekday \(expectedWeekday)")
-                XCTAssertTrue(date > tuesday, "next \(day) should be in future")
+                XCTAssertTrue(date > wednesday, "next \(day) should be in future")
             }
         }
     }
