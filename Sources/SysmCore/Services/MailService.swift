@@ -74,19 +74,7 @@ public struct MailService: MailServiceProtocol {
         let result = try runAppleScript(script)
         if result.isEmpty { return [] }
 
-        return result.components(separatedBy: "###").compactMap { item -> MailMessage? in
-            let parts = item.components(separatedBy: "|||")
-            guard parts.count >= 7 else { return nil }
-            return MailMessage(
-                id: parts[0],
-                messageId: parts[1],
-                subject: parts[2],
-                from: parts[3],
-                dateReceived: parts[4],
-                isRead: parts[5] == "true",
-                accountName: parts[6]
-            )
-        }
+        return parseMailMessages(from: result)
     }
 
     // MARK: - Unread
@@ -123,7 +111,7 @@ public struct MailService: MailServiceProtocol {
                         try
                             set msgAccount to name of account of mailbox of msg
                         end try
-                        set messageList to messageList & msgId & "|||" & msgMessageId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDate & "|||" & msgAccount & "###"
+                        set messageList to messageList & msgId & "|||" & msgMessageId & "|||" & msgSubject & "|||" & msgFrom & "|||" & msgDate & "|||" & "false" & "|||" & msgAccount & "###"
                     end if
                 on error
                     -- Intentionally skip: message may be corrupt, locked, or inaccessible
@@ -136,19 +124,7 @@ public struct MailService: MailServiceProtocol {
         let result = try runAppleScript(script)
         if result.isEmpty { return [] }
 
-        return result.components(separatedBy: "###").compactMap { item -> MailMessage? in
-            let parts = item.components(separatedBy: "|||")
-            guard parts.count >= 6 else { return nil }
-            return MailMessage(
-                id: parts[0],
-                messageId: parts[1],
-                subject: parts[2],
-                from: parts[3],
-                dateReceived: parts[4],
-                isRead: false,
-                accountName: parts[5]
-            )
-        }
+        return parseMailMessages(from: result)
     }
 
     // MARK: - Read Message
@@ -579,19 +555,7 @@ public struct MailService: MailServiceProtocol {
         let result = try runAppleScript(script)
         if result.isEmpty { return [] }
 
-        return result.components(separatedBy: "###").compactMap { item -> MailMessage? in
-            let parts = item.components(separatedBy: "|||")
-            guard parts.count >= 7 else { return nil }
-            return MailMessage(
-                id: parts[0],
-                messageId: parts[1],
-                subject: parts[2],
-                from: parts[3],
-                dateReceived: parts[4],
-                isRead: parts[5] == "true",
-                accountName: parts[6]
-            )
-        }
+        return parseMailMessages(from: result)
     }
 
     // MARK: - Send Mail
@@ -686,6 +650,24 @@ public struct MailService: MailServiceProtocol {
 
     private func escapeForAppleScript(_ string: String) -> String {
         appleScript.escape(string)
+    }
+
+    // MARK: - Parsing Helpers
+
+    private func parseMailMessages(from result: String) -> [MailMessage] {
+        result.components(separatedBy: "###").compactMap { item -> MailMessage? in
+            let parts = item.components(separatedBy: "|||")
+            guard parts.count >= 7 else { return nil }
+            return MailMessage(
+                id: parts[0],
+                messageId: parts[1],
+                subject: parts[2],
+                from: parts[3],
+                dateReceived: parts[4],
+                isRead: parts[5] == "true",
+                accountName: parts[6]
+            )
+        }
     }
 }
 
