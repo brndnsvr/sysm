@@ -26,12 +26,7 @@ struct MailFlag: ParsableCommand {
     func run() throws {
         let service = Services.mail()
 
-        do {
-            try service.flagMessage(id: id, flagged: flag)
-            print("Message \(flag ? "flagged" : "unflagged")")
-        } catch {
-            fputs("Error: \(error.localizedDescription)\n", stderr)
-            throw ExitCode.failure
-        }
+        try service.flagMessage(id: id, flagged: flag)
+        print("Message \(flag ? "flagged" : "unflagged")")
     }
 }

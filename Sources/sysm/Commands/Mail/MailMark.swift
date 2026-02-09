@@ -26,12 +26,7 @@ struct MailMark: ParsableCommand {
     func run() throws {
         let service = Services.mail()
 
-        do {
-            try service.markMessage(id: id, read: read)
-            print("Message marked as \(read ? "read" : "unread")")
-        } catch {
-            fputs("Error: \(error.localizedDescription)\n", stderr)
-            throw ExitCode.failure
-        }
+        try service.markMessage(id: id, read: read)
+        print("Message marked as \(read ? "read" : "unread")")
     }
 }

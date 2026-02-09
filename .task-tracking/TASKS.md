@@ -1,6 +1,6 @@
 # Project Tasks
 
-> **Next ID:** T-009
+> **Next ID:** T-018
 
 ## Inbox
 
@@ -18,9 +18,120 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
+### T-010: Extract Shared MailMessage Parser Helper
+
+> **Created:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+Three nearly identical `MailMessage` parsing closures exist in `getInboxMessages`, `getUnreadMessages`, and `searchMessages`. Extract to a shared `parseMailMessages(from:)` helper. The unread variant hardcodes `isRead: false` with 6 fields — unify by emitting a 7th "false" field from the AppleScript, or accept a parameter.
+
+**File:** `Sources/SysmCore/Services/MailService.swift` (lines 77-89, 139-151, 582-594)
+
+---
+
+### T-011: Deduplicate DateFormatter in searchMessages
+
+> **Created:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+Two identical `DateFormatter` instances with format `"EEEE, MMMM d, yyyy 'at' h:mm:ss a"` are created in `searchMessages()`. Extract to a static `appleScriptDateFormatter` property.
+
+**File:** `Sources/SysmCore/Services/MailService.swift` (lines ~487-500)
+
+---
+
+### T-012: Deduplicate formatFileSize Utility
+
+> **Created:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+`formatFileSize` is defined as a private method in both `MailRead.swift` and `PhotosMetadata.swift` with identical logic (different Int type). Promote to a shared utility (e.g., extension on `Int` or static method on `OutputFormatter`).
+
+**Files:** `Sources/sysm/Commands/Mail/MailRead.swift`, `Sources/sysm/Commands/Photos/PhotosMetadata.swift`
+
+---
+
+### T-013: Add Account Context to Message Mutation Operations
+
+> **Created:** 2026-02-08
+> **Labels:** bug, feature
+
+`getMessage()`, `markMessage()`, `deleteMessage()`, `flagMessage()`, and `moveMessage()` all hardcode `first message of inbox whose id is \(id)` — ignoring account context. Read operations (inbox, unread, search) are account-aware via `inboxSourceExpression()`, but mutations are not. This means acting on messages from non-default accounts may fail or hit the wrong message.
+
+Add optional `accountName` parameter to these 5 functions and update their AppleScript to scope to the correct mailbox.
+
+**File:** `Sources/SysmCore/Services/MailService.swift` (getMessage ~line 158, markMessage ~line 303, deleteMessage ~line 320, moveMessage ~line 401, flagMessage ~line 438)
+
+---
+
+### T-014: Extract Delimiter Constants in MailService
+
+> **Created:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+The strings `"|||"`, `"###"`, `"|||FIELD|||"`, `"||ATT||"`, and `"||ATTLIST||"` are scattered as raw literals throughout MailService.swift (15+ occurrences on Swift parsing side). Extract to a `private enum Delimiter` with static constants. AppleScript-embedded strings remain inline.
+
+**File:** `Sources/SysmCore/Services/MailService.swift`
+
+---
+
+### T-015: Extract optionalPart() Helper for getMessage Parser
+
+> **Created:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+In `getMessage()`'s parser, 4 repeated ternary expressions like `parts.count > 7 && !parts[7].isEmpty ? parts[7] : nil` can be replaced with a small helper. Reduces risk of off-by-one index errors when fields are added.
+
+**File:** `Sources/SysmCore/Services/MailService.swift` (~lines 249-264)
+
+---
+
+### T-016: Move Mail Models to Models/Mail.swift
+
+> **Created:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+MailAccount, MailMessage, MailMessageDetail, MailAttachment, MailMailbox, and MailError are defined at the bottom of MailService.swift. Every other domain has models in `Sources/SysmCore/Models/` (CalendarEvent, Reminder, Note, etc.). Move to `Models/Mail.swift` for consistency.
+
+**File:** `Sources/SysmCore/Services/MailService.swift` → `Sources/SysmCore/Models/Mail.swift`
+
+---
+
+### T-017: Extract Shared Message Display Formatting
+
+> **Created:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+MailInbox, MailUnread, and MailSearch have ~80% identical "print message list" patterns. Extract a shared `MailFormatting.printMessageList()` helper that accepts header text and whether to show read-status indicators.
+
+**Files:** `Sources/sysm/Commands/Mail/MailInbox.swift`, `MailUnread.swift`, `MailSearch.swift`
+
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-009: Standardize Error Handling Across Mail Commands
+
+> **Created:** 2026-02-08
+> **Updated:** 2026-02-08
+> **Labels:** refactor, cleanup
+
+Removed redundant do/catch wrappers from 5 mail commands. `MailError` conforms to `LocalizedError` and ArgumentParser already displays errors via `localizedDescription`, so manual stderr formatting was unnecessary.
+
+- [x] Remove do/catch from MailMark.swift
+- [x] Remove do/catch from MailDelete.swift
+- [x] Remove do/catch from MailMove.swift
+- [x] Remove do/catch from MailFlag.swift
+- [x] Remove do/catch from MailSend.swift
+
+**Files Modified:**
+- `Sources/sysm/Commands/Mail/MailMark.swift`
+- `Sources/sysm/Commands/Mail/MailDelete.swift`
+- `Sources/sysm/Commands/Mail/MailMove.swift`
+- `Sources/sysm/Commands/Mail/MailFlag.swift`
+- `Sources/sysm/Commands/Mail/MailSend.swift`
+
+---
 
 ### T-006: Fix DateParser "next [weekday]" Bug
 

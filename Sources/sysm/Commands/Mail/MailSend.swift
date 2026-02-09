@@ -49,19 +49,14 @@ struct MailSend: ParsableCommand {
             }
         }
 
-        do {
-            try service.sendMessage(
-                to: to,
-                cc: cc,
-                bcc: bcc,
-                subject: subject,
-                body: body,
-                accountName: account
-            )
-            print("Message sent")
-        } catch {
-            fputs("Error: \(error.localizedDescription)\n", stderr)
-            throw ExitCode.failure
-        }
+        try service.sendMessage(
+            to: to,
+            cc: cc,
+            bcc: bcc,
+            subject: subject,
+            body: body,
+            accountName: account
+        )
+        print("Message sent")
     }
 }

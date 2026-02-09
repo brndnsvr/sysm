@@ -31,12 +31,7 @@ struct MailDelete: ParsableCommand {
             }
         }
 
-        do {
-            try service.deleteMessage(id: id)
-            print("Message deleted")
-        } catch {
-            fputs("Error: \(error.localizedDescription)\n", stderr)
-            throw ExitCode.failure
-        }
+        try service.deleteMessage(id: id)
+        print("Message deleted")
     }
 }
