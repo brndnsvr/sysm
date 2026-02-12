@@ -1,8 +1,9 @@
 import Foundation
 import EventKit
+import ArgumentParser
 
 /// Reminder priority levels.
-public enum ReminderPriority: Int, Codable, CaseIterable {
+public enum ReminderPriority: Int, Codable, CaseIterable, ExpressibleByArgument {
     case none = 0
     case high = 1
     case medium = 5
@@ -36,6 +37,7 @@ public struct Reminder: Codable {
     public let id: String
     public let title: String
     public let listName: String
+    public let startDate: Date?
     public let dueDate: Date?
     public let isCompleted: Bool
     public let priority: Int
@@ -46,6 +48,7 @@ public struct Reminder: Codable {
     public let hasRecurrence: Bool
     public let recurrenceRule: RecurrenceRule?
     public let hasAlarms: Bool
+    public let alarms: [EventAlarm]?
 
     /// Creates a Reminder from an EventKit reminder.
     /// - Parameter ekReminder: The EventKit reminder to convert.
@@ -62,6 +65,13 @@ public struct Reminder: Codable {
         self.hasRecurrence = ekReminder.hasRecurrenceRules
         self.hasAlarms = ekReminder.hasAlarms
 
+        if let startDateComponents = ekReminder.startDateComponents,
+           let date = Foundation.Calendar.current.date(from: startDateComponents) {
+            self.startDate = date
+        } else {
+            self.startDate = nil
+        }
+
         if let dueDateComponents = ekReminder.dueDateComponents,
            let date = Foundation.Calendar.current.date(from: dueDateComponents) {
             self.dueDate = date
@@ -73,6 +83,12 @@ public struct Reminder: Codable {
             self.recurrenceRule = RecurrenceRule(from: firstRule)
         } else {
             self.recurrenceRule = nil
+        }
+
+        if let ekAlarms = ekReminder.alarms {
+            self.alarms = ekAlarms.map { EventAlarm(from: $0) }
+        } else {
+            self.alarms = nil
         }
     }
 
@@ -116,6 +132,11 @@ public struct Reminder: Codable {
             if let rule = recurrenceRule {
                 result += "\n    Recurrence: \(rule.description)"
             }
+            if let alarmsList = alarms, !alarmsList.isEmpty {
+                for alarm in alarmsList {
+                    result += "\n    Alarm: \(alarm.description)"
+                }
+            }
             if let reminderNotes = notes, !reminderNotes.isEmpty {
                 let truncated = reminderNotes.count > 50 ? String(reminderNotes.prefix(50)) + "..." : reminderNotes
                 result += "\n    Notes: \(truncated)"
@@ -145,6 +166,17 @@ public struct Reminder: Codable {
 
         if let rule = recurrenceRule {
             lines.append("Repeats: \(rule.description)")
+        }
+
+        if let alarmsList = alarms, !alarmsList.isEmpty {
+            if alarmsList.count == 1 {
+                lines.append("Alarm: \(alarmsList[0].description)")
+            } else {
+                lines.append("Alarms:")
+                for alarm in alarmsList {
+                    lines.append("  - \(alarm.description)")
+                }
+            }
         }
 
         if isCompleted, let completed = completionDate {

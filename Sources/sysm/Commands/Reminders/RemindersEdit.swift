@@ -14,6 +14,9 @@ struct RemindersEdit: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "New title")
     var title: String?
 
+    @Option(name: .long, help: "New start date (e.g., 'tomorrow 9am', 'next monday', 'YYYY-MM-DD')")
+    var start: String?
+
     @Option(name: .shortAndLong, help: "New due date (e.g., 'tomorrow 2pm', 'next monday', 'YYYY-MM-DD')")
     var due: String?
 
@@ -23,19 +26,30 @@ struct RemindersEdit: AsyncParsableCommand {
     @Option(name: .shortAndLong, help: "New notes")
     var notes: String?
 
+    @Option(name: .long, help: "New alarms in minutes (replaces all existing alarms, can be repeated)")
+    var alarm: [Int] = []
+
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
     func run() async throws {
         let service = Services.reminders()
 
+        // Build alarms if specified
+        var alarms: [EventAlarm]? = nil
+        if !alarm.isEmpty {
+            alarms = alarm.map { EventAlarm(triggerMinutes: $0) }
+        }
+
         do {
             let reminder = try await service.editReminder(
                 id: id,
                 newTitle: title,
+                newStartDate: start,
                 newDueDate: due,
                 newPriority: priority,
-                newNotes: notes
+                newNotes: notes,
+                newAlarms: alarms
             )
 
             if json {
@@ -47,6 +61,11 @@ struct RemindersEdit: AsyncParsableCommand {
                 }
                 if reminder.priorityLevel != .none {
                     print("  Priority: \(reminder.priorityLevel.description)")
+                }
+                if let alarmsList = reminder.alarms, !alarmsList.isEmpty {
+                    for alarm in alarmsList {
+                        print("  Alarm: \(alarm.description)")
+                    }
                 }
                 if let reminderNotes = reminder.notes, !reminderNotes.isEmpty {
                     print("  Notes: \(reminderNotes)")

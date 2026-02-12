@@ -94,9 +94,9 @@ public actor ReminderService: ReminderServiceProtocol {
         }
     }
 
-    public func addReminder(title: String, listName: String = "Reminders", dueDate: String? = nil,
+    public func addReminder(title: String, listName: String = "Reminders", startDate: String? = nil, dueDate: String? = nil,
                             priority: Int? = nil, notes: String? = nil, url: String? = nil,
-                            recurrence: RecurrenceRule? = nil) async throws -> Reminder {
+                            recurrence: RecurrenceRule? = nil, alarms: [EventAlarm]? = nil) async throws -> Reminder {
         try await ensureAccess()
 
         guard let calendar = store.calendars(for: .reminder).first(where: { $0.title == listName }) else {
@@ -106,6 +106,28 @@ public actor ReminderService: ReminderServiceProtocol {
         let reminder = EKReminder(eventStore: store)
         reminder.title = title
         reminder.calendar = calendar
+
+        if let startDateStr = startDate {
+            if let parsedDate = Services.dateParser().parse(startDateStr) {
+                let dateComponents = Foundation.Calendar.current.dateComponents(
+                    [.year, .month, .day, .hour, .minute],
+                    from: parsedDate
+                )
+                let year = dateComponents.year ?? Foundation.Calendar.current.component(.year, from: Date())
+                if year < 2000 || year > 2100 {
+                    throw ReminderError.invalidYear(year)
+                }
+                reminder.startDateComponents = dateComponents
+            } else {
+                // Fallback to ISO date parsing
+                let dateComponents = try parseDateString(startDateStr)
+                let year = dateComponents.year ?? Foundation.Calendar.current.component(.year, from: Date())
+                if year < 2000 || year > 2100 {
+                    throw ReminderError.invalidYear(year)
+                }
+                reminder.startDateComponents = dateComponents
+            }
+        }
 
         if let dueDateStr = dueDate {
             if let parsedDate = Services.dateParser().parse(dueDateStr) {
@@ -145,12 +167,18 @@ public actor ReminderService: ReminderServiceProtocol {
             reminder.addRecurrenceRule(recurrence.toEKRecurrenceRule())
         }
 
+        if let alarms = alarms {
+            for alarm in alarms {
+                reminder.addAlarm(alarm.toEKAlarm())
+            }
+        }
+
         try store.save(reminder, commit: true)
         return Reminder(from: reminder)
     }
 
-    public func editReminder(id: String, newTitle: String? = nil, newDueDate: String? = nil,
-                             newPriority: Int? = nil, newNotes: String? = nil) async throws -> Reminder {
+    public func editReminder(id: String, newTitle: String? = nil, newStartDate: String? = nil, newDueDate: String? = nil,
+                             newPriority: Int? = nil, newNotes: String? = nil, newAlarms: [EventAlarm]? = nil) async throws -> Reminder {
         try await ensureAccess()
 
         guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else {
@@ -159,6 +187,15 @@ public actor ReminderService: ReminderServiceProtocol {
 
         if let title = newTitle {
             reminder.title = title
+        }
+
+        if let startDateStr = newStartDate {
+            if let parsedDate = Services.dateParser().parse(startDateStr) {
+                reminder.startDateComponents = Foundation.Calendar.current.dateComponents(
+                    [.year, .month, .day, .hour, .minute],
+                    from: parsedDate
+                )
+            }
         }
 
         if let dueDateStr = newDueDate {
@@ -178,6 +215,19 @@ public actor ReminderService: ReminderServiceProtocol {
             reminder.notes = notes
         }
 
+        if let newAlarms = newAlarms {
+            // Remove existing alarms
+            if let existingAlarms = reminder.alarms {
+                for alarm in existingAlarms {
+                    reminder.removeAlarm(alarm)
+                }
+            }
+            // Add new alarms
+            for alarm in newAlarms {
+                reminder.addAlarm(alarm.toEKAlarm())
+            }
+        }
+
         try store.save(reminder, commit: true)
         return Reminder(from: reminder)
     }
@@ -191,6 +241,22 @@ public actor ReminderService: ReminderServiceProtocol {
 
         try store.remove(reminder, commit: true)
         return true
+    }
+
+    public func moveReminder(id: String, toList: String) async throws -> Reminder {
+        try await ensureAccess()
+
+        guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else {
+            throw ReminderError.reminderNotFound(id)
+        }
+
+        guard let newCalendar = store.calendars(for: .reminder).first(where: { $0.title == toList }) else {
+            throw ReminderError.listNotFound(toList)
+        }
+
+        reminder.calendar = newCalendar
+        try store.save(reminder, commit: true)
+        return Reminder(from: reminder)
     }
 
     public func createList(name: String) async throws -> Bool {
