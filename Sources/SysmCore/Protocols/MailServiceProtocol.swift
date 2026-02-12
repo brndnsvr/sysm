@@ -98,6 +98,7 @@ public protocol MailServiceProtocol: Sendable {
     ///   - bcc: Optional BCC recipient.
     ///   - subject: Email subject.
     ///   - body: Email body.
+    ///   - isHTML: True if body is HTML, false for plain text.
     ///   - accountName: Optional account to send from.
     func sendMessage(
         to: String,
@@ -105,8 +106,48 @@ public protocol MailServiceProtocol: Sendable {
         bcc: String?,
         subject: String,
         body: String,
+        isHTML: Bool,
         accountName: String?
     ) throws
+
+    // MARK: - Attachments
+
+    /// Downloads all attachments from a message.
+    /// - Parameters:
+    ///   - messageId: The message ID.
+    ///   - outputDir: Directory path to save attachments.
+    /// - Returns: Array of downloaded file paths.
+    func downloadAttachments(messageId: String, outputDir: String) throws -> [String]
+
+    // MARK: - Reply & Forward
+
+    /// Replies to a message.
+    /// - Parameters:
+    ///   - messageId: The message ID.
+    ///   - body: Reply body text.
+    ///   - replyAll: True to reply all, false to reply to sender only.
+    ///   - send: True to send immediately, false to create draft.
+    /// - Returns: The reply message ID.
+    func reply(messageId: String, body: String, replyAll: Bool, send: Bool) throws -> String
+
+    /// Forwards a message.
+    /// - Parameters:
+    ///   - messageId: The message ID.
+    ///   - to: Recipient email address.
+    ///   - body: Forward body text.
+    ///   - send: True to send immediately, false to create draft.
+    /// - Returns: The forward message ID.
+    func forward(messageId: String, to: String, body: String, send: Bool) throws -> String
+
+    // MARK: - Drafts Management
+
+    /// Lists all draft messages.
+    /// - Returns: Array of draft messages.
+    func listDrafts() throws -> [MailMessage]
+
+    /// Deletes a draft message.
+    /// - Parameter messageId: The draft message ID.
+    func deleteDraft(messageId: String) throws
 }
 
 extension MailServiceProtocol {

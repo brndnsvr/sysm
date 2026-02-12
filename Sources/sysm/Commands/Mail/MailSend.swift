@@ -14,8 +14,14 @@ struct MailSend: ParsableCommand {
     @Option(name: .long, help: "Email subject")
     var subject: String
 
-    @Option(name: .long, help: "Email body")
+    @Option(name: .long, help: "Email body (plain text)")
     var body: String = ""
+
+    @Option(name: .long, help: "HTML email body")
+    var htmlBody: String?
+
+    @Option(name: .long, help: "Path to HTML file for body")
+    var htmlFile: String?
 
     @Option(name: .long, help: "CC recipient email address")
     var cc: String?
@@ -32,9 +38,36 @@ struct MailSend: ParsableCommand {
     func run() throws {
         let service = Services.mail()
 
+        // Validate HTML options
+        if htmlBody != nil && htmlFile != nil {
+            throw MailError.sendFailed("Cannot specify both --html-body and --html-file")
+        }
+
+        // Determine body content and type
+        let finalBody: String
+        let isHTML: Bool
+
+        if let htmlBodyContent = htmlBody {
+            finalBody = htmlBodyContent
+            isHTML = true
+        } else if let htmlFilePath = htmlFile {
+            let expandedPath = (htmlFilePath as NSString).expandingTildeInPath
+            guard let htmlContent = try? String(contentsOfFile: expandedPath, encoding: .utf8) else {
+                throw MailError.sendFailed("Failed to read HTML file: \(expandedPath)")
+            }
+            finalBody = htmlContent
+            isHTML = true
+        } else if !body.isEmpty {
+            finalBody = body
+            isHTML = false
+        } else {
+            throw MailError.sendFailed("Must specify either --body, --html-body, or --html-file")
+        }
+
         if !force {
             print("Send email to '\(to)'")
             print("Subject: \(subject)")
+            print("Body type: \(isHTML ? "HTML" : "plain text")")
             if let cc = cc {
                 print("CC: \(cc)")
             }
@@ -54,7 +87,8 @@ struct MailSend: ParsableCommand {
             cc: cc,
             bcc: bcc,
             subject: subject,
-            body: body,
+            body: finalBody,
+            isHTML: isHTML,
             accountName: account
         )
         print("Message sent")

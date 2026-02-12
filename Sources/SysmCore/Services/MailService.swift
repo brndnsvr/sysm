@@ -558,6 +558,106 @@ public struct MailService: MailServiceProtocol {
         return parseMailMessages(from: result)
     }
 
+    // MARK: - Attachments
+
+    public func downloadAttachments(messageId: String, outputDir: String) throws -> [String] {
+        // Ensure output directory exists
+        let fileManager = FileManager.default
+        var isDirectory: ObjCBool = false
+        if !fileManager.fileExists(atPath: outputDir, isDirectory: &isDirectory) {
+            throw MailError.invalidOutputDirectory(outputDir)
+        }
+        if !isDirectory.boolValue {
+            throw MailError.invalidOutputDirectory(outputDir)
+        }
+
+        let script = """
+        tell application "Mail"
+            try
+                set msg to first message of inbox whose id is \(messageId)
+                set attachmentList to {}
+                set outputDir to POSIX file "\(escapeForAppleScript(outputDir))"
+                repeat with att in mail attachments of msg
+                    try
+                        set attName to name of att
+                        save att in outputDir
+                        set end of attachmentList to attName
+                    on error errMsg
+                        -- Skip attachment if save fails
+                    end try
+                end repeat
+                set AppleScript's text item delimiters to "|||"
+                set attachmentStr to attachmentList as string
+                set AppleScript's text item delimiters to ""
+                return attachmentStr
+            on error errMsg
+                return "error:" & errMsg
+            end try
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.hasPrefix("error:") {
+            throw MailError.messageNotFound(messageId)
+        }
+        if result.isEmpty { return [] }
+
+        let attachmentNames = result.components(separatedBy: "|||")
+        return attachmentNames.map { outputDir + "/" + $0 }
+    }
+
+    // MARK: - Reply & Forward
+
+    public func reply(messageId: String, body: String, replyAll: Bool, send: Bool) throws -> String {
+        let replyType = replyAll ? "reply all" : "reply"
+        let sendAction = send ? "send theReply" : ""
+
+        let script = """
+        tell application "Mail"
+            try
+                set msg to first message of inbox whose id is \(messageId)
+                set theReply to \(replyType) msg with opening window
+                set content of theReply to "\(escapeForAppleScript(body))"
+                \(sendAction)
+                return (id of theReply) as string
+            on error errMsg
+                return "error:" & errMsg
+            end try
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.hasPrefix("error:") {
+            throw MailError.messageNotFound(messageId)
+        }
+        return result
+    }
+
+    public func forward(messageId: String, to: String, body: String, send: Bool) throws -> String {
+        let sendAction = send ? "send theForward" : ""
+
+        let script = """
+        tell application "Mail"
+            try
+                set msg to first message of inbox whose id is \(messageId)
+                set theForward to forward msg with opening window
+                set content of theForward to "\(escapeForAppleScript(body))"
+                make new to recipient at theForward with properties {address:"\(escapeForAppleScript(to))"}
+                \(sendAction)
+                return (id of theForward) as string
+            on error errMsg
+                return "error:" & errMsg
+            end try
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.hasPrefix("error:") {
+            throw MailError.messageNotFound(messageId)
+        }
+        return result
+    }
+
     // MARK: - Send Mail
 
     public func sendMessage(
@@ -566,6 +666,7 @@ public struct MailService: MailServiceProtocol {
         bcc: String? = nil,
         subject: String,
         body: String,
+        isHTML: Bool = false,
         accountName: String? = nil
     ) throws {
         if to.isEmpty {
@@ -602,13 +703,22 @@ public struct MailService: MailServiceProtocol {
             accountSetup = ", sender:\"\(escapedAccount)\""
         }
 
+        // For HTML emails, Mail.app requires setting the content property and then setting the message format
+        let contentSetup = isHTML ? """
+                set content of newMessage to "\(escapedBody)"
+                set message format of newMessage to html
+        """ : ""
+
+        let contentProperty = isHTML ? "" : ", content:\"\(escapedBody)\""
+
         let script = """
         tell application "Mail"
             try
-                set newMessage to make new outgoing message with properties {subject:"\(escapedSubject)", content:"\(escapedBody)", visible:false\(accountSetup)}
+                set newMessage to make new outgoing message with properties {subject:"\(escapedSubject)"\(contentProperty), visible:false\(accountSetup)}
                 tell newMessage
         \(recipientSetup)
                 end tell
+        \(contentSetup)
                 send newMessage
                 return "ok"
             on error errMsg
@@ -621,6 +731,72 @@ public struct MailService: MailServiceProtocol {
         if result.hasPrefix("error:") {
             let errorMsg = String(result.dropFirst(6))
             throw MailError.sendFailed(errorMsg)
+        }
+    }
+
+    // MARK: - Drafts Management
+
+    public func listDrafts() throws -> [MailMessage] {
+        let script = """
+        tell application "Mail"
+            set messageList to ""
+            try
+                -- Get drafts mailbox
+                set draftsBox to drafts mailbox
+                repeat with msg in (messages of draftsBox)
+                    set msgId to (id of msg) as string
+                    set msgMessageId to ""
+                    try
+                        set msgMessageId to message id of msg
+                    end try
+                    set msgSubject to subject of msg
+                    set msgTo to ""
+                    try
+                        set toList to address of to recipients of msg
+                        if (count of toList) > 0 then
+                            set msgTo to item 1 of toList
+                        end if
+                    end try
+                    set msgDate to (date received of msg) as string
+                    set msgAccount to ""
+                    try
+                        set msgAccount to name of account of mailbox of msg
+                    end try
+                    set messageList to messageList & msgId & "|||" & msgMessageId & "|||" & msgSubject & "|||" & msgTo & "|||" & msgDate & "|||" & "false" & "|||" & msgAccount & "###"
+                end repeat
+            on error errMsg
+                return "error:" & errMsg
+            end try
+            return messageList
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.hasPrefix("error:") {
+            throw MailError.appleScriptError(String(result.dropFirst(6)))
+        }
+        if result.isEmpty { return [] }
+
+        return parseMailMessages(from: result)
+    }
+
+    public func deleteDraft(messageId: String) throws {
+        let script = """
+        tell application "Mail"
+            try
+                set draftsBox to drafts mailbox
+                set msg to first message of draftsBox whose id is \(messageId)
+                delete msg
+                return "ok"
+            on error errMsg
+                return "error:" & errMsg
+            end try
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.hasPrefix("error:") {
+            throw MailError.messageNotFound(messageId)
         }
     }
 
@@ -733,6 +909,7 @@ public enum MailError: LocalizedError {
     case sendFailed(String)
     case invalidDateRange
     case noRecipientsSpecified
+    case invalidOutputDirectory(String)
 
     public var errorDescription: String? {
         switch self {
@@ -752,6 +929,8 @@ public enum MailError: LocalizedError {
             return "Invalid date range specified"
         case .noRecipientsSpecified:
             return "No recipients specified"
+        case .invalidOutputDirectory(let path):
+            return "Invalid output directory: '\(path)'"
         }
     }
 }

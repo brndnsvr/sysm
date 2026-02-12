@@ -19,6 +19,9 @@ struct MailCommand: ParsableCommand {
             MailMove.self,
             MailFlag.self,
             MailSend.self,
+            MailAttachments.self,
+            MailReply.self,
+            MailForward.self,
         ]
     )
 }
