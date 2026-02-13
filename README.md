@@ -4,6 +4,21 @@ Unified CLI for the Apple ecosystem on macOS. Interact with Calendar, Reminders,
 
 ## Installation
 
+### Homebrew (Recommended)
+
+```bash
+# Add tap
+brew tap brndnsvr/tap
+
+# Install sysm
+brew install sysm
+
+# Verify installation
+sysm --version
+```
+
+Shell completions are automatically installed for bash, zsh, and fish.
+
 ### From Source
 
 ```bash

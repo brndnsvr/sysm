@@ -14,5 +14,7 @@ Sources/sysm/Version.swift
 
 # OS files
 .DS_Store
-/docs/
-docs/
+
+# Generated docs (DocC output only - ignore everything except guides/)
+/docs/*
+!/docs/guides/

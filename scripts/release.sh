@@ -32,9 +32,9 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 BINARY_NAME="sysm"
 DEFAULT_PREFIX="${HOME}/bin"
 
-# Future: fill these in when ready
-GITHUB_REPO=""        # e.g., "username/sysm"
-HOMEBREW_TAP=""       # e.g., "username/homebrew-tap"
+# GitHub and Homebrew configuration
+GITHUB_REPO="brndnsvr/sysm"
+HOMEBREW_TAP="brndnsvr/homebrew-tap"
 
 # Runtime options
 PREFIX="${DEFAULT_PREFIX}"
