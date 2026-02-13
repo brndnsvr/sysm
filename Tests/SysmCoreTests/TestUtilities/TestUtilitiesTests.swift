@@ -9,33 +9,6 @@ import XCTest
 /// Tests for the test utilities themselves to ensure they work correctly.
 final class TestUtilitiesTests: XCTestCase {
 
-    func testMockAppleScriptRunner() {
-        let mock = MockAppleScriptRunner()
-
-        // Test escape passes through to real implementation
-        let escaped = mock.escape("test's \"quote\"")
-        XCTAssertTrue(escaped.contains("\\"))
-
-        // Test recording scripts
-        mock.mockResponses["test"] = "success"
-        let result = try? mock.run("tell application \"Mail\"", identifier: "test")
-        XCTAssertEqual(result, "success")
-        XCTAssertEqual(mock.scriptHistory.count, 1)
-        XCTAssertEqual(mock.lastIdentifier, "test")
-
-        // Test error throwing
-        enum TestError: Error {
-            case testFailure
-        }
-        mock.mockErrors["fail"] = TestError.testFailure
-        XCTAssertThrowsError(try mock.run("script", identifier: "fail"))
-
-        // Test reset
-        mock.reset()
-        XCTAssertEqual(mock.scriptHistory.count, 0)
-        XCTAssertNil(mock.lastScript)
-    }
-
     func testTestFixturesDateHelpers() {
         let todayAt2PM = TestFixtures.todayAt2PM
         let calendar = Calendar.current

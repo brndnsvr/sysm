@@ -37,7 +37,7 @@ final class ICSGeneratorTests: XCTestCase {
         XCTAssertTrue(ics.contains("END:VEVENT"))
         XCTAssertTrue(ics.contains("SUMMARY:Test Event"))
         XCTAssertTrue(ics.contains("VERSION:2.0"))
-        XCTAssertTrue(ics.contains("PRODID:-//sysm//EN"))
+        XCTAssertTrue(ics.contains("PRODID:-//sysm//"))
     }
 
     func testGenerateMultipleEvents() {

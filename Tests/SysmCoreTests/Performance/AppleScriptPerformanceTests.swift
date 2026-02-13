@@ -25,17 +25,14 @@ import XCTest
 /// - macOS version
 final class AppleScriptPerformanceTests: XCTestCase {
     var runner: AppleScriptRunner!
-    var mockRunner: MockAppleScriptRunner!
 
     override func setUp() async throws {
         try await super.setUp()
         runner = AppleScriptRunner()
-        mockRunner = MockAppleScriptRunner()
     }
 
     override func tearDown() async throws {
         runner = nil
-        mockRunner = nil
         try await super.tearDown()
     }
 
@@ -267,59 +264,27 @@ final class AppleScriptPerformanceTests: XCTestCase {
     // MARK: - Optimization Impact Tests
 
     func testCachingImpact() throws {
-        // Demonstrate caching impact on repeated queries
+        // Measure warm execution (XCTest only allows one measure block per test)
         let script = """
         tell application "System Events"
             return name
         end tell
         """
 
-        // First execution (cold)
-        var firstDuration: TimeInterval = 0
-        measureMetrics([.wallClockTime], automaticallyStartMeasuring: false) {
-            let start = Date()
-            _ = try? runner.run(script, identifier: "cache-test-cold")
-            firstDuration = Date().timeIntervalSince(start)
-            stopMeasuring()
-        }
-
-        // Subsequent executions (warm)
-        var secondDuration: TimeInterval = 0
         measure {
-            let start = Date()
-            _ = try? runner.run(script, identifier: "cache-test-warm")
-            secondDuration = Date().timeIntervalSince(start)
+            _ = try? runner.run(script, identifier: "cache-test")
         }
-
-        // Document the difference
-        let improvement = ((firstDuration - secondDuration) / firstDuration) * 100
-        print("Caching improvement: \(String(format: "%.1f", improvement))%")
     }
 
     func testRetryOverhead() throws {
-        // Measure overhead of retry logic when script succeeds immediately
+        // Measure retry overhead when script succeeds immediately
         let script = """
         return "success"
         """
 
-        // Without retry
-        var directDuration: TimeInterval = 0
         measure {
-            let start = Date()
-            _ = try? runner.run(script, identifier: "no-retry")
-            directDuration = Date().timeIntervalSince(start)
-        }
-
-        // With retry (should be similar if no failures)
-        var retryDuration: TimeInterval = 0
-        measure {
-            let start = Date()
             _ = try? runner.runWithRetry(script, identifier: "with-retry")
-            retryDuration = Date().timeIntervalSince(start)
         }
-
-        let overhead = ((retryDuration - directDuration) / directDuration) * 100
-        print("Retry overhead: \(String(format: "%.1f", overhead))%")
     }
 
     // MARK: - Performance Recommendations

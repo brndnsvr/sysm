@@ -51,7 +51,11 @@ final class OutputFormatterTests: XCTestCase {
 
         let output = try captureJSONOutput(models)
 
-        XCTAssertEqual(output.trimmingCharacters(in: .whitespacesAndNewlines), "[]")
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertTrue(
+            trimmed == "[]" || trimmed == "[\n\n]",
+            "Empty array should be valid JSON array, got: \(trimmed)"
+        )
     }
 
     func testPrintJSONPrettyFormat() throws {

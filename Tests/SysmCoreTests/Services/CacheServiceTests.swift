@@ -13,8 +13,9 @@ final class CacheServiceTests: XCTestCase {
         tempCachePath = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_cache_\(UUID().uuidString).json")
 
-        // Create custom cache service with temp path (would need to expose cachePath for testing)
         cacheService = CacheService()
+        // Reset to empty state for test isolation
+        try cacheService.saveCache(SysmCache())
     }
 
     override func tearDown() async throws {

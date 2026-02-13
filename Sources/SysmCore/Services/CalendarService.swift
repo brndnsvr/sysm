@@ -33,10 +33,10 @@ public actor CalendarService: CalendarServiceProtocol {
         return calendars.map { $0.title }
     }
 
-    public func listCalendarsDetailed() async throws -> [Calendar] {
+    public func listCalendarsDetailed() async throws -> [CalendarInfo] {
         try await ensureAccess()
         let ekCalendars = store.calendars(for: .event)
-        return ekCalendars.map { Calendar(from: $0) }
+        return ekCalendars.map { CalendarInfo(from: $0) }
     }
 
     public func renameCalendar(name: String, newName: String) async throws -> Bool {

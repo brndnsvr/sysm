@@ -1,5 +1,4 @@
 import XCTest
-@testable import IntegrationTests
 
 /// Integration tests for basic CLI functionality.
 ///
@@ -12,14 +11,18 @@ final class BasicCommandsTests: IntegrationTestCase {
     func testVersionCommand() throws {
         let output = try runCommand(["--version"])
 
-        XCTAssertTrue(output.contains("sysm"), "Version output should contain 'sysm'")
-        XCTAssertTrue(output.contains("."), "Version output should contain a version number")
+        // Version output is just the semver string, e.g. "1.0.0"
+        let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
+        XCTAssertTrue(
+            trimmed.range(of: #"^\d+\.\d+\.\d+"#, options: .regularExpression) != nil,
+            "Version output should be a semver string, got: '\(trimmed)'"
+        )
     }
 
     func testHelpCommand() throws {
         let output = try runCommand(["--help"])
 
-        XCTAssertTrue(output.contains("unified CLI for Apple ecosystem"))
+        XCTAssertTrue(output.contains("Unified Apple ecosystem CLI"))
         XCTAssertTrue(output.contains("SUBCOMMANDS"))
         XCTAssertTrue(output.contains("calendar"))
         XCTAssertTrue(output.contains("reminders"))
@@ -49,27 +52,22 @@ final class BasicCommandsTests: IntegrationTestCase {
     // MARK: - JSON Output
 
     func testJSONOutputFormat() throws {
-        // Most commands support --json flag
-        // Test with a read-only command that doesn't require setup
+        // Use `calendar calendars --json` which doesn't require a date argument
         do {
-            let output = try runCommand(["calendar", "list", "--json"])
+            let output = try runCommand(["calendar", "calendars", "--json"])
 
-            // Verify it's valid JSON
             guard let data = output.data(using: .utf8) else {
                 XCTFail("Failed to convert output to data")
                 return
             }
 
             _ = try JSONSerialization.jsonObject(with: data)
-            // If we get here, it's valid JSON
         } catch {
-            // If calendar access is denied, that's OK for this test
-            // We're just verifying JSON format support exists
             if let testError = error as? IntegrationTestError,
                case .commandFailed(_, _, let stderr) = testError,
-               stderr.contains("access denied") || stderr.contains("Access Denied") {
-                // Expected - permission not granted
-                return
+               stderr.localizedCaseInsensitiveContains("access denied") ||
+               stderr.localizedCaseInsensitiveContains("not granted") {
+                throw XCTSkip("Calendar access not granted")
             }
             throw error
         }
@@ -81,6 +79,7 @@ final class BasicCommandsTests: IntegrationTestCase {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: Self.binaryPath)
         process.arguments = ["--version"]
+        process.standardOutput = Pipe()
 
         try process.run()
         process.waitUntilExit()
@@ -93,7 +92,6 @@ final class BasicCommandsTests: IntegrationTestCase {
         process.executableURL = URL(fileURLWithPath: Self.binaryPath)
         process.arguments = ["nonexistent-command"]
 
-        // Suppress output
         process.standardOutput = Pipe()
         process.standardError = Pipe()
 

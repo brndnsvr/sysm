@@ -2,7 +2,7 @@ import EventKit
 import Foundation
 
 /// Represents a calendar with its properties.
-public struct Calendar: Codable {
+public struct CalendarInfo: Codable {
     public let identifier: String
     public let title: String
     public let type: String

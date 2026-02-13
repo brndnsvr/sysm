@@ -99,9 +99,9 @@ public protocol CalendarServiceProtocol: Sendable {
     /// Provides full calendar metadata including title, color, whether it's the default,
     /// and calendar type (Local, CalDAV, Exchange, etc.).
     ///
-    /// - Returns: Array of ``Calendar`` objects with full details.
+    /// - Returns: Array of ``CalendarInfo`` objects with full details.
     /// - Throws: ``CalendarError/accessDenied`` if calendar access not granted.
-    func listCalendarsDetailed() async throws -> [Calendar]
+    func listCalendarsDetailed() async throws -> [CalendarInfo]
 
     /// Renames an existing calendar.
     ///
