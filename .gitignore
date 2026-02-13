@@ -14,3 +14,5 @@ Sources/sysm/Version.swift
 
 # OS files
 .DS_Store
+/docs/
+docs/
