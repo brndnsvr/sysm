@@ -117,4 +117,71 @@ public protocol AppleScriptRunnerProtocol: Sendable {
     /// - `exitCode`: osascript exit code
     /// - `stderr`: Full error output for debugging
     func run(_ script: String, identifier: String) throws -> String
+
+    /// Runs AppleScript with automatic retry on transient failures.
+    ///
+    /// Retries the script execution with exponential backoff if it fails with a transient error.
+    /// Transient errors include timeouts, temporary unavailability, and connection issues.
+    /// Permanent errors (syntax errors, access denied) fail immediately without retry.
+    ///
+    /// - Parameters:
+    ///   - script: The AppleScript code to execute.
+    ///   - identifier: Identifier for temp file naming (helps with debugging).
+    ///   - maxRetries: Maximum number of retry attempts. Default is 3.
+    ///   - initialDelay: Initial delay in seconds before first retry. Default is 0.5s.
+    /// - Returns: The script output as a string.
+    /// - Throws: ``AppleScriptError/executionFailed(_:)`` if script fails after all retries.
+    ///
+    /// ## Retry Strategy
+    ///
+    /// - **Exponential backoff**: 0.5s, 1s, 2s, 4s delays between retries
+    /// - **Transient errors retried**: timeouts, connection issues, "not running", busy
+    /// - **Permanent errors fail immediately**: syntax errors, access denied, invalid commands
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// let runner = AppleScriptRunner()
+    /// let script = """
+    /// tell application "Mail"
+    ///     send outgoing messages
+    /// end tell
+    /// """
+    /// // Retry up to 3 times if Mail is temporarily busy
+    /// let output = try runner.runWithRetry(
+    ///     script,
+    ///     identifier: "mail-send",
+    ///     maxRetries: 3
+    /// )
+    /// ```
+    ///
+    /// ## Use Cases
+    ///
+    /// Recommended for operations that may fail transiently:
+    /// - Mail sending (Mail.app may be busy)
+    /// - Message sending (Messages.app may not be running)
+    /// - Music playback control (Music.app may be launching)
+    /// - Any AppleScript that targets applications that may be slow to respond
+    func runWithRetry(
+        _ script: String,
+        identifier: String,
+        maxRetries: Int,
+        initialDelay: TimeInterval
+    ) throws -> String
+}
+
+// MARK: - Default Implementations
+
+extension AppleScriptRunnerProtocol {
+    /// Runs AppleScript with default retry parameters.
+    ///
+    /// Convenience method that uses default retry settings: 3 retries with 0.5s initial delay.
+    ///
+    /// - Parameters:
+    ///   - script: The AppleScript code to execute.
+    ///   - identifier: Identifier for temp file naming.
+    /// - Returns: The script output as a string.
+    public func runWithRetry(_ script: String, identifier: String = "generic") throws -> String {
+        try runWithRetry(script, identifier: identifier, maxRetries: 3, initialDelay: 0.5)
+    }
 }
