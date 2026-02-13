@@ -13,6 +13,7 @@ public struct CalendarEvent: Codable {
     public let endDate: Date
     public let isAllDay: Bool
     public let location: String?
+    public let structuredLocation: StructuredLocation?
     public let notes: String?
     public let url: String?
     public let availability: EventAvailability
@@ -36,6 +37,12 @@ public struct CalendarEvent: Codable {
         self.url = ekEvent.url?.absoluteString
         self.availability = EventAvailability(from: ekEvent.availability)
         self.hasRecurrence = ekEvent.hasRecurrenceRules
+
+        if let ekStructLoc = ekEvent.structuredLocation {
+            self.structuredLocation = StructuredLocation(from: ekStructLoc)
+        } else {
+            self.structuredLocation = nil
+        }
 
         if let rules = ekEvent.recurrenceRules, let firstRule = rules.first {
             self.recurrenceRule = RecurrenceRule(from: firstRule)
@@ -113,6 +120,12 @@ public struct CalendarEvent: Codable {
 
         if let loc = location, !loc.isEmpty {
             lines.append("Location: \(loc)")
+            if let structLoc = structuredLocation, let lat = structLoc.latitude, let lon = structLoc.longitude {
+                lines.append("  Coordinates: \(lat), \(lon)")
+                if let radius = structLoc.radius {
+                    lines.append("  Radius: \(Int(radius))m")
+                }
+            }
         }
         if let eventUrl = url {
             lines.append("URL: \(eventUrl)")

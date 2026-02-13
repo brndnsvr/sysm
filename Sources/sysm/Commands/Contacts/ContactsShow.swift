@@ -92,6 +92,11 @@ struct ContactsShow: AsyncParsableCommand {
             }
 
             print("\nID: \(contact.identifier)")
+            if contact.hasPhoto {
+                print("Photo: Yes (use 'contacts photo get \(contact.identifier) --output photo.jpg' to extract)")
+            } else {
+                print("Photo: No")
+            }
         }
     }
 }

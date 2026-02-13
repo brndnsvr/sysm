@@ -33,6 +33,48 @@ public actor CalendarService: CalendarServiceProtocol {
         return calendars.map { $0.title }
     }
 
+    public func listCalendarsDetailed() async throws -> [Calendar] {
+        try await ensureAccess()
+        let ekCalendars = store.calendars(for: .event)
+        return ekCalendars.map { Calendar(from: $0) }
+    }
+
+    public func renameCalendar(name: String, newName: String) async throws -> Bool {
+        try await ensureAccess()
+
+        guard let calendar = store.calendars(for: .event).first(where: { $0.title == name }) else {
+            throw CalendarError.calendarNotFound(name)
+        }
+
+        guard calendar.allowsContentModifications else {
+            throw CalendarError.calendarReadOnly(name)
+        }
+
+        calendar.title = newName
+        try store.saveCalendar(calendar, commit: true)
+        return true
+    }
+
+    public func setCalendarColor(name: String, hexColor: String) async throws -> Bool {
+        try await ensureAccess()
+
+        guard let calendar = store.calendars(for: .event).first(where: { $0.title == name }) else {
+            throw CalendarError.calendarNotFound(name)
+        }
+
+        guard calendar.allowsContentModifications else {
+            throw CalendarError.calendarReadOnly(name)
+        }
+
+        guard let cgColor = hexColor.toCGColor() else {
+            throw CalendarError.invalidColor(hexColor)
+        }
+
+        calendar.cgColor = cgColor
+        try store.saveCalendar(calendar, commit: true)
+        return true
+    }
+
     public func getEvents(from startDate: Date, to endDate: Date, calendar: String? = nil) async throws -> [CalendarEvent] {
         try await ensureAccess()
 
@@ -92,7 +134,8 @@ public actor CalendarService: CalendarServiceProtocol {
     public func addEvent(title: String, startDate: Date, endDate: Date, calendarName: String? = nil,
                          location: String? = nil, notes: String? = nil, isAllDay: Bool = false,
                          recurrence: RecurrenceRule? = nil, alarmMinutes: [Int]? = nil,
-                         url: String? = nil, availability: EventAvailability? = nil) async throws -> CalendarEvent {
+                         url: String? = nil, availability: EventAvailability? = nil,
+                         attendeeEmails: [String]? = nil, structuredLocation: StructuredLocation? = nil) async throws -> CalendarEvent {
         try await ensureAccess()
 
         let calendar: EKCalendar
@@ -119,7 +162,15 @@ public actor CalendarService: CalendarServiceProtocol {
         event.endDate = endDate
         event.calendar = calendar
         event.isAllDay = isAllDay
-        event.location = location
+
+        // Set location (prefer structured location if provided)
+        if let structLoc = structuredLocation {
+            event.structuredLocation = structLoc.toEKStructuredLocation()
+            event.location = structLoc.title
+        } else if let loc = location {
+            event.location = loc
+        }
+
         event.notes = notes
 
         // Add recurrence rule
@@ -144,6 +195,10 @@ public actor CalendarService: CalendarServiceProtocol {
         if let availability = availability {
             event.availability = availability.ekAvailability
         }
+
+        // Note: EventKit on macOS does not support programmatically adding attendees
+        // The attendeeEmails parameter is kept for API consistency but ignored
+        // Attendees must be added through Calendar.app or via calendar invitations
 
         try store.save(event, span: .thisEvent)
         return CalendarEvent(from: event)
@@ -228,6 +283,94 @@ public actor CalendarService: CalendarServiceProtocol {
             return nil
         }
     }
+
+    public func listAttendees(eventId: String) async throws -> [EventAttendee] {
+        try await ensureAccess()
+
+        guard let event = store.event(withIdentifier: eventId) else {
+            throw CalendarError.eventNotFound(eventId)
+        }
+
+        if let attendees = event.attendees {
+            return attendees.map { EventAttendee(from: $0) }
+        }
+        return []
+    }
+
+    public func detectConflicts(startDate: Date, endDate: Date, calendarName: String? = nil) async throws -> [CalendarEvent] {
+        try await ensureAccess()
+
+        let calendars: [EKCalendar]
+        if let calendarName = calendarName {
+            guard let cal = store.calendars(for: .event).first(where: { $0.title == calendarName }) else {
+                throw CalendarError.calendarNotFound(calendarName)
+            }
+            calendars = [cal]
+        } else {
+            calendars = store.calendars(for: .event)
+        }
+
+        // Get all events in a wider range to catch potential conflicts
+        let searchStart = Foundation.Calendar.current.date(byAdding: .day, value: -1, to: startDate)!
+        let searchEnd = Foundation.Calendar.current.date(byAdding: .day, value: 1, to: endDate)!
+
+        let predicate = store.predicateForEvents(withStart: searchStart, end: searchEnd, calendars: calendars)
+        let ekEvents = store.events(matching: predicate)
+
+        // Filter events that actually conflict with the requested time slot
+        let conflicts = ekEvents.filter { event in
+            // Skip all-day events for conflict detection
+            guard !event.isAllDay else { return false }
+
+            // Check if events overlap
+            // Events overlap if: event.start < slot.end AND event.end > slot.start
+            return event.startDate < endDate && event.endDate > startDate
+        }
+
+        return conflicts.map { CalendarEvent(from: $0) }
+            .sorted { $0.startDate < $1.startDate }
+    }
+
+    public func exportToICS(calendarName: String, startDate: Date, endDate: Date) async throws -> String {
+        try await ensureAccess()
+
+        guard let calendar = store.calendars(for: .event).first(where: { $0.title == calendarName }) else {
+            throw CalendarError.calendarNotFound(calendarName)
+        }
+
+        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: [calendar])
+        let ekEvents = store.events(matching: predicate)
+
+        return ICSGenerator.generate(events: ekEvents, calendarName: calendarName)
+    }
+
+    public func importFromICS(icsContent: String, calendarName: String) async throws -> Int {
+        try await ensureAccess()
+
+        guard let calendar = store.calendars(for: .event).first(where: { $0.title == calendarName }) else {
+            throw CalendarError.calendarNotFound(calendarName)
+        }
+
+        let parser = ICSParser(content: icsContent)
+        let parsedEvents = try parser.parse()
+
+        var importedCount = 0
+        for eventData in parsedEvents {
+            let event = EKEvent(eventStore: store)
+            event.calendar = calendar
+            event.title = eventData.title
+            event.startDate = eventData.startDate
+            event.endDate = eventData.endDate
+            event.isAllDay = eventData.isAllDay
+            event.location = eventData.location
+            event.notes = eventData.notes
+
+            try store.save(event, span: .thisEvent)
+            importedCount += 1
+        }
+
+        return importedCount
+    }
 }
 
 public enum CalendarError: LocalizedError {
@@ -237,6 +380,8 @@ public enum CalendarError: LocalizedError {
     case invalidYear(Int)
     case eventNotFound(String)
     case invalidDateFormat(String)
+    case calendarReadOnly(String)
+    case invalidColor(String)
 
     public var errorDescription: String? {
         switch self {
@@ -252,6 +397,28 @@ public enum CalendarError: LocalizedError {
             return "Event '\(name)' not found"
         case .invalidDateFormat(let date):
             return "Invalid date format '\(date)'"
+        case .calendarReadOnly(let name):
+            return "Calendar '\(name)' is read-only and cannot be modified"
+        case .invalidColor(let color):
+            return "Invalid hex color '\(color)'. Expected format: #RRGGBB"
         }
+    }
+}
+
+extension String {
+    func toCGColor() -> CGColor? {
+        var hexSanitized = self.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        guard hexSanitized.count == 6 else { return nil }
+
+        var rgb: UInt64 = 0
+        Scanner(string: hexSanitized).scanHexInt64(&rgb)
+
+        let r = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+        let g = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+        let b = CGFloat(rgb & 0x0000FF) / 255.0
+
+        return CGColor(red: r, green: g, blue: b, alpha: 1.0)
     }
 }

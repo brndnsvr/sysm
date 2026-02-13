@@ -14,6 +14,15 @@ public protocol ContactsServiceProtocol: Sendable {
     /// - Returns: Array of matching contacts.
     func search(query: String) async throws -> [Contact]
 
+    /// Advanced multi-field search for contacts.
+    /// - Parameters:
+    ///   - name: Optional name to search for.
+    ///   - company: Optional company name to search for.
+    ///   - jobTitle: Optional job title to search for.
+    ///   - email: Optional email to search for.
+    /// - Returns: Array of matching contacts.
+    func advancedSearch(name: String?, company: String?, jobTitle: String?, email: String?) async throws -> [Contact]
+
     /// Retrieves a specific contact by identifier.
     /// - Parameter identifier: The contact's unique identifier.
     /// - Returns: The contact if found, nil otherwise.
@@ -37,6 +46,32 @@ public protocol ContactsServiceProtocol: Sendable {
     /// Retrieves all contact groups.
     /// - Returns: Array of contact groups.
     func getGroups() async throws -> [ContactGroup]
+
+    /// Gets members of a contact group.
+    /// - Parameter groupIdentifier: Group identifier.
+    /// - Returns: Array of contacts in the group.
+    func getGroupMembers(groupIdentifier: String) async throws -> [Contact]
+
+    /// Adds a contact to a group.
+    /// - Parameters:
+    ///   - contactIdentifier: Contact identifier.
+    ///   - groupIdentifier: Group identifier.
+    /// - Returns: True if added successfully.
+    func addContactToGroup(contactIdentifier: String, groupIdentifier: String) async throws -> Bool
+
+    /// Removes a contact from a group.
+    /// - Parameters:
+    ///   - contactIdentifier: Contact identifier.
+    ///   - groupIdentifier: Group identifier.
+    /// - Returns: True if removed successfully.
+    func removeContactFromGroup(contactIdentifier: String, groupIdentifier: String) async throws -> Bool
+
+    /// Renames a contact group.
+    /// - Parameters:
+    ///   - groupIdentifier: Group identifier.
+    ///   - newName: New group name.
+    /// - Returns: True if renamed successfully.
+    func renameGroup(groupIdentifier: String, newName: String) async throws -> Bool
 
     // MARK: - CRUD Operations
 
@@ -96,4 +131,39 @@ public protocol ContactsServiceProtocol: Sendable {
     /// - Parameter identifier: Contact identifier.
     /// - Returns: True if deleted successfully.
     func deleteContact(identifier: String) async throws -> Bool
+
+    // MARK: - Photo Management
+
+    /// Sets a photo for a contact from an image file.
+    /// - Parameters:
+    ///   - identifier: Contact identifier.
+    ///   - imagePath: Path to image file.
+    /// - Returns: True if photo was set successfully.
+    func setContactPhoto(identifier: String, imagePath: String) async throws -> Bool
+
+    /// Retrieves a contact's photo and saves it to a file.
+    /// - Parameters:
+    ///   - identifier: Contact identifier.
+    ///   - outputPath: Path to save the image.
+    /// - Returns: True if photo was saved successfully.
+    func getContactPhoto(identifier: String, outputPath: String) async throws -> Bool
+
+    /// Removes a contact's photo.
+    /// - Parameter identifier: Contact identifier.
+    /// - Returns: True if photo was removed successfully.
+    func removeContactPhoto(identifier: String) async throws -> Bool
+
+    // MARK: - Deduplication
+
+    /// Finds potential duplicate contacts.
+    /// - Parameter similarityThreshold: Threshold for similarity (0.0 to 1.0, default 0.8).
+    /// - Returns: Array of duplicate contact groups.
+    func findDuplicates(similarityThreshold: Double) async throws -> [[Contact]]
+
+    /// Merges two contacts, keeping data from the primary contact.
+    /// - Parameters:
+    ///   - primaryIdentifier: Identifier of contact to keep.
+    ///   - duplicateIdentifier: Identifier of contact to merge and delete.
+    /// - Returns: The merged contact.
+    func mergeContacts(primaryIdentifier: String, duplicateIdentifier: String) async throws -> Contact
 }

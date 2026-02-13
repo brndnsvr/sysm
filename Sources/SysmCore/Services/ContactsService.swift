@@ -44,6 +44,56 @@ public actor ContactsService: ContactsServiceProtocol {
         return contacts.map { Contact(from: $0) }
     }
 
+    public func advancedSearch(name: String?, company: String?, jobTitle: String?, email: String?) async throws -> [Contact] {
+        try await ensureAccess()
+
+        let keysToFetch: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactGivenNameKey as CNKeyDescriptor,
+            CNContactFamilyNameKey as CNKeyDescriptor,
+            CNContactOrganizationNameKey as CNKeyDescriptor,
+            CNContactJobTitleKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactImageDataAvailableKey as CNKeyDescriptor,
+        ]
+
+        var allContacts: [CNContact] = []
+        let request = CNContactFetchRequest(keysToFetch: keysToFetch)
+        try store.enumerateContacts(with: request) { contact, _ in
+            allContacts.append(contact)
+        }
+
+        // Filter contacts based on criteria
+        let filtered = allContacts.filter { contact in
+            var matches = true
+
+            if let name = name?.lowercased() {
+                let fullName = "\(contact.givenName) \(contact.familyName)".lowercased()
+                matches = matches && fullName.contains(name)
+            }
+
+            if let company = company?.lowercased() {
+                matches = matches && contact.organizationName.lowercased().contains(company)
+            }
+
+            if let jobTitle = jobTitle?.lowercased() {
+                matches = matches && contact.jobTitle.lowercased().contains(jobTitle)
+            }
+
+            if let email = email?.lowercased() {
+                let hasMatchingEmail = contact.emailAddresses.contains { emailAddr in
+                    (emailAddr.value as String).lowercased().contains(email)
+                }
+                matches = matches && hasMatchingEmail
+            }
+
+            return matches
+        }
+
+        return filtered.map { Contact(from: $0) }
+    }
+
     // MARK: - Get Contact
 
     public func getContact(identifier: String) async throws -> Contact? {
@@ -189,6 +239,116 @@ public actor ContactsService: ContactsServiceProtocol {
 
         let groups = try store.groups(matching: nil)
         return groups.map { ContactGroup(identifier: $0.identifier, name: $0.name) }
+    }
+
+    public func getGroupMembers(groupIdentifier: String) async throws -> [Contact] {
+        try await ensureAccess()
+
+        let groups = try store.groups(matching: nil)
+        guard let group = groups.first(where: { $0.identifier == groupIdentifier }) else {
+            throw ContactsError.groupNotFound(groupIdentifier)
+        }
+
+        let keysToFetch: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactGivenNameKey as CNKeyDescriptor,
+            CNContactFamilyNameKey as CNKeyDescriptor,
+            CNContactOrganizationNameKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactImageDataAvailableKey as CNKeyDescriptor,
+        ]
+
+        let predicate = CNContact.predicateForContactsInGroup(withIdentifier: group.identifier)
+        let contacts = try store.unifiedContacts(matching: predicate, keysToFetch: keysToFetch)
+        return contacts.map { Contact(from: $0) }
+    }
+
+    public func addContactToGroup(contactIdentifier: String, groupIdentifier: String) async throws -> Bool {
+        try await ensureAccess()
+
+        let groups = try store.groups(matching: nil)
+        guard let group = groups.first(where: { $0.identifier == groupIdentifier }) else {
+            throw ContactsError.groupNotFound(groupIdentifier)
+        }
+
+        guard let mutableGroup = group.mutableCopy() as? CNMutableGroup else {
+            return false
+        }
+
+        let keysToFetch: [CNKeyDescriptor] = [CNContactIdentifierKey as CNKeyDescriptor]
+        let contact: CNContact
+        do {
+            contact = try store.unifiedContact(withIdentifier: contactIdentifier, keysToFetch: keysToFetch)
+        } catch {
+            throw ContactsError.contactNotFound(contactIdentifier)
+        }
+
+        let saveRequest = CNSaveRequest()
+        saveRequest.addMember(contact, to: mutableGroup)
+
+        do {
+            try store.execute(saveRequest)
+            return true
+        } catch {
+            throw ContactsError.saveFailed(error.localizedDescription)
+        }
+    }
+
+    public func removeContactFromGroup(contactIdentifier: String, groupIdentifier: String) async throws -> Bool {
+        try await ensureAccess()
+
+        let groups = try store.groups(matching: nil)
+        guard let group = groups.first(where: { $0.identifier == groupIdentifier }) else {
+            throw ContactsError.groupNotFound(groupIdentifier)
+        }
+
+        guard let mutableGroup = group.mutableCopy() as? CNMutableGroup else {
+            return false
+        }
+
+        let keysToFetch: [CNKeyDescriptor] = [CNContactIdentifierKey as CNKeyDescriptor]
+        let contact: CNContact
+        do {
+            contact = try store.unifiedContact(withIdentifier: contactIdentifier, keysToFetch: keysToFetch)
+        } catch {
+            throw ContactsError.contactNotFound(contactIdentifier)
+        }
+
+        let saveRequest = CNSaveRequest()
+        saveRequest.removeMember(contact, from: mutableGroup)
+
+        do {
+            try store.execute(saveRequest)
+            return true
+        } catch {
+            throw ContactsError.saveFailed(error.localizedDescription)
+        }
+    }
+
+    public func renameGroup(groupIdentifier: String, newName: String) async throws -> Bool {
+        try await ensureAccess()
+
+        let groups = try store.groups(matching: nil)
+        guard let group = groups.first(where: { $0.identifier == groupIdentifier }) else {
+            throw ContactsError.groupNotFound(groupIdentifier)
+        }
+
+        guard let mutableGroup = group.mutableCopy() as? CNMutableGroup else {
+            return false
+        }
+
+        mutableGroup.name = newName
+
+        let saveRequest = CNSaveRequest()
+        saveRequest.update(mutableGroup)
+
+        do {
+            try store.execute(saveRequest)
+            return true
+        } catch {
+            throw ContactsError.saveFailed(error.localizedDescription)
+        }
     }
 
     // MARK: - CRUD Operations
@@ -429,6 +589,320 @@ public actor ContactsService: ContactsServiceProtocol {
             throw ContactsError.saveFailed(error.localizedDescription)
         }
     }
+
+    // MARK: - Photo Management
+
+    public func setContactPhoto(identifier: String, imagePath: String) async throws -> Bool {
+        try await ensureAccess()
+
+        // Load image data
+        guard let imageData = try? Data(contentsOf: URL(fileURLWithPath: imagePath)) else {
+            throw ContactsError.invalidImagePath(imagePath)
+        }
+
+        let keysToFetch: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactImageDataKey as CNKeyDescriptor,
+        ]
+
+        let contact: CNContact
+        do {
+            contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: keysToFetch)
+        } catch {
+            throw ContactsError.contactNotFound(identifier)
+        }
+
+        guard let mutableContact = contact.mutableCopy() as? CNMutableContact else {
+            return false
+        }
+
+        mutableContact.imageData = imageData
+
+        let saveRequest = CNSaveRequest()
+        saveRequest.update(mutableContact)
+
+        do {
+            try store.execute(saveRequest)
+            return true
+        } catch {
+            throw ContactsError.saveFailed(error.localizedDescription)
+        }
+    }
+
+    public func getContactPhoto(identifier: String, outputPath: String) async throws -> Bool {
+        try await ensureAccess()
+
+        let keysToFetch: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactImageDataKey as CNKeyDescriptor,
+            CNContactImageDataAvailableKey as CNKeyDescriptor,
+        ]
+
+        let contact: CNContact
+        do {
+            contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: keysToFetch)
+        } catch {
+            throw ContactsError.contactNotFound(identifier)
+        }
+
+        guard contact.imageDataAvailable, let imageData = contact.imageData else {
+            throw ContactsError.noPhotoAvailable(identifier)
+        }
+
+        do {
+            try imageData.write(to: URL(fileURLWithPath: outputPath))
+            return true
+        } catch {
+            throw ContactsError.saveFailed(error.localizedDescription)
+        }
+    }
+
+    public func removeContactPhoto(identifier: String) async throws -> Bool {
+        try await ensureAccess()
+
+        let keysToFetch: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactImageDataKey as CNKeyDescriptor,
+        ]
+
+        let contact: CNContact
+        do {
+            contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: keysToFetch)
+        } catch {
+            throw ContactsError.contactNotFound(identifier)
+        }
+
+        guard let mutableContact = contact.mutableCopy() as? CNMutableContact else {
+            return false
+        }
+
+        mutableContact.imageData = nil
+
+        let saveRequest = CNSaveRequest()
+        saveRequest.update(mutableContact)
+
+        do {
+            try store.execute(saveRequest)
+            return true
+        } catch {
+            throw ContactsError.saveFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Deduplication
+
+    public func findDuplicates(similarityThreshold: Double = 0.8) async throws -> [[Contact]] {
+        try await ensureAccess()
+
+        let keysToFetch: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactGivenNameKey as CNKeyDescriptor,
+            CNContactFamilyNameKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactOrganizationNameKey as CNKeyDescriptor,
+            CNContactImageDataAvailableKey as CNKeyDescriptor,
+        ]
+
+        var allContacts: [CNContact] = []
+        let request = CNContactFetchRequest(keysToFetch: keysToFetch)
+        try store.enumerateContacts(with: request) { contact, _ in
+            allContacts.append(contact)
+        }
+
+        // Find duplicate groups
+        var duplicateGroups: [[Contact]] = []
+        var processed = Set<String>()
+
+        for i in 0..<allContacts.count {
+            let contact1 = allContacts[i]
+            if processed.contains(contact1.identifier) {
+                continue
+            }
+
+            var group: [Contact] = []
+
+            for j in i..<allContacts.count {
+                let contact2 = allContacts[j]
+                if processed.contains(contact2.identifier) {
+                    continue
+                }
+
+                let similarity = calculateSimilarity(contact1, contact2)
+                if similarity >= similarityThreshold {
+                    if group.isEmpty {
+                        group.append(Contact(from: contact1))
+                    }
+                    group.append(Contact(from: contact2))
+                    processed.insert(contact2.identifier)
+                }
+            }
+
+            if group.count > 1 {
+                duplicateGroups.append(group)
+            }
+        }
+
+        return duplicateGroups
+    }
+
+    public func mergeContacts(primaryIdentifier: String, duplicateIdentifier: String) async throws -> Contact {
+        try await ensureAccess()
+
+        let keysToFetch: [CNKeyDescriptor] = [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactGivenNameKey as CNKeyDescriptor,
+            CNContactFamilyNameKey as CNKeyDescriptor,
+            CNContactMiddleNameKey as CNKeyDescriptor,
+            CNContactOrganizationNameKey as CNKeyDescriptor,
+            CNContactJobTitleKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactPostalAddressesKey as CNKeyDescriptor,
+            CNContactBirthdayKey as CNKeyDescriptor,
+            CNContactNoteKey as CNKeyDescriptor,
+            CNContactImageDataKey as CNKeyDescriptor,
+            CNContactImageDataAvailableKey as CNKeyDescriptor,
+        ]
+
+        let primary = try store.unifiedContact(withIdentifier: primaryIdentifier, keysToFetch: keysToFetch)
+        let duplicate = try store.unifiedContact(withIdentifier: duplicateIdentifier, keysToFetch: keysToFetch)
+
+        guard let mutablePrimary = primary.mutableCopy() as? CNMutableContact else {
+            throw ContactsError.saveFailed("Could not create mutable copy")
+        }
+
+        // Merge emails (avoid duplicates)
+        let existingEmails = Set(primary.emailAddresses.map { $0.value as String })
+        for emailAddr in duplicate.emailAddresses {
+            let email = emailAddr.value as String
+            if !existingEmails.contains(email) {
+                mutablePrimary.emailAddresses.append(emailAddr)
+            }
+        }
+
+        // Merge phone numbers (avoid duplicates)
+        let existingPhones = Set(primary.phoneNumbers.map { $0.value.stringValue })
+        for phoneNum in duplicate.phoneNumbers {
+            let phone = phoneNum.value.stringValue
+            if !existingPhones.contains(phone) {
+                mutablePrimary.phoneNumbers.append(phoneNum)
+            }
+        }
+
+        // Merge notes
+        if !duplicate.note.isEmpty {
+            if !mutablePrimary.note.isEmpty {
+                mutablePrimary.note += "\n\n" + duplicate.note
+            } else {
+                mutablePrimary.note = duplicate.note
+            }
+        }
+
+        // Use duplicate's photo if primary doesn't have one
+        if !primary.imageDataAvailable && duplicate.imageDataAvailable, let imageData = duplicate.imageData {
+            mutablePrimary.imageData = imageData
+        }
+
+        // Save merged contact
+        let saveRequest = CNSaveRequest()
+        saveRequest.update(mutablePrimary)
+
+        // Delete duplicate
+        guard let mutableDuplicate = duplicate.mutableCopy() as? CNMutableContact else {
+            throw ContactsError.saveFailed("Could not create mutable copy")
+        }
+        saveRequest.delete(mutableDuplicate)
+
+        do {
+            try store.execute(saveRequest)
+        } catch {
+            throw ContactsError.saveFailed(error.localizedDescription)
+        }
+
+        return Contact(from: mutablePrimary, detailed: true)
+    }
+
+    private func calculateSimilarity(_ contact1: CNContact, _ contact2: CNContact) -> Double {
+        if contact1.identifier == contact2.identifier {
+            return 0.0 // Same contact, not a duplicate
+        }
+
+        var score = 0.0
+        var weights = 0.0
+
+        // Name similarity (weight: 0.4)
+        let name1 = "\(contact1.givenName) \(contact1.familyName)".lowercased().trimmingCharacters(in: .whitespaces)
+        let name2 = "\(contact2.givenName) \(contact2.familyName)".lowercased().trimmingCharacters(in: .whitespaces)
+        if !name1.isEmpty && !name2.isEmpty {
+            score += levenshteinSimilarity(name1, name2) * 0.4
+            weights += 0.4
+        }
+
+        // Email similarity (weight: 0.4)
+        let emails1 = Set(contact1.emailAddresses.map { ($0.value as String).lowercased() })
+        let emails2 = Set(contact2.emailAddresses.map { ($0.value as String).lowercased() })
+        if !emails1.isEmpty && !emails2.isEmpty {
+            let intersection = emails1.intersection(emails2)
+            if !intersection.isEmpty {
+                score += 1.0 * 0.4 // Exact email match
+                weights += 0.4
+            } else {
+                weights += 0.4
+            }
+        }
+
+        // Phone similarity (weight: 0.2)
+        let phones1 = Set(contact1.phoneNumbers.map { normalizePhone($0.value.stringValue) })
+        let phones2 = Set(contact2.phoneNumbers.map { normalizePhone($0.value.stringValue) })
+        if !phones1.isEmpty && !phones2.isEmpty {
+            let intersection = phones1.intersection(phones2)
+            if !intersection.isEmpty {
+                score += 1.0 * 0.2
+                weights += 0.2
+            } else {
+                weights += 0.2
+            }
+        }
+
+        return weights > 0 ? score / weights : 0.0
+    }
+
+    private func levenshteinSimilarity(_ s1: String, _ s2: String) -> Double {
+        let distance = levenshteinDistance(s1, s2)
+        let maxLen = max(s1.count, s2.count)
+        return maxLen > 0 ? 1.0 - (Double(distance) / Double(maxLen)) : 1.0
+    }
+
+    private func levenshteinDistance(_ s1: String, _ s2: String) -> Int {
+        let a = Array(s1)
+        let b = Array(s2)
+        var matrix = [[Int]](repeating: [Int](repeating: 0, count: b.count + 1), count: a.count + 1)
+
+        for i in 0...a.count {
+            matrix[i][0] = i
+        }
+        for j in 0...b.count {
+            matrix[0][j] = j
+        }
+
+        for i in 1...a.count {
+            for j in 1...b.count {
+                let cost = a[i - 1] == b[j - 1] ? 0 : 1
+                matrix[i][j] = min(
+                    matrix[i - 1][j] + 1,
+                    matrix[i][j - 1] + 1,
+                    matrix[i - 1][j - 1] + cost
+                )
+            }
+        }
+
+        return matrix[a.count][b.count]
+    }
+
+    private func normalizePhone(_ phone: String) -> String {
+        return phone.components(separatedBy: CharacterSet.decimalDigits.inverted).joined()
+    }
 }
 
 // MARK: - Models
@@ -499,6 +973,7 @@ public struct Contact: Codable {
     public let urls: [String]?
     public let socialProfiles: [ContactSocialProfile]?
     public let relations: [ContactRelation]?
+    public let hasPhoto: Bool
 
     public var fullName: String {
         "\(givenName) \(familyName)".trimmingCharacters(in: .whitespaces)
@@ -512,6 +987,7 @@ public struct Contact: Codable {
         self.organization = contact.organizationName.isEmpty ? nil : contact.organizationName
         self.emails = contact.emailAddresses.map { $0.value as String }
         self.phones = contact.phoneNumbers.map { $0.value.stringValue }
+        self.hasPhoto = contact.imageDataAvailable
 
         if detailed {
             self.jobTitle = contact.jobTitle.isEmpty ? nil : contact.jobTitle
@@ -582,6 +1058,9 @@ public enum ContactsError: LocalizedError {
     case accessDenied
     case contactNotFound(String)
     case saveFailed(String)
+    case invalidImagePath(String)
+    case noPhotoAvailable(String)
+    case groupNotFound(String)
 
     public var errorDescription: String? {
         switch self {
@@ -591,6 +1070,12 @@ public enum ContactsError: LocalizedError {
             return "Contact '\(id)' not found"
         case .saveFailed(let reason):
             return "Failed to save contact: \(reason)"
+        case .invalidImagePath(let path):
+            return "Invalid or unreadable image file: \(path)"
+        case .noPhotoAvailable(let id):
+            return "Contact '\(id)' has no photo"
+        case .groupNotFound(let id):
+            return "Contact group '\(id)' not found"
         }
     }
 }

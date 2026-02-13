@@ -14,6 +14,24 @@ public protocol CalendarServiceProtocol: Sendable {
     /// - Returns: Array of calendar names.
     func listCalendars() async throws -> [String]
 
+    /// Lists all calendars with detailed information.
+    /// - Returns: Array of Calendar objects with full details.
+    func listCalendarsDetailed() async throws -> [Calendar]
+
+    /// Renames a calendar.
+    /// - Parameters:
+    ///   - name: Current calendar name.
+    ///   - newName: New calendar name.
+    /// - Returns: `true` if renamed successfully.
+    func renameCalendar(name: String, newName: String) async throws -> Bool
+
+    /// Sets a calendar's color.
+    /// - Parameters:
+    ///   - name: Calendar name.
+    ///   - hexColor: Hex color string (e.g., "#FF5733").
+    /// - Returns: `true` if color was set successfully.
+    func setCalendarColor(name: String, hexColor: String) async throws -> Bool
+
     /// Retrieves events within a date range.
     /// - Parameters:
     ///   - startDate: Start of the date range.
@@ -50,11 +68,14 @@ public protocol CalendarServiceProtocol: Sendable {
     ///   - alarmMinutes: Optional array of alarm times (minutes before event).
     ///   - url: Optional URL associated with the event.
     ///   - availability: Event availability status (busy, free, tentative).
+    ///   - attendeeEmails: Optional array of attendee email addresses.
+    ///   - structuredLocation: Optional location with coordinates for geofencing.
     /// - Returns: The created event.
     func addEvent(title: String, startDate: Date, endDate: Date, calendarName: String?,
                   location: String?, notes: String?, isAllDay: Bool,
                   recurrence: RecurrenceRule?, alarmMinutes: [Int]?,
-                  url: String?, availability: EventAvailability?) async throws -> CalendarEvent
+                  url: String?, availability: EventAvailability?,
+                  attendeeEmails: [String]?, structuredLocation: StructuredLocation?) async throws -> CalendarEvent
 
     /// Gets a single event by ID.
     /// - Parameter id: The event identifier.
@@ -78,6 +99,34 @@ public protocol CalendarServiceProtocol: Sendable {
     /// Validates and returns events that may have issues.
     /// - Returns: Array of events with validation concerns.
     func validateEvents() async throws -> [CalendarEvent]
+
+    /// Lists all attendees for an event.
+    /// - Parameter eventId: The event identifier.
+    /// - Returns: Array of attendees with their RSVP status.
+    func listAttendees(eventId: String) async throws -> [EventAttendee]
+
+    /// Detects scheduling conflicts for a given time slot.
+    /// - Parameters:
+    ///   - startDate: Start of the time slot to check.
+    ///   - endDate: End of the time slot to check.
+    ///   - calendarName: Optional calendar to check (checks all if nil).
+    /// - Returns: Array of events that conflict with the time slot.
+    func detectConflicts(startDate: Date, endDate: Date, calendarName: String?) async throws -> [CalendarEvent]
+
+    /// Exports calendar events to iCalendar format.
+    /// - Parameters:
+    ///   - calendarName: Calendar to export.
+    ///   - startDate: Start of date range.
+    ///   - endDate: End of date range.
+    /// - Returns: iCalendar formatted string.
+    func exportToICS(calendarName: String, startDate: Date, endDate: Date) async throws -> String
+
+    /// Imports events from an iCalendar file.
+    /// - Parameters:
+    ///   - icsContent: iCalendar formatted content.
+    ///   - calendarName: Calendar to import into.
+    /// - Returns: Number of events imported.
+    func importFromICS(icsContent: String, calendarName: String) async throws -> Int
 }
 
 // Default implementations for backward compatibility
@@ -86,6 +135,7 @@ extension CalendarServiceProtocol {
                          location: String? = nil, notes: String? = nil, isAllDay: Bool = false) async throws -> CalendarEvent {
         try await addEvent(title: title, startDate: startDate, endDate: endDate, calendarName: calendarName,
                           location: location, notes: notes, isAllDay: isAllDay,
-                          recurrence: nil, alarmMinutes: nil, url: nil, availability: nil)
+                          recurrence: nil, alarmMinutes: nil, url: nil, availability: nil,
+                          attendeeEmails: nil, structuredLocation: nil)
     }
 }

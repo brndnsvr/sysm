@@ -23,6 +23,20 @@ struct CalendarAdd: AsyncParsableCommand {
     @Option(name: .long, help: "Event location")
     var location: String?
 
+    @Option(name: .long, help: "Location latitude (requires longitude)")
+    var latitude: Double?
+
+    @Option(name: .long, help: "Location longitude (requires latitude)")
+    var longitude: Double?
+
+    @Option(name: .long, help: "Location radius in meters (default: 100)")
+    var radius: Double?
+
+    // Note: EventKit limitation - attendees can only be read, not added programmatically on macOS
+    // This option is kept for future compatibility but currently has no effect
+    @Option(name: .long, parsing: .upToNextOption, help: "Attendee email addresses (note: macOS EventKit limitation - attendees cannot be added programmatically)")
+    var attendee: [String] = []
+
     @Option(name: .long, help: "Event notes")
     var notes: String?
 
@@ -57,6 +71,12 @@ struct CalendarAdd: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
+        // Warn if attendees specified (EventKit limitation)
+        if !attendee.isEmpty {
+            print("Warning: macOS EventKit does not support adding attendees programmatically.")
+            print("Attendees can only be added through Calendar.app or calendar invitations.")
+        }
+
         guard let startDate = Services.dateParser().parse(start) else {
             throw CalendarError.invalidDateFormat(start)
         }
@@ -96,6 +116,19 @@ struct CalendarAdd: AsyncParsableCommand {
             )
         }
 
+        // Build structured location if coordinates provided
+        var structuredLocation: StructuredLocation? = nil
+        if let lat = latitude, let lon = longitude {
+            let locTitle = location ?? "Location"
+            structuredLocation = StructuredLocation(
+                title: locTitle,
+                address: nil,
+                latitude: lat,
+                longitude: lon,
+                radius: radius ?? 100.0
+            )
+        }
+
         let service = Services.calendar()
         let event = try await service.addEvent(
             title: title,
@@ -108,7 +141,9 @@ struct CalendarAdd: AsyncParsableCommand {
             recurrence: recurrence,
             alarmMinutes: remind.isEmpty ? nil : remind,
             url: url,
-            availability: showAs
+            availability: showAs,
+            attendeeEmails: attendee.isEmpty ? nil : attendee,
+            structuredLocation: structuredLocation
         )
 
         if json {
@@ -121,6 +156,12 @@ struct CalendarAdd: AsyncParsableCommand {
             print("  End: \(formatter.string(from: event.endDate))")
             if let loc = event.location, !loc.isEmpty {
                 print("  Location: \(loc)")
+                if let structLoc = event.structuredLocation, let lat = structLoc.latitude, let lon = structLoc.longitude {
+                    print("    Coordinates: \(lat), \(lon)")
+                }
+            }
+            if let attendeeList = event.attendees, !attendeeList.isEmpty {
+                print("  Attendees: \(attendeeList.map { $0.email ?? $0.name ?? "Unknown" }.joined(separator: ", "))")
             }
             if let rule = event.recurrenceRule {
                 print("  Repeats: \(rule.description)")

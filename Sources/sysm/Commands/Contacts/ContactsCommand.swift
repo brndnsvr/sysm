@@ -16,6 +16,9 @@ struct ContactsCommand: AsyncParsableCommand {
             ContactsPhone.self,
             ContactsBirthdays.self,
             ContactsGroups.self,
+            ContactsPhoto.self,
+            ContactsDuplicates.self,
+            ContactsMerge.self,
         ]
     )
 }

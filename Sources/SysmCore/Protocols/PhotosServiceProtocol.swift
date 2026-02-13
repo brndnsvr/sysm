@@ -13,6 +13,37 @@ public protocol PhotosServiceProtocol: Sendable {
     /// - Returns: Array of albums.
     func listAlbums() async throws -> [PhotoAlbum]
 
+    /// Creates a new photo album.
+    /// - Parameter name: Album name.
+    /// - Returns: The created album.
+    func createAlbum(name: String) async throws -> PhotoAlbum
+
+    /// Deletes a photo album.
+    /// - Parameter albumId: Album identifier.
+    /// - Returns: True if deleted successfully.
+    func deleteAlbum(albumId: String) async throws -> Bool
+
+    /// Renames a photo album.
+    /// - Parameters:
+    ///   - albumId: Album identifier.
+    ///   - newName: New album name.
+    /// - Returns: True if renamed successfully.
+    func renameAlbum(albumId: String, newName: String) async throws -> Bool
+
+    /// Adds photos to an album.
+    /// - Parameters:
+    ///   - albumId: Album identifier.
+    ///   - assetIds: Array of asset identifiers to add.
+    /// - Returns: Number of photos added.
+    func addPhotosToAlbum(albumId: String, assetIds: [String]) async throws -> Int
+
+    /// Removes photos from an album.
+    /// - Parameters:
+    ///   - albumId: Album identifier.
+    ///   - assetIds: Array of asset identifiers to remove.
+    /// - Returns: Number of photos removed.
+    func removePhotosFromAlbum(albumId: String, assetIds: [String]) async throws -> Int
+
     /// Lists photos, optionally filtered by album.
     /// - Parameters:
     ///   - albumId: Optional album identifier to filter by.
@@ -61,4 +92,41 @@ public protocol PhotosServiceProtocol: Sendable {
     /// - Parameter assetId: The asset identifier.
     /// - Returns: Metadata for the asset.
     func getMetadata(assetId: String) async throws -> AssetMetadata
+
+    // MARK: - People & Faces
+
+    /// Lists all people/faces detected in the Photos library.
+    /// - Returns: Array of people with their names and photo counts.
+    func listPeople() async throws -> [PhotoPerson]
+
+    /// Searches photos by person name.
+    /// - Parameter personName: Name of the person to search for.
+    /// - Returns: Array of photos containing the person.
+    func searchByPerson(personName: String) async throws -> [PhotoAsset]
+
+    // MARK: - Metadata & Keywords
+
+    /// Sets the title for a photo.
+    /// - Parameters:
+    ///   - assetId: Asset identifier.
+    ///   - title: New title.
+    /// - Returns: True if successful.
+    func setTitle(assetId: String, title: String) async throws -> Bool
+
+    /// Sets the description for a photo.
+    /// - Parameters:
+    ///   - assetId: Asset identifier.
+    ///   - description: New description.
+    /// - Returns: True if successful.
+    func setDescription(assetId: String, description: String) async throws -> Bool
+
+    /// Marks a photo as favorite.
+    /// - Parameter assetId: Asset identifier.
+    /// - Returns: True if successful.
+    func setFavorite(assetId: String, isFavorite: Bool) async throws -> Bool
+
+    /// Marks a photo as hidden.
+    /// - Parameter assetId: Asset identifier.
+    /// - Returns: True if successful.
+    func setHidden(assetId: String, isHidden: Bool) async throws -> Bool
 }
