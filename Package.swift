@@ -36,5 +36,10 @@ let package = Package(
             dependencies: ["SysmCore"],
             path: "Tests/SysmCoreTests"
         ),
+        .testTarget(
+            name: "sysmTests",
+            dependencies: ["SysmCore"],
+            path: "Tests/sysmTests"
+        ),
     ]
 )

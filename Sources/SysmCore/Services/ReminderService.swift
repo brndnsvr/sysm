@@ -376,7 +376,7 @@ public enum ReminderError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .accessDenied:
-            return "Reminders access denied. Grant permission in System Settings > Privacy & Security > Reminders"
+            return "Reminders access denied"
         case .listNotFound(let name):
             return "Reminder list '\(name)' not found"
         case .listAlreadyExists(let name):
@@ -384,11 +384,77 @@ public enum ReminderError: LocalizedError {
         case .noValidSource:
             return "No valid source found for creating reminder lists"
         case .invalidDateFormat(let date):
-            return "Invalid date format '\(date)'. Use YYYY-MM-DD or natural language like 'tomorrow 2pm'"
+            return "Invalid date format: '\(date)'"
         case .invalidYear(let year):
             return "Year \(year) out of valid range (2000-2100)"
         case .reminderNotFound(let name):
             return "Reminder '\(name)' not found"
+        }
+    }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .accessDenied:
+            return """
+            Grant reminders access in System Settings:
+            1. Open System Settings
+            2. Navigate to Privacy & Security > Reminders
+            3. Enable access for Terminal (or your terminal app)
+            4. Restart sysm
+
+            Quick: open "x-apple.systempreferences:com.apple.preference.security?Privacy_Reminders"
+            """
+        case .listNotFound(let name):
+            return """
+            The list '\(name)' doesn't exist.
+
+            Try:
+            - List available lists: sysm reminders lists
+            - Create the list: sysm reminders create-list "\(name)"
+            - Use default list (omit --list flag)
+            """
+        case .listAlreadyExists(let name):
+            return """
+            A list named '\(name)' already exists.
+
+            Try:
+            - Use a different name
+            - List existing lists: sysm reminders lists
+            """
+        case .noValidSource:
+            return """
+            Cannot create reminder lists because no valid source is available.
+
+            This usually means:
+            - Reminders app hasn't been opened yet
+            - No iCloud or local account is configured
+
+            Try:
+            1. Open Reminders app
+            2. Wait for it to sync
+            3. Try the command again
+            """
+        case .invalidDateFormat(let date):
+            return """
+            Invalid date format: '\(date)'
+
+            Supported formats:
+            - "tomorrow 2pm"
+            - "2024-12-25 14:00"
+            - "next monday 9am"
+            - "friday"
+            """
+        case .invalidYear:
+            return "Use a year between 2000 and 2100"
+        case .reminderNotFound(let name):
+            return """
+            Reminder '\(name)' not found.
+
+            Try:
+            - List reminders: sysm reminders list
+            - Include completed: sysm reminders list --all
+            - Use reminder ID instead of name
+            """
         }
     }
 }

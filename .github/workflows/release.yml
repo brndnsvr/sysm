@@ -1,0 +1,84 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: macos-15
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '16.2'
+
+      - name: Build release binary
+        run: |
+          swift build -c release
+          cp .build/release/sysm sysm-macos-arm64
+
+      - name: Create universal binary
+        run: |
+          # Build for both architectures if possible
+          # For now, just use arm64
+          chmod +x sysm-macos-arm64
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -z "$PREV_TAG" ]; then
+            # First release, get all commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+          else
+            # Get commits since previous tag
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+          fi
+
+          # Save to file for multiline handling
+          echo "$CHANGELOG" > CHANGELOG.txt
+
+          # Set output
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat CHANGELOG.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: sysm-macos-arm64
+          body: |
+            ## Changes in this release
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Installation
+
+            ### Direct Download
+            ```bash
+            curl -L -o sysm https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/sysm-macos-arm64
+            chmod +x sysm
+            sudo mv sysm /usr/local/bin/
+            ```
+
+            ### Homebrew (if tap is set up)
+            ```bash
+            brew tap brndnsvr/tap
+            brew install sysm
+            ```
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

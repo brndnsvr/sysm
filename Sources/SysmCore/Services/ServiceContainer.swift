@@ -1,13 +1,57 @@
 import Foundation
 
 /// Global service container for dependency injection.
-/// Allows test substitution via factory pattern.
-/// Instances are cached for performance and thread-safety.
+///
+/// This container uses the factory pattern to enable dependency injection and test substitution.
+/// Service instances are lazily created and cached for performance.
+///
+/// ## Thread-Safety Model
+///
+/// This class is marked as `@unchecked Sendable` with explicit thread-safety guarantees:
+///
+/// 1. **NSLock Protection**: All cached instance access is protected by an NSLock, ensuring
+///    only one thread can read/write cached instances at a time.
+///
+/// 2. **Lazy Initialization**: Services are created on first access within the lock, preventing
+///    race conditions during initialization.
+///
+/// 3. **Actor Services**: Framework-based services (Calendar, Contacts, Photos, Reminders) are
+///    declared as `actor`, providing automatic thread-safety for their mutable state (EventStore,
+///    ContactStore, etc.).
+///
+/// 4. **Struct Services**: AppleScript-based services (Mail, Notes, Messages, etc.) are stateless
+///    `struct` types that don't require synchronization.
+///
+/// 5. **Factory Pattern**: Factories are `var` properties to allow test substitution, but are
+///    only written during test setup (single-threaded) and read during service creation (lock-protected).
+///
+/// ## Usage
+///
+/// ```swift
+/// // Production code
+/// let calendar = ServiceContainer.shared.calendar()
+/// let events = try await calendar.getTodayEvents()
+///
+/// // Test code
+/// ServiceContainer.shared.calendarFactory = { MockCalendarService() }
+/// let calendar = ServiceContainer.shared.calendar()
+/// // ... test with mock
+/// ```
+///
+/// ## Why @unchecked Sendable is Safe
+///
+/// - The lock ensures exclusive access to all mutable state (cached instances)
+/// - Factories are only mutated during single-threaded test setup
+/// - Returned service instances are either actors (thread-safe) or structs (no shared state)
+/// - The singleton pattern ensures a single shared container across all threads
+///
 public final class ServiceContainer: @unchecked Sendable {
     public static let shared = ServiceContainer()
 
     // MARK: - Thread Safety
 
+    /// NSLock protecting all cached instance access.
+    /// Ensures only one thread can create or retrieve cached services at a time.
     private let lock = NSLock()
 
     // MARK: - Service Factories

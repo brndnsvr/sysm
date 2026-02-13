@@ -1,4 +1,4 @@
-.PHONY: build release bundle release-signed notarize release-notarized install install-signed install-notarized install-remote clean test help all-release completions install-completions
+.PHONY: build release bundle release-signed notarize release-notarized install install-signed install-notarized install-remote clean test lint format help all-release completions install-completions
 
 # Default target
 all: release
@@ -131,6 +131,14 @@ clean:
 test:
 	swift test
 
+# Run SwiftLint
+lint:
+	@./scripts/lint.sh
+
+# Run SwiftFormat
+format:
+	@./scripts/format.sh
+
 # Regenerate shell completion scripts
 completions: build
 	@echo "Generating shell completions..."
@@ -175,6 +183,8 @@ help:
 	@echo "  make install-completions- Install zsh completions to system path"
 	@echo "  make clean              - Remove build artifacts"
 	@echo "  make test               - Run tests"
+	@echo "  make lint               - Run SwiftLint"
+	@echo "  make format             - Run SwiftFormat"
 	@echo ""
 	@echo "For WeatherKit + distribution (recommended):"
 	@echo "  make install-notarized"

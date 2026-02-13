@@ -933,4 +933,89 @@ public enum MailError: LocalizedError {
             return "Invalid output directory: '\(path)'"
         }
     }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .appleScriptError(let message):
+            return """
+            AppleScript execution failed: \(message)
+
+            This may require automation permission:
+            1. Open System Settings
+            2. Navigate to Privacy & Security > Automation
+            3. Find Terminal (or your terminal app)
+            4. Enable Mail
+            5. Restart sysm
+            """
+        case .mailNotRunning:
+            return """
+            Mail app must be running to access messages.
+
+            Try:
+            1. Open Mail app: open -a Mail
+            2. Wait a few seconds for it to start
+            3. Run the command again
+            """
+        case .messageNotFound:
+            return """
+            Message not found with that identifier.
+
+            Try:
+            - List recent messages: sysm mail inbox --limit 20
+            - Search messages: sysm mail search "subject"
+            - Check different account: sysm mail inbox --account "Work"
+            """
+        case .mailboxNotFound(let name):
+            return """
+            Mailbox '\(name)' not found.
+
+            Try:
+            - List mailboxes: sysm mail mailboxes
+            - Use standard names: "Inbox", "Sent", "Drafts", "Archive"
+            - Include account: sysm mail mailboxes --account "Work"
+            """
+        case .accountNotFound(let name):
+            return """
+            Mail account '\(name)' not found.
+
+            Try:
+            - List accounts: sysm mail accounts
+            - Check spelling and capitalization
+            - Omit --account to search all accounts
+            """
+        case .sendFailed(let reason):
+            return """
+            Failed to send message: \(reason)
+
+            Try:
+            - Verify recipient email address is valid
+            - Check your internet connection
+            - Ensure Mail app is configured correctly
+            - Try sending from Mail app directly first
+            """
+        case .invalidDateRange:
+            return """
+            Invalid date range. Start date must be before end date.
+
+            Example:
+            sysm mail search --after "2024-01-01" --before "2024-12-31"
+            """
+        case .noRecipientsSpecified:
+            return """
+            At least one recipient is required to send a message.
+
+            Example:
+            sysm mail send --to "user@example.com" --subject "Test" --body "Message"
+            """
+        case .invalidOutputDirectory(let path):
+            return """
+            Output directory doesn't exist or isn't writable: \(path)
+
+            Try:
+            - Create the directory: mkdir -p "\(path)"
+            - Check permissions: ls -ld "\(path)"
+            - Use a different directory
+            """
+        }
+    }
 }

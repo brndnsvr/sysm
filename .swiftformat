@@ -1,0 +1,66 @@
+# SwiftFormat Configuration for sysm
+# 4 spaces, 120 character line length
+
+# Version
+--swiftversion 6.0
+
+# Indentation
+--indent 4
+--indentcase false
+--ifdef indent
+--xcodeindentation enabled
+
+# Line length
+--maxwidth 120
+
+# Wrapping
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+
+# Spacing
+--trimwhitespace always
+--commas always
+--semicolons inline
+--elseposition same-line
+--guardelse next-line
+
+# Organization
+--organizetypes actor,class,enum,struct
+--structthreshold 0
+--classthreshold 0
+--enumthreshold 0
+--extensionacl on-extension
+
+# Import sorting
+--importgrouping testable-bottom
+
+# Header comments
+--header "//\n//  {file}\n//  sysm\n//"
+
+# Modern Swift patterns
+--self remove
+--selfrequired @autoclosure,@escaping,@noescape
+--stripunusedargs closure-only
+--patternlet inline
+--redundanttype inferred
+--empty void
+--trailingclosures
+
+# Disable specific rules
+--disable blankLinesBetweenScopes
+--disable consecutiveSpaces
+
+# Enable specific rules
+--enable isEmpty
+--enable sortedImports
+--enable redundantReturn
+--enable redundantSelf
+--enable unusedArguments
+
+# Exclusions
+--exclude .build
+--exclude .swiftpm
+--exclude docs
+--exclude scripts

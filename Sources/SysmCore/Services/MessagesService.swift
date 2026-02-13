@@ -147,4 +147,36 @@ public enum MessagesError: LocalizedError {
             return "Failed to send message: \(message)"
         }
     }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .appleScriptError:
+            return """
+            Grant automation permission:
+            1. Open System Settings
+            2. Navigate to Privacy & Security > Automation
+            3. Find Terminal and enable Messages
+            4. Restart sysm
+            """
+        case .messagesNotRunning:
+            return """
+            Messages app must be running.
+
+            Try:
+            1. Open Messages: open -a Messages
+            2. Sign in to iMessage if needed
+            3. Run the command again
+            """
+        case .sendFailed:
+            return """
+            Message send failed.
+
+            Try:
+            - Verify recipient phone number or iMessage email
+            - Ensure Messages is signed in to iMessage
+            - Check internet connection
+            - Verify automation permission is granted
+            """
+        }
+    }
 }

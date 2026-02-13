@@ -275,13 +275,36 @@ public enum MusicError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .musicNotRunning:
-            return "Music.app is not running. Launch it first."
+            return "Music.app is not running"
         case .invalidVolume(let level):
-            return "Invalid volume level: \(level). Use 0-100."
+            return "Invalid volume level: \(level)"
         case .appleScriptError(let message):
             return "Music error: \(message)"
         case .notPlaying:
             return "No track is currently playing"
+        }
+    }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .musicNotRunning:
+            return """
+            Music app must be running.
+
+            Try:
+            1. Open Music app: open -a Music
+            2. Wait a few seconds for it to start
+            3. Run the command again
+
+            Grant automation permission if prompted:
+            System Settings > Privacy & Security > Automation > Terminal > Music
+            """
+        case .invalidVolume(let level):
+            return "Volume must be between 0 and 100. You provided: \(level)"
+        case .appleScriptError:
+            return "Grant automation permission: System Settings > Privacy & Security > Automation > Terminal > Music"
+        case .notPlaying:
+            return "Start playing music in Music.app first, then try: sysm music status"
         }
     }
 }

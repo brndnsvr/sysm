@@ -413,4 +413,37 @@ public enum NotesError: LocalizedError {
             return "Export failed: \(reason)"
         }
     }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .appleScriptError:
+            return """
+            AppleScript execution failed. Grant automation permission:
+            1. Open System Settings
+            2. Navigate to Privacy & Security > Automation
+            3. Find Terminal and enable Notes
+            4. Restart sysm
+            """
+        case .folderNotFound:
+            return """
+            Folder not found.
+
+            Try:
+            - List folders: sysm notes folders
+            - Create folder: sysm notes create-folder "Folder Name"
+            - Use default folder (omit --folder flag)
+            """
+        case .noteNotFound:
+            return """
+            Note not found.
+
+            Try:
+            - List notes: sysm notes list
+            - Search notes: sysm notes search "title"
+            - Check different folder: sysm notes list --folder "Other"
+            """
+        case .exportFailed(let reason):
+            return "Export failed: \(reason). Check output directory and permissions."
+        }
+    }
 }

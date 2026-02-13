@@ -595,35 +595,17 @@ public actor PhotosService: PhotosServiceProtocol {
     public func setTitle(assetId: String, title: String) async throws -> Bool {
         try await ensureAccess()
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
-        guard let asset = assets.firstObject else {
-            throw PhotosError.assetNotFound(assetId)
-        }
-
-        try await library.performChanges {
-            let request = PHAssetChangeRequest(for: asset)
-            // Note: PhotoKit doesn't expose title editing on macOS
-            // This is a limitation of the framework
-        }
-
-        return true
+        // PhotoKit on macOS does not expose APIs for editing photo metadata.
+        // Throw an error with clear explanation rather than silently succeeding.
+        throw PhotosError.metadataEditingNotSupported
     }
 
     public func setDescription(assetId: String, description: String) async throws -> Bool {
         try await ensureAccess()
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
-        guard let asset = assets.firstObject else {
-            throw PhotosError.assetNotFound(assetId)
-        }
-
-        try await library.performChanges {
-            let request = PHAssetChangeRequest(for: asset)
-            // Note: PhotoKit doesn't expose description editing on macOS
-            // This is a limitation of the framework
-        }
-
-        return true
+        // PhotoKit on macOS does not expose APIs for editing photo metadata.
+        // Throw an error with clear explanation rather than silently succeeding.
+        throw PhotosError.metadataEditingNotSupported
     }
 
     public func setFavorite(assetId: String, isFavorite: Bool) async throws -> Bool {
@@ -695,11 +677,12 @@ public enum PhotosError: LocalizedError {
     case exportFailed(String)
     case albumCreationFailed(String)
     case cannotModifySmartAlbum
+    case metadataEditingNotSupported
 
     public var errorDescription: String? {
         switch self {
         case .accessDenied:
-            return "Photos access denied. Grant permission in System Settings > Privacy & Security > Photos"
+            return "Photos access denied"
         case .albumNotFound(let id):
             return "Album not found: \(id)"
         case .assetNotFound(let id):
@@ -709,7 +692,78 @@ public enum PhotosError: LocalizedError {
         case .albumCreationFailed(let name):
             return "Failed to create album '\(name)'"
         case .cannotModifySmartAlbum:
-            return "Cannot modify smart albums (e.g., Favorites, Recently Added)"
+            return "Cannot modify smart albums"
+        case .metadataEditingNotSupported:
+            return "Photo metadata editing is not supported on macOS"
+        }
+    }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .accessDenied:
+            return """
+            Grant photos access in System Settings:
+            1. Open System Settings
+            2. Navigate to Privacy & Security > Photos
+            3. Enable "Full Access" for Terminal (or your terminal app)
+            4. Restart sysm
+
+            Quick: open "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos"
+            """
+        case .albumNotFound:
+            return """
+            Album not found with that identifier.
+
+            Try:
+            - List all albums: sysm photos albums
+            - Use the album ID from the list
+            """
+        case .assetNotFound:
+            return """
+            Photo not found with that identifier.
+
+            Try:
+            - List recent photos: sysm photos recent --limit 20
+            - Search by date: sysm photos search-date --from "2024-01-01"
+            - List photos in album: sysm photos album-photos <album-id>
+            """
+        case .exportFailed(let reason):
+            return """
+            Export failed: \(reason)
+
+            Try:
+            - Verify the output directory exists and is writable
+            - Ensure you have sufficient disk space
+            - Check that the photo is not in the cloud (download it first in Photos app)
+            """
+        case .albumCreationFailed(let name):
+            return """
+            Failed to create album '\(name)'.
+
+            Try:
+            - Check if an album with that name already exists
+            - Ensure Photos app is not in read-only mode
+            - Try a different album name
+            """
+        case .cannotModifySmartAlbum:
+            return """
+            Smart albums (Favorites, Recently Added, etc.) cannot be modified.
+
+            These albums are automatically managed by Photos.app.
+            To organize photos, create a custom album:
+            sysm photos create-album "My Album"
+            """
+        case .metadataEditingNotSupported:
+            return """
+            PhotoKit on macOS does not expose APIs for editing photo titles and descriptions.
+
+            This is a framework limitation, not a sysm limitation.
+
+            Workarounds:
+            - Edit metadata in Photos.app directly
+            - Use third-party tools like exiftool
+            - Use Photos.app AppleScript (limited support)
+            """
         }
     }
 }

@@ -386,7 +386,7 @@ public enum CalendarError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .accessDenied:
-            return "Calendar access denied. Grant permission in System Settings > Privacy & Security > Calendars"
+            return "Calendar access denied"
         case .calendarNotFound(let name):
             return "Calendar '\(name)' not found"
         case .noDefaultCalendar:
@@ -401,6 +401,69 @@ public enum CalendarError: LocalizedError {
             return "Calendar '\(name)' is read-only and cannot be modified"
         case .invalidColor(let color):
             return "Invalid hex color '\(color)'. Expected format: #RRGGBB"
+        }
+    }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .accessDenied:
+            return """
+            Grant calendar access in System Settings:
+            1. Open System Settings
+            2. Navigate to Privacy & Security > Calendars
+            3. Enable access for Terminal (or your terminal app)
+            4. Restart sysm
+
+            Quick: open "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars"
+            """
+        case .calendarNotFound(let name):
+            return """
+            The calendar '\(name)' doesn't exist.
+
+            Try:
+            - List available calendars: sysm calendar list
+            - Use default calendar (omit --calendar flag)
+            """
+        case .noDefaultCalendar:
+            return """
+            No default calendar is configured.
+
+            Try:
+            - Specify a calendar: sysm calendar add "Event" --calendar "Work"
+            - List available calendars: sysm calendar list
+            """
+        case .invalidYear:
+            return "Use a year between 2000 and 2100"
+        case .eventNotFound(let title):
+            return """
+            Event '\(title)' not found.
+
+            Try:
+            - List today's events: sysm calendar today
+            - Search events: sysm calendar search '\(title)'
+            - List all calendars: sysm calendar list
+            """
+        case .invalidDateFormat(let date):
+            return """
+            Invalid date format: '\(date)'
+
+            Supported formats:
+            - "tomorrow 2pm"
+            - "2024-12-25 14:00"
+            - "next monday 9am"
+            - "today"
+            """
+        case .calendarReadOnly:
+            return "This calendar cannot be modified. Use a different calendar or create a new one."
+        case .invalidColor:
+            return """
+            Hex color must be in format #RRGGBB
+
+            Examples:
+            - #FF5733 (red-orange)
+            - #3498DB (blue)
+            - #2ECC71 (green)
+            """
         }
     }
 }

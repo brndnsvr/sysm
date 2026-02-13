@@ -1065,7 +1065,7 @@ public enum ContactsError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .accessDenied:
-            return "Contacts access denied. Grant permission in System Settings > Privacy & Security > Contacts"
+            return "Contacts access denied"
         case .contactNotFound(let id):
             return "Contact '\(id)' not found"
         case .saveFailed(let reason):
@@ -1076,6 +1076,58 @@ public enum ContactsError: LocalizedError {
             return "Contact '\(id)' has no photo"
         case .groupNotFound(let id):
             return "Contact group '\(id)' not found"
+        }
+    }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .accessDenied:
+            return """
+            Grant contacts access in System Settings:
+            1. Open System Settings
+            2. Navigate to Privacy & Security > Contacts
+            3. Enable access for Terminal (or your terminal app)
+            4. Restart sysm
+
+            Quick: open "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts"
+            """
+        case .contactNotFound:
+            return """
+            Contact not found with that identifier.
+
+            Try:
+            - Search by name: sysm contacts search "name"
+            - Search by email: sysm contacts search-email "email"
+            - Search by phone: sysm contacts search-phone "phone"
+            """
+        case .saveFailed(let reason):
+            return """
+            Contact save failed: \(reason)
+
+            Try:
+            - Verify all required fields are provided
+            - Check that the contact data is valid
+            - Ensure Contacts app is not in read-only mode
+            """
+        case .invalidImagePath(let path):
+            return """
+            Image file not found or not readable: \(path)
+
+            Verify:
+            - File exists at the specified path
+            - File is a valid image format (JPEG, PNG)
+            - You have read permission for the file
+            """
+        case .noPhotoAvailable:
+            return "This contact has no photo. Set one with: sysm contacts set-photo <id> <image-path>"
+        case .groupNotFound:
+            return """
+            Contact group not found with that identifier.
+
+            Try:
+            - List groups: sysm contacts groups
+            - Verify the group ID is correct
+            """
         }
     }
 }
