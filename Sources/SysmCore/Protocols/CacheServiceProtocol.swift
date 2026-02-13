@@ -1,10 +1,13 @@
 import Foundation
 
-/// Protocol defining cache operations for reminder tracking state.
+/// Protocol defining cache operations for general-purpose caching and reminder tracking.
 ///
-/// This protocol handles persistent storage of reminder tracking state in a JSON cache file
-/// (`~/.sysm-cache.json`). Tracks which reminders have been seen, their completion status,
-/// and associated project tags for context-aware reminder management.
+/// This protocol provides two types of caching:
+/// 1. **General-purpose cache**: Service responses with TTL (time-to-live) support
+/// 2. **Reminder tracking**: Persistent state tracking for reminders
+///
+/// The cache is stored in `~/.sysm_cache.json` and supports automatic expiration,
+/// invalidation, and size bounds.
 ///
 /// ## Cache Storage
 ///
@@ -66,6 +69,99 @@ public protocol CacheServiceProtocol: Sendable {
     /// - Parameter cache: The cache object to save.
     /// - Throws: File system or JSON encoding errors.
     func saveCache(_ cache: SysmCache) throws
+
+    // MARK: - General-Purpose Cache
+
+    /// Gets a cached value if it exists and hasn't expired.
+    ///
+    /// Retrieves a typed value from the cache. Returns `nil` if the key doesn't exist
+    /// or if the cached entry has exceeded its TTL.
+    ///
+    /// - Parameters:
+    ///   - key: Cache key in format "{service}:{operation}:{param}".
+    ///   - type: The type to decode the cached value as.
+    /// - Returns: The cached value if found and not expired, otherwise `nil`.
+    /// - Throws: Decoding errors if the cached data doesn't match the expected type.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// let cache = CacheService()
+    /// if let events: [CalendarEvent] = try? cache.get("calendar:today", as: [CalendarEvent].self) {
+    ///     print("Using cached events")
+    /// } else {
+    ///     let events = try await calendarService.getTodayEvents()
+    ///     try cache.set("calendar:today", value: events, ttl: 30)
+    /// }
+    /// ```
+    func get<T: Codable>(_ key: String, as type: T.Type) throws -> T?
+
+    /// Stores a value in the cache with optional TTL.
+    ///
+    /// Caches a value with a time-to-live. After TTL seconds, the entry expires
+    /// and future `get` calls will return `nil`.
+    ///
+    /// - Parameters:
+    ///   - key: Cache key in format "{service}:{operation}:{param}".
+    ///   - value: The value to cache (must be Codable).
+    ///   - ttl: Time-to-live in seconds. Use 0 for no expiration.
+    /// - Throws: Encoding or file system errors.
+    ///
+    /// ## Recommended TTL Values
+    ///
+    /// - Calendar queries: 30 seconds
+    /// - Contacts search: 300 seconds (5 minutes)
+    /// - Photo albums: 60 seconds (1 minute)
+    /// - Safari bookmarks: 30 seconds
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// let cache = CacheService()
+    /// let events = try await calendarService.getTodayEvents()
+    /// try cache.set("calendar:today", value: events, ttl: 30)
+    /// ```
+    func set<T: Codable>(_ key: String, value: T, ttl: TimeInterval) throws
+
+    /// Invalidates (removes) a specific cache entry.
+    ///
+    /// Removes a single entry from the cache by key. Has no effect if key doesn't exist.
+    ///
+    /// - Parameter key: The cache key to invalidate.
+    /// - Throws: File system errors.
+    func invalidate(_ key: String) throws
+
+    /// Invalidates all cache entries matching a key prefix.
+    ///
+    /// Removes all entries whose keys start with the given prefix. Useful for
+    /// invalidating all entries for a specific service.
+    ///
+    /// - Parameter prefix: Key prefix to match (e.g., "calendar:", "contacts:").
+    /// - Throws: File system errors.
+    ///
+    /// ## Example
+    ///
+    /// ```swift
+    /// // Invalidate all calendar cache entries
+    /// try cache.invalidatePrefix("calendar:")
+    /// ```
+    func invalidatePrefix(_ prefix: String) throws
+
+    /// Clears all general-purpose cache entries.
+    ///
+    /// Removes all cached service responses but preserves reminder tracking state.
+    /// Use this to reset the cache without losing reminder tracking.
+    ///
+    /// - Throws: File system errors.
+    func clearCache() throws
+
+    /// Removes expired cache entries.
+    ///
+    /// Scans the cache and removes all entries that have exceeded their TTL.
+    /// Called automatically during cache operations but can be invoked manually.
+    ///
+    /// - Throws: File system errors.
+    func cleanupExpired() throws
 
     // MARK: - Seen Reminders
 
