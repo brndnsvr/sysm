@@ -236,7 +236,7 @@ cmd_package() {
 }
 
 cmd_github() {
-    # Future: create GitHub release
+    # Create GitHub release with binary
     log "Creating GitHub release..."
 
     if [[ -z "$GITHUB_REPO" ]]; then
@@ -257,13 +257,59 @@ cmd_github() {
     local archive
     archive="${BINARY_NAME}-${version}-macos-$(uname -m).tar.gz"
 
+    # Check if release already exists
+    if gh release view "$tag" --repo "$GITHUB_REPO" &> /dev/null; then
+        log_warn "Release ${tag} already exists"
+        log "Use: gh release delete ${tag} --repo ${GITHUB_REPO} --yes"
+        log "Then re-run this script"
+        return 1
+    fi
+
     log "Creating release ${tag}..."
-    run gh release create "$tag" "$archive" \
-        --repo "$GITHUB_REPO" \
-        --title "${BINARY_NAME} ${version}" \
-        --generate-notes
+    if [[ "$DRY_RUN" != "true" ]]; then
+        gh release create "$tag" "$archive" \
+            --repo "$GITHUB_REPO" \
+            --title "${BINARY_NAME} ${version}" \
+            --generate-notes
+    else
+        echo "[dry-run] gh release create ${tag} ${archive}"
+    fi
 
     log_success "Released ${tag} to GitHub"
+
+    # Trigger Homebrew tap update if configured
+    if [[ -n "$HOMEBREW_TAP" ]]; then
+        log "Triggering Homebrew tap update..."
+
+        # Get SHA256 of the tarball
+        local tarball_url="https://github.com/${GITHUB_REPO}/archive/${tag}.tar.gz"
+        local sha256
+
+        if [[ "$DRY_RUN" != "true" ]]; then
+            sha256=$(curl -sL "$tarball_url" | shasum -a 256 | cut -d' ' -f1)
+
+            # Trigger repository dispatch event
+            gh api repos/"${HOMEBREW_TAP}"/dispatches \
+                --method POST \
+                --field event_type=new-release \
+                --field "client_payload[version]=${version}" \
+                --field "client_payload[sha256]=${sha256}" || \
+                log_warn "Failed to trigger tap update (you may need to update manually)"
+        else
+            echo "[dry-run] Trigger ${HOMEBREW_TAP} update workflow"
+        fi
+    fi
+
+    # Print install instructions
+    echo ""
+    log_success "Release complete!"
+    echo ""
+    echo "Users can install with:"
+    echo "  ${BLUE}bash -c \"\$(curl -fsSL https://raw.githubusercontent.com/${GITHUB_REPO}/main/scripts/install.sh)\"${NC}"
+    echo ""
+    echo "Or via Homebrew (if tap is set up):"
+    echo "  ${BLUE}brew tap ${HOMEBREW_TAP}${NC}"
+    echo "  ${BLUE}brew install ${BINARY_NAME}${NC}"
 }
 
 cmd_homebrew() {
