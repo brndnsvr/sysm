@@ -231,6 +231,138 @@ public struct NotesService: NotesServiceProtocol {
         _ = try runAppleScript(script)
     }
 
+    // MARK: - Advanced Operations
+
+    public func searchNotes(query: String, searchBody: Bool, folder: String? = nil) throws -> [Note] {
+        let escapedQuery = appleScript.escape(query)
+        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
+
+        let script = """
+        tell application "Notes"
+            try
+                set targetFolder to \(folderFilter)
+                set folderName to name of targetFolder
+                set output to ""
+                repeat with n in notes of targetFolder
+                    set matches to false
+                    set noteName to name of n
+
+                    -- Search in title
+                    if noteName contains "\(escapedQuery)" then
+                        set matches to true
+                    end if
+
+                    -- Optionally search in body
+                    \(searchBody ? """
+                    if not matches then
+                        set noteBody to body of n
+                        if noteBody contains "\(escapedQuery)" then
+                            set matches to true
+                        end if
+                    end if
+                    """ : "")
+
+                    if matches then
+                        if output is not "" then set output to output & "###NOTE###"
+                        set noteData to ""
+                        set noteData to noteData & (id of n) & "|||FIELD|||"
+                        set noteData to noteData & noteName & "|||FIELD|||"
+                        set noteData to noteData & folderName & "|||FIELD|||"
+                        set noteData to noteData & (body of n) & "|||FIELD|||"
+                        set noteData to noteData & ((creation date of n) as string) & "|||FIELD|||"
+                        set noteData to noteData & ((modification date of n) as string)
+                        set output to output & noteData
+                    end if
+                end repeat
+                return output
+            on error
+                return ""
+            end try
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.isEmpty { return [] }
+
+        return result.components(separatedBy: "###NOTE###").compactMap { noteData in
+            let parts = noteData.components(separatedBy: "|||FIELD|||")
+            guard parts.count >= 6 else { return nil }
+            return Note(
+                id: parts[0],
+                name: parts[1],
+                folder: parts[2],
+                body: parts[3],
+                creationDate: parseAppleScriptDate(parts[4]),
+                modificationDate: parseAppleScriptDate(parts[5])
+            )
+        }
+    }
+
+    public func moveNote(id: String, toFolder: String) throws {
+        let escapedId = appleScript.escape(id)
+        let escapedFolder = appleScript.escape(toFolder)
+
+        let script = """
+        tell application "Notes"
+            try
+                set n to note id "\(escapedId)"
+                set targetFolder to folder "\(escapedFolder)"
+                move n to targetFolder
+                return "ok"
+            on error errMsg
+                return "error:" & errMsg
+            end try
+        end tell
+        """
+
+        let result = try runAppleScript(script)
+        if result.hasPrefix("error:") {
+            let errorMsg = String(result.dropFirst(6))
+            if errorMsg.contains("folder") {
+                throw NotesError.folderNotFound(toFolder)
+            } else {
+                throw NotesError.noteNotFound(id)
+            }
+        }
+    }
+
+    public func appendToNote(id: String, content: String) throws {
+        let escapedId = appleScript.escape(id)
+        let escapedContent = appleScript.escape(content)
+
+        let script = """
+        tell application "Notes"
+            set n to note id "\(escapedId)"
+            set currentBody to body of n
+            set body of n to currentBody & "<br><br>\(escapedContent)"
+        end tell
+        """
+
+        _ = try runAppleScript(script)
+    }
+
+    public func duplicateNote(id: String, newName: String? = nil) throws -> String {
+        let escapedId = appleScript.escape(id)
+
+        // If no new name provided, get the original and append " copy"
+        let nameScript = newName.map { "\"\(appleScript.escape($0))\"" } ?? """
+        (name of note id "\(escapedId)") & " copy"
+        """
+
+        let script = """
+        tell application "Notes"
+            set originalNote to note id "\(escapedId)"
+            set noteFolder to container of originalNote
+            set noteBody to body of originalNote
+            set noteName to \(nameScript)
+            set newNote to make new note at noteFolder with properties {name:noteName, body:noteBody}
+            return id of newNote
+        end tell
+        """
+
+        return try runAppleScript(script).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     private func runAppleScript(_ script: String) throws -> String {
         do {
             return try appleScript.run(script, identifier: "notes")

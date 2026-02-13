@@ -56,4 +56,33 @@ public protocol NotesServiceProtocol: Sendable {
     /// - Parameter name: The folder name.
     /// - Note: This will also delete all notes in the folder.
     func deleteFolder(name: String) throws
+
+    // MARK: - Advanced Operations
+
+    /// Searches notes by title and/or body content.
+    /// - Parameters:
+    ///   - query: Search query string.
+    ///   - searchBody: True to search in body, false for title only.
+    ///   - folder: Optional folder to limit search scope.
+    /// - Returns: Array of matching notes.
+    func searchNotes(query: String, searchBody: Bool, folder: String?) throws -> [Note]
+
+    /// Moves a note to a different folder.
+    /// - Parameters:
+    ///   - id: The note's unique identifier.
+    ///   - toFolder: The destination folder name.
+    func moveNote(id: String, toFolder: String) throws
+
+    /// Appends content to an existing note.
+    /// - Parameters:
+    ///   - id: The note's unique identifier.
+    ///   - content: Content to append.
+    func appendToNote(id: String, content: String) throws
+
+    /// Duplicates a note.
+    /// - Parameters:
+    ///   - id: The note's unique identifier.
+    ///   - newName: Optional new name for the duplicate.
+    /// - Returns: The ID of the duplicated note.
+    func duplicateNote(id: String, newName: String?) throws -> String
 }
