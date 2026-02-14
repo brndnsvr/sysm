@@ -3,17 +3,14 @@
 # Default target
 all: release
 
-# Code signing identity (set via environment or override on command line)
-SIGNING_IDENTITY ?= 
+# Load local overrides (not checked into git)
+-include Makefile.local
 
-# Bundle ID must match App ID registered in Apple Developer Portal
+# Code signing identity (set in Makefile.local or environment)
+SIGNING_IDENTITY ?=
 BUNDLE_ID ?= com.brndnsvr.sysm
-
-# Keychain profile for notarization (created with: xcrun notarytool store-credentials)
-NOTARY_PROFILE ?= 
-
-# Provisioning profile UUID (from Apple Developer Portal)
-PROFILE_UUID ?= <PROFILE_UUID>
+NOTARY_PROFILE ?=
+PROFILE_UUID ?=
 
 # Version
 VERSION ?= 1.0.0
@@ -104,8 +101,8 @@ install-notarized: release-notarized
 	@echo ""
 	@echo "Test with: sysm weather current \"New York\""
 
-# Remote installation variables
-REMOTE_HOST ?= <REMOTE_HOST>
+# Remote installation variables (set in Makefile.local or environment)
+REMOTE_HOST ?=
 REMOTE_PREFIX ?= $(HOME)/bin
 
 # Build and install to remote host via SSH

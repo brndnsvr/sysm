@@ -12,6 +12,9 @@ xcuserdata/
 /completions/
 Sources/sysm/Version.swift
 
+# Local configuration (secrets, signing identities)
+Makefile.local
+
 # OS files
 .DS_Store
 
