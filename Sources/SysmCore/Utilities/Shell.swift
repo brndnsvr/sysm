@@ -187,15 +187,15 @@ public enum Shell {
             inputPipe.fileHandleForWriting.closeFile()
         }
 
+        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+
         task.waitUntilExit()
         timeoutWorkItem?.cancel()
 
         if timedOut {
             throw Error.timeout(timeout ?? 0)
         }
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
 
         let stdout = String(data: outputData, encoding: .utf8)?
             .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

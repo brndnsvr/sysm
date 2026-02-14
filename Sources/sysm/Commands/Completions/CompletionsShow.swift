@@ -20,9 +20,9 @@ struct CompletionsShow: ParsableCommand {
         process.standardError = FileHandle.nullDevice
 
         try process.run()
-        process.waitUntilExit()
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
         if let script = String(data: data, encoding: .utf8) {
             print(script, terminator: "")
         }

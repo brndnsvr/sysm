@@ -4,6 +4,18 @@ import Foundation
 public actor ContactsService: ContactsServiceProtocol {
     private let store = CNContactStore()
 
+    /// Keys required by Contact.init(from:) for non-detailed initialization.
+    private static let contactBasicKeys: [CNKeyDescriptor] = [
+        CNContactIdentifierKey as CNKeyDescriptor,
+        CNContactGivenNameKey as CNKeyDescriptor,
+        CNContactFamilyNameKey as CNKeyDescriptor,
+        CNContactMiddleNameKey as CNKeyDescriptor,
+        CNContactOrganizationNameKey as CNKeyDescriptor,
+        CNContactEmailAddressesKey as CNKeyDescriptor,
+        CNContactPhoneNumbersKey as CNKeyDescriptor,
+        CNContactImageDataAvailableKey as CNKeyDescriptor,
+    ]
+
     // MARK: - Access
 
     public func ensureAccess() async throws {
@@ -29,14 +41,7 @@ public actor ContactsService: ContactsServiceProtocol {
     public func search(query: String) async throws -> [Contact] {
         try await ensureAccess()
 
-        let keysToFetch: [CNKeyDescriptor] = [
-            CNContactIdentifierKey as CNKeyDescriptor,
-            CNContactGivenNameKey as CNKeyDescriptor,
-            CNContactFamilyNameKey as CNKeyDescriptor,
-            CNContactOrganizationNameKey as CNKeyDescriptor,
-            CNContactEmailAddressesKey as CNKeyDescriptor,
-            CNContactPhoneNumbersKey as CNKeyDescriptor,
-        ]
+        let keysToFetch = Self.contactBasicKeys
 
         let predicate = CNContact.predicateForContacts(matchingName: query)
 
@@ -47,15 +52,8 @@ public actor ContactsService: ContactsServiceProtocol {
     public func advancedSearch(name: String?, company: String?, jobTitle: String?, email: String?) async throws -> [Contact] {
         try await ensureAccess()
 
-        let keysToFetch: [CNKeyDescriptor] = [
-            CNContactIdentifierKey as CNKeyDescriptor,
-            CNContactGivenNameKey as CNKeyDescriptor,
-            CNContactFamilyNameKey as CNKeyDescriptor,
-            CNContactOrganizationNameKey as CNKeyDescriptor,
+        let keysToFetch: [CNKeyDescriptor] = Self.contactBasicKeys + [
             CNContactJobTitleKey as CNKeyDescriptor,
-            CNContactEmailAddressesKey as CNKeyDescriptor,
-            CNContactPhoneNumbersKey as CNKeyDescriptor,
-            CNContactImageDataAvailableKey as CNKeyDescriptor,
         ]
 
         var allContacts: [CNContact] = []
@@ -249,15 +247,7 @@ public actor ContactsService: ContactsServiceProtocol {
             throw ContactsError.groupNotFound(groupIdentifier)
         }
 
-        let keysToFetch: [CNKeyDescriptor] = [
-            CNContactIdentifierKey as CNKeyDescriptor,
-            CNContactGivenNameKey as CNKeyDescriptor,
-            CNContactFamilyNameKey as CNKeyDescriptor,
-            CNContactOrganizationNameKey as CNKeyDescriptor,
-            CNContactEmailAddressesKey as CNKeyDescriptor,
-            CNContactPhoneNumbersKey as CNKeyDescriptor,
-            CNContactImageDataAvailableKey as CNKeyDescriptor,
-        ]
+        let keysToFetch = Self.contactBasicKeys
 
         let predicate = CNContact.predicateForContactsInGroup(withIdentifier: group.identifier)
         let contacts = try store.unifiedContacts(matching: predicate, keysToFetch: keysToFetch)
@@ -694,15 +684,7 @@ public actor ContactsService: ContactsServiceProtocol {
     public func findDuplicates(similarityThreshold: Double = 0.8) async throws -> [[Contact]] {
         try await ensureAccess()
 
-        let keysToFetch: [CNKeyDescriptor] = [
-            CNContactIdentifierKey as CNKeyDescriptor,
-            CNContactGivenNameKey as CNKeyDescriptor,
-            CNContactFamilyNameKey as CNKeyDescriptor,
-            CNContactEmailAddressesKey as CNKeyDescriptor,
-            CNContactPhoneNumbersKey as CNKeyDescriptor,
-            CNContactOrganizationNameKey as CNKeyDescriptor,
-            CNContactImageDataAvailableKey as CNKeyDescriptor,
-        ]
+        let keysToFetch = Self.contactBasicKeys
 
         var allContacts: [CNContact] = []
         let request = CNContactFetchRequest(keysToFetch: keysToFetch)

@@ -57,9 +57,9 @@ struct CompletionsInstall: ParsableCommand {
         process.standardError = FileHandle.nullDevice
 
         try process.run()
-        process.waitUntilExit()
 
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
         guard let script = String(data: data, encoding: .utf8), !script.isEmpty else {
             throw ValidationError("Failed to generate completion script")
         }

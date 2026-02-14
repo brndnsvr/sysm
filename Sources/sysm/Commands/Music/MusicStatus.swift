@@ -13,19 +13,23 @@ struct MusicStatus: ParsableCommand {
 
     func run() throws {
         let service = Services.music()
-        guard let status = try service.getStatus() else {
-            print("No track information available")
-            return
-        }
-
-        if status.state == "stopped" && status.name.isEmpty {
-            print("Music is stopped (no track playing)")
-            return
-        }
+        let status = try service.getStatus()
 
         if json {
-            try OutputFormatter.printJSON(status)
+            let output = status ?? NowPlaying(
+                name: "", artist: "", album: "",
+                duration: 0, position: 0, state: "stopped"
+            )
+            try OutputFormatter.printJSON(output)
         } else {
+            guard let status else {
+                print("No track information available")
+                return
+            }
+            if status.state == "stopped" && status.name.isEmpty {
+                print("Music is stopped (no track playing)")
+                return
+            }
             print("Now Playing:\n")
             print(status.formatted())
         }
