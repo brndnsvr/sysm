@@ -281,12 +281,11 @@ cmd_github() {
     if [[ -n "$HOMEBREW_TAP" ]]; then
         log "Triggering Homebrew tap update..."
 
-        # Get SHA256 of the tarball
-        local tarball_url="https://github.com/${GITHUB_REPO}/archive/${tag}.tar.gz"
+        # Get SHA256 of the binary tarball (already on disk from cmd_package)
         local sha256
 
         if [[ "$DRY_RUN" != "true" ]]; then
-            sha256=$(curl -sL "$tarball_url" | shasum -a 256 | cut -d' ' -f1)
+            sha256=$(shasum -a 256 "$archive" | cut -d' ' -f1)
 
             # Trigger repository dispatch event
             gh api repos/"${HOMEBREW_TAP}"/dispatches \
