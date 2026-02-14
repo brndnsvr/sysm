@@ -28,16 +28,12 @@ cd sysm
 
 # Build and install to ~/bin
 make install
-
-# Or with code signing (required for WeatherKit)
-make install-notarized
 ```
 
 ### Requirements
 
 - macOS 13.0+
 - Xcode 15+ or Swift 5.9+ toolchain
-- Apple Developer account (for WeatherKit support)
 
 ## Commands
 
@@ -171,7 +167,18 @@ sysm weather current "Paris" --backend open-meteo
 
 ## Code Signing
 
-For full functionality including WeatherKit:
+Code signing is only needed for WeatherKit support. All other commands work without signing. Use `--backend open-meteo` as an alternative that requires no signing.
+
+To build with WeatherKit, you need your own Apple Developer credentials. Create a `Makefile.local` in the project root:
+
+```makefile
+SIGNING_IDENTITY = Developer ID Application: Your Name (YOUR_TEAM_ID)
+BUNDLE_ID = com.yourorg.sysm
+NOTARY_PROFILE = your-notary-profile
+PROFILE_UUID = your-provisioning-profile-uuid
+```
+
+Then build and install:
 
 ```bash
 make install-notarized
@@ -179,11 +186,12 @@ make install-notarized
 
 This creates a signed and notarized app bundle at `/opt/sysm/sysm.app` with a symlink at `/usr/local/bin/sysm`.
 
-Requirements:
+Prerequisites:
 - Apple Developer Program membership
 - Developer ID Application certificate
-- App ID with WeatherKit capability
-- Provisioning profile
+- App ID registered with WeatherKit capability
+- Provisioning profile for the App ID
+- Notary credentials stored in keychain (`xcrun notarytool store-credentials`)
 
 See `make help` for all build options.
 
