@@ -162,12 +162,15 @@ public enum Shell {
             inputPipe = nil
         }
 
-        // Timeout handling
+        // Timeout handling with thread-safe flag
+        let timedOutLock = NSLock()
         var timedOut = false
         var timeoutWorkItem: DispatchWorkItem?
         if let timeout = timeout {
             timeoutWorkItem = DispatchWorkItem {
+                timedOutLock.lock()
                 timedOut = true
+                timedOutLock.unlock()
                 task.terminate()
             }
             DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timeoutWorkItem!)
@@ -187,13 +190,28 @@ public enum Shell {
             inputPipe.fileHandleForWriting.closeFile()
         }
 
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        // Read stdout and stderr concurrently to avoid pipe buffer deadlocks.
+        // If both pipes fill their buffer (~64KB), sequential reads would deadlock.
+        var outputData = Data()
+        var errorData = Data()
+        let readGroup = DispatchGroup()
+
+        readGroup.enter()
+        DispatchQueue.global().async {
+            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            readGroup.leave()
+        }
+        errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        readGroup.wait()
 
         task.waitUntilExit()
         timeoutWorkItem?.cancel()
 
-        if timedOut {
+        timedOutLock.lock()
+        let didTimeout = timedOut
+        timedOutLock.unlock()
+
+        if didTimeout {
             throw Error.timeout(timeout ?? 0)
         }
 

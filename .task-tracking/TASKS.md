@@ -1,6 +1,6 @@
 # Project Tasks
 
-> **Next ID:** T-018
+> **Next ID:** T-033
 
 ## Inbox
 
@@ -17,6 +17,171 @@ Ready to start or blocked.
 ## Backlog
 
 Prioritized future work (top = highest priority).
+
+### T-018: Fix ICS Unescape Order Bug
+
+> **Created:** 2026-02-15
+> **Labels:** bug
+
+`unescapeICS()` in `ICSParser.swift` unescapes `\\n` before `\\\\`, which causes double-unescaping. A literal `\\n` in ICS content becomes a newline instead of staying as `\n`. Must unescape `\\\\` → `\` first, then `\\n` → newline, `\\,` → `,`, `\\;` → `;`. Also missing RFC 5545 line folding support (lines wrapped with CRLF + space).
+
+**File:** `Sources/SysmCore/Utilities/ICSParser.swift` (lines ~106-112)
+
+---
+
+### T-019: Escape Message IDs in MailService AppleScript
+
+> **Created:** 2026-02-15
+> **Labels:** bug, security
+
+Several MailService methods interpolate message IDs directly into AppleScript without escaping. While message IDs are typically numeric in Mail.app, the pattern is unsafe if IDs contain special characters. Methods affected: `getMessage()`, `markMessage()`, `deleteMessage()`, `moveMessage()`, `flagMessage()`.
+
+**File:** `Sources/SysmCore/Services/MailService.swift`
+
+---
+
+### T-020: Add Confirmation Prompt to CalendarDelete
+
+> **Created:** 2026-02-15
+> **Labels:** feature, safety
+
+`CalendarDelete` command deletes events without confirmation. Other destructive commands (MailDelete, ContactsDelete) use confirmation prompts. Add a `--force` flag and prompt for confirmation when not specified.
+
+**File:** `Sources/sysm/Commands/Calendar/CalendarDelete.swift`
+
+---
+
+### T-021: Fix Swallowed Errors in ReminderService
+
+> **Created:** 2026-02-15
+> **Labels:** bug
+
+ReminderService silently swallows errors in some methods by returning empty arrays or default values instead of propagating failures. This makes it impossible to distinguish "no reminders found" from "access denied" or "service unavailable". Audit all methods and ensure errors propagate appropriately.
+
+**File:** `Sources/SysmCore/Services/ReminderService.swift`
+
+---
+
+### T-022: Add Input Validation Across Commands
+
+> **Created:** 2026-02-15
+> **Labels:** feature, security
+
+Many commands pass user input directly to services without validation. Add validation for: empty strings where names are required, excessively long strings, invalid characters in identifiers, date ranges that make no sense (end before start). Use ArgumentParser's `validate()` method where possible.
+
+**Files:** Various command files in `Sources/sysm/Commands/`
+
+---
+
+### T-023: Standardize Error Handling Patterns
+
+> **Created:** 2026-02-15
+> **Labels:** refactor
+
+Inconsistent error handling across services. Some throw domain errors, some throw generic errors, some return optionals. Standardize: all services should throw domain-specific `LocalizedError` enums. Remove any remaining `try?` that silently swallows important failures.
+
+**Files:** Various service files in `Sources/SysmCore/Services/`
+
+---
+
+### T-024: Increase Test Coverage
+
+> **Created:** 2026-02-15
+> **Labels:** test
+
+Current test coverage is ~28% (142 tests, mostly for AppleScript, DateParser, Cache, ICS, OutputFormatter). Key gaps: no tests for PluginManager, ScriptRunner, LaunchdService, Shell utility, any CLI commands. Target 50%+ coverage. Add unit tests with mocked protocols for service layer, and argument parsing tests for commands.
+
+**Files:** `Tests/SysmCoreTests/`, `Tests/IntegrationTests/`
+
+---
+
+### T-025: Review and Complete Entitlements
+
+> **Created:** 2026-02-15
+> **Labels:** infra
+
+Verify entitlements file includes all required capabilities for the services used: Calendar, Contacts, Photos, Reminders, Location (for weather geocoding). Missing entitlements may cause silent failures on first run or after notarization.
+
+**File:** Entitlements plist (if exists), or create one
+
+---
+
+### T-026: Add CI/CD Pipeline
+
+> **Created:** 2026-02-15
+> **Labels:** infra
+
+No CI/CD pipeline exists. Add GitHub Actions workflow for: `swift build` on push, `swift test` on PR, lint checks, release binary builds. Consider caching SPM dependencies for faster builds.
+
+**File:** `.github/workflows/ci.yml` (to create)
+
+---
+
+### T-027: Deduplicate Confirmation Dialog Code
+
+> **Created:** 2026-02-15
+> **Labels:** refactor, cleanup
+
+At least 7 commands implement nearly identical `readLine()`-based confirmation prompts (e.g., "Are you sure? [y/N]"). Extract to a shared utility like `func confirmAction(_ message: String) -> Bool` on a helper enum or as an extension.
+
+**Files:** Various command files (MailDelete, ContactsDelete, ReminderDelete, etc.)
+
+---
+
+### T-028: Deduplicate Year Validation Logic
+
+> **Created:** 2026-02-15
+> **Labels:** refactor, cleanup
+
+Year range validation (2000-2100) is duplicated between `CalendarService.validateEvents()` and `CalendarError.invalidYear`. Extract to a shared constant or validation method.
+
+**Files:** `Sources/SysmCore/Services/CalendarService.swift`
+
+---
+
+### T-029: Fix readLine() Blocking in Async Contexts
+
+> **Created:** 2026-02-15
+> **Labels:** bug
+
+Several `AsyncParsableCommand` implementations call `readLine()` for user confirmation. `readLine()` blocks the current thread, which in an async context blocks the cooperative thread pool. Move confirmation prompts to synchronous commands, or wrap in `Task { @MainActor in }` to avoid blocking the pool.
+
+**Files:** Various async command files that use `readLine()`
+
+---
+
+### T-030: Add Recursion Depth Limit to AnyCodable
+
+> **Created:** 2026-02-15
+> **Labels:** bug, security
+
+`AnyCodable` decodes arbitrarily nested JSON structures without a depth limit. Maliciously crafted cache files could cause stack overflow. Add a max recursion depth (e.g., 32 levels) to the decoder.
+
+**File:** `Sources/SysmCore/Utilities/AnyCodable.swift`
+
+---
+
+### T-031: Align Package.swift Platform Target with CLAUDE.md
+
+> **Created:** 2026-02-15
+> **Labels:** infra
+
+`Package.swift` specifies `.macOS(.v13)` but `CLAUDE.md` says deployment targets are "macOS 15+, iOS 18+". Either update Package.swift to `.macOS(.v15)` to match documented requirements, or update CLAUDE.md to reflect the actual minimum.
+
+**File:** `Package.swift` (line 7), `CLAUDE.md`
+
+---
+
+### T-032: Remove Unused Variable in PhotosService.listPeople()
+
+> **Created:** 2026-02-15
+> **Labels:** cleanup
+
+Compiler warning: `let persons = PHAssetCollection.fetchAssetCollections(...)` at line ~522 in PhotosService.swift is never used. Either remove it or replace with `_`.
+
+**File:** `Sources/SysmCore/Services/PhotosService.swift` (line ~522)
+
+---
 
 ### T-010: Extract Shared MailMessage Parser Helper
 

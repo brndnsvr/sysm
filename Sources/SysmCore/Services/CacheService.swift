@@ -3,6 +3,7 @@ import Foundation
 public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     private let cachePath: URL
     private let maxCacheEntries = 1000 // Prevent unbounded growth
+    private let lock = NSLock()
 
     public init() {
         self.cachePath = FileManager.default.homeDirectoryForCurrentUser
@@ -33,6 +34,9 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     // MARK: - General-Purpose Cache
 
     public func get<T: Codable>(_ key: String, as type: T.Type) throws -> T? {
+        lock.lock()
+        defer { lock.unlock() }
+
         let cache = loadCache()
 
         // Try to get and decode the entry
@@ -44,6 +48,9 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     }
 
     public func set<T: Codable>(_ key: String, value: T, ttl: TimeInterval = 0) throws {
+        lock.lock()
+        defer { lock.unlock() }
+
         var cache = loadCache()
 
         // Create cache entry with TTL
@@ -62,12 +69,18 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     }
 
     public func invalidate(_ key: String) throws {
+        lock.lock()
+        defer { lock.unlock() }
+
         var cache = loadCache()
         cache.cache.removeValue(forKey: key)
         try saveCache(cache)
     }
 
     public func invalidatePrefix(_ prefix: String) throws {
+        lock.lock()
+        defer { lock.unlock() }
+
         var cache = loadCache()
         let keysToRemove = cache.cache.keys.filter { $0.hasPrefix(prefix) }
         for key in keysToRemove {
@@ -77,12 +90,18 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     }
 
     public func clearCache() throws {
+        lock.lock()
+        defer { lock.unlock() }
+
         var cache = loadCache()
         cache.cache.removeAll()
         try saveCache(cache)
     }
 
     public func cleanupExpired() throws {
+        lock.lock()
+        defer { lock.unlock() }
+
         var cache = loadCache()
         try cleanupCacheInternal(&cache)
         try saveCache(cache)
@@ -159,20 +178,27 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     // MARK: - Reminder Tracking
 
     public func getSeenReminders() -> [String: TrackedReminder] {
+        lock.lock()
+        defer { lock.unlock() }
         return loadCache().seenReminders
     }
 
     public func saveSeenReminders(_ seen: [String: TrackedReminder]) throws {
+        lock.lock()
+        defer { lock.unlock() }
         var cache = loadCache()
         cache.seenReminders = seen
         try saveCache(cache)
     }
 
     public func trackReminder(name: String, project: String?) throws {
-        var seen = getSeenReminders()
+        lock.lock()
+        defer { lock.unlock() }
+
+        var cache = loadCache()
         let key = TrackedReminder.makeKey(name)
 
-        var tracked = seen[key] ?? TrackedReminder(originalName: name)
+        var tracked = cache.seenReminders[key] ?? TrackedReminder(originalName: name)
         tracked.originalName = name
         tracked.tracked = true
         tracked.dismissed = false
@@ -180,54 +206,66 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         tracked.firstSeen = TrackedReminder.todayString()
         tracked.status = "pending"
 
-        seen[key] = tracked
-        try saveSeenReminders(seen)
+        cache.seenReminders[key] = tracked
+        try saveCache(cache)
     }
 
     public func dismissReminder(name: String) throws {
-        var seen = getSeenReminders()
+        lock.lock()
+        defer { lock.unlock() }
+
+        var cache = loadCache()
         let key = TrackedReminder.makeKey(name)
 
-        var dismissed = seen[key] ?? TrackedReminder(originalName: name)
+        var dismissed = cache.seenReminders[key] ?? TrackedReminder(originalName: name)
         dismissed.originalName = name
         dismissed.tracked = false
         dismissed.dismissed = true
         dismissed.firstSeen = TrackedReminder.todayString()
 
-        seen[key] = dismissed
-        try saveSeenReminders(seen)
+        cache.seenReminders[key] = dismissed
+        try saveCache(cache)
     }
 
     public func completeTracked(name: String) throws -> Bool {
-        var seen = getSeenReminders()
+        lock.lock()
+        defer { lock.unlock() }
+
+        var cache = loadCache()
         let key = TrackedReminder.makeKey(name)
 
-        guard var tracked = seen[key], tracked.tracked else {
+        guard var tracked = cache.seenReminders[key], tracked.tracked else {
             return false
         }
 
         tracked.status = "done"
         tracked.completedDate = TrackedReminder.todayString()
-        seen[key] = tracked
-        try saveSeenReminders(seen)
+        cache.seenReminders[key] = tracked
+        try saveCache(cache)
         return true
     }
 
     public func untrackReminder(name: String) throws -> Bool {
-        var seen = getSeenReminders()
+        lock.lock()
+        defer { lock.unlock() }
+
+        var cache = loadCache()
         let key = TrackedReminder.makeKey(name)
 
-        guard seen[key] != nil else {
+        guard cache.seenReminders[key] != nil else {
             return false
         }
 
-        seen.removeValue(forKey: key)
-        try saveSeenReminders(seen)
+        cache.seenReminders.removeValue(forKey: key)
+        try saveCache(cache)
         return true
     }
 
     public func getTrackedReminders() -> [(key: String, reminder: TrackedReminder)] {
-        let seen = getSeenReminders()
+        lock.lock()
+        defer { lock.unlock() }
+
+        let seen = loadCache().seenReminders
         return seen
             .filter { $0.value.tracked }
             .sorted { $0.value.firstSeen > $1.value.firstSeen }
@@ -235,7 +273,10 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     }
 
     public func getNewReminders(currentReminders: [Reminder]) -> [Reminder] {
-        let seen = getSeenReminders()
+        lock.lock()
+        defer { lock.unlock() }
+
+        let seen = loadCache().seenReminders
         return currentReminders.filter { reminder in
             let key = TrackedReminder.makeKey(reminder.title)
             return seen[key] == nil

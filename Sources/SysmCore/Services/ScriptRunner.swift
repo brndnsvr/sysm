@@ -212,10 +212,13 @@ public struct ScriptRunner: ScriptRunnerProtocol {
         task.standardOutput = outputPipe
         task.standardError = errorPipe
 
-        // Timeout handling
+        // Timeout handling with thread-safe flag
+        let timedOutLock = NSLock()
         var timedOut = false
         let timeoutWorkItem = DispatchWorkItem {
+            timedOutLock.lock()
             timedOut = true
+            timedOutLock.unlock()
             task.terminate()
         }
         DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: timeoutWorkItem)
@@ -227,15 +230,32 @@ public struct ScriptRunner: ScriptRunnerProtocol {
             throw ScriptError.executionFailed(error.localizedDescription)
         }
 
+        // Read stdout and stderr concurrently BEFORE waitUntilExit to avoid
+        // pipe buffer deadlocks. If a pipe's buffer fills (~64KB), the process
+        // blocks until the buffer is drained. Reading after waitUntilExit would
+        // deadlock since waitUntilExit can't return while the process is blocked.
+        var outputData = Data()
+        var errorData = Data()
+        let readGroup = DispatchGroup()
+
+        readGroup.enter()
+        DispatchQueue.global().async {
+            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            readGroup.leave()
+        }
+        errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        readGroup.wait()
+
         task.waitUntilExit()
         timeoutWorkItem.cancel()
 
-        if timedOut {
+        timedOutLock.lock()
+        let didTimeout = timedOut
+        timedOutLock.unlock()
+
+        if didTimeout {
             throw ScriptError.timeout
         }
-
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
 
         let stdout = String(data: outputData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let stderr = String(data: errorData, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""

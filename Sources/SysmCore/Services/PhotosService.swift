@@ -76,14 +76,15 @@ public actor PhotosService: PhotosServiceProtocol {
     public func createAlbum(name: String) async throws -> PhotoAlbum {
         try await ensureAccess()
 
-        var albumId: String?
+        // Use a Sendable box to safely extract the placeholder ID from the performChanges closure
+        let idBox = AlbumIdBox()
 
         try await library.performChanges {
             let request = PHAssetCollectionChangeRequest.creationRequestForAssetCollection(withTitle: name)
-            albumId = request.placeholderForCreatedAssetCollection.localIdentifier
+            idBox.value = request.placeholderForCreatedAssetCollection.localIdentifier
         }
 
-        guard let id = albumId else {
+        guard let id = idBox.value else {
             throw PhotosError.albumCreationFailed(name)
         }
 
@@ -160,17 +161,14 @@ public actor PhotosService: PhotosServiceProtocol {
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: assetIds, options: nil)
 
-        var addedCount = 0
-
         try await library.performChanges {
             guard let request = PHAssetCollectionChangeRequest(for: collection) else {
                 return
             }
             request.addAssets(assets)
-            addedCount = assets.count
         }
 
-        return addedCount
+        return assets.count
     }
 
     public func removePhotosFromAlbum(albumId: String, assetIds: [String]) async throws -> Int {
@@ -192,17 +190,14 @@ public actor PhotosService: PhotosServiceProtocol {
 
         let assets = PHAsset.fetchAssets(withLocalIdentifiers: assetIds, options: nil)
 
-        var removedCount = 0
-
         try await library.performChanges {
             guard let request = PHAssetCollectionChangeRequest(for: collection) else {
                 return
             }
             request.removeAssets(assets)
-            removedCount = assets.count
         }
 
-        return removedCount
+        return assets.count
     }
 
     // MARK: - Photos
@@ -668,6 +663,11 @@ public actor PhotosService: PhotosServiceProtocol {
             hasLocation: asset.location != nil
         )
     }
+}
+
+/// Thread-safe box for extracting values from @Sendable performChanges closures.
+private final class AlbumIdBox: @unchecked Sendable {
+    var value: String?
 }
 
 public enum PhotosError: LocalizedError {

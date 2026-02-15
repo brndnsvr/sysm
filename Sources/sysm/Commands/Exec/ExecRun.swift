@@ -91,16 +91,16 @@ struct ExecRun: ParsableCommand {
         } else if let scriptPath = script {
             // Run script file
             let expandedPath = (scriptPath as NSString).expandingTildeInPath
-            let resolvedPath = (expandedPath as NSString).standardizingPath
+            let resolvedPath = (expandedPath as NSString).resolvingSymlinksInPath
 
-            // Validate path is within allowed directories
+            // Validate resolved path is within allowed directories (resolves symlinks to prevent bypass)
             let homeDir = FileManager.default.homeDirectoryForCurrentUser.path
             guard resolvedPath.hasPrefix(homeDir) || resolvedPath.hasPrefix("/tmp") else {
                 throw ExecError.invalidPath(scriptPath)
             }
 
             result = try runner.runFile(
-                path: expandedPath,
+                path: resolvedPath,
                 args: args,
                 scriptType: scriptType,
                 timeout: TimeInterval(timeout),

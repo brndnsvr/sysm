@@ -80,6 +80,17 @@ public struct PluginManager: PluginManagerProtocol {
         self.pluginsDir = "\(home)/.sysm/plugins"
     }
 
+    /// Validates a plugin name contains no path traversal sequences.
+    private func validatePluginName(_ name: String) throws {
+        guard !name.isEmpty,
+              !name.contains("/"),
+              !name.contains("\\"),
+              name != ".",
+              name != ".." else {
+            throw PluginError.pluginNotFound(name)
+        }
+    }
+
     // MARK: - Plugin Discovery
 
     public func listPlugins() throws -> [Plugin] {
@@ -108,6 +119,7 @@ public struct PluginManager: PluginManagerProtocol {
     }
 
     public func getPlugin(name: String) throws -> Plugin {
+        try validatePluginName(name)
         let pluginPath = "\(pluginsDir)/\(name)"
 
         guard FileManager.default.fileExists(atPath: pluginPath) else {
@@ -147,6 +159,7 @@ public struct PluginManager: PluginManagerProtocol {
     // MARK: - Plugin Creation
 
     public func createPlugin(name: String, description: String?, force: Bool = false) throws -> String {
+        try validatePluginName(name)
         let pluginPath = "\(pluginsDir)/\(name)"
 
         if FileManager.default.fileExists(atPath: pluginPath) && !force {
@@ -245,6 +258,7 @@ echo "Hello, $NAME!"
     // MARK: - Plugin Removal
 
     public func removePlugin(name: String) throws {
+        try validatePluginName(name)
         let pluginPath = "\(pluginsDir)/\(name)"
 
         guard FileManager.default.fileExists(atPath: pluginPath) else {
@@ -298,6 +312,13 @@ echo "Hello, $NAME!"
         }
 
         let scriptPath = "\(pluginData.path)/\(cmd.script)"
+
+        // Validate script path stays within plugin directory (prevent traversal via plugin.yaml)
+        let resolvedScript = URL(fileURLWithPath: scriptPath).standardized.path
+        let resolvedPlugin = URL(fileURLWithPath: pluginData.path).standardized.path
+        guard resolvedScript.hasPrefix(resolvedPlugin + "/") else {
+            throw PluginError.executionFailed("Script path escapes plugin directory: \(cmd.script)")
+        }
 
         guard FileManager.default.fileExists(atPath: scriptPath) else {
             throw PluginError.executionFailed("Script not found: \(scriptPath)")
