@@ -18,28 +18,6 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-018: Fix ICS Unescape Order Bug
-
-> **Created:** 2026-02-15
-> **Labels:** bug
-
-`unescapeICS()` in `ICSParser.swift` unescapes `\\n` before `\\\\`, which causes double-unescaping. A literal `\\n` in ICS content becomes a newline instead of staying as `\n`. Must unescape `\\\\` → `\` first, then `\\n` → newline, `\\,` → `,`, `\\;` → `;`. Also missing RFC 5545 line folding support (lines wrapped with CRLF + space).
-
-**File:** `Sources/SysmCore/Utilities/ICSParser.swift` (lines ~106-112)
-
----
-
-### T-019: Escape Message IDs in MailService AppleScript
-
-> **Created:** 2026-02-15
-> **Labels:** bug, security
-
-Several MailService methods interpolate message IDs directly into AppleScript without escaping. While message IDs are typically numeric in Mail.app, the pattern is unsafe if IDs contain special characters. Methods affected: `getMessage()`, `markMessage()`, `deleteMessage()`, `moveMessage()`, `flagMessage()`.
-
-**File:** `Sources/SysmCore/Services/MailService.swift`
-
----
-
 ### T-020: Add Confirmation Prompt to CalendarDelete
 
 > **Created:** 2026-02-15
@@ -48,17 +26,6 @@ Several MailService methods interpolate message IDs directly into AppleScript wi
 `CalendarDelete` command deletes events without confirmation. Other destructive commands (MailDelete, ContactsDelete) use confirmation prompts. Add a `--force` flag and prompt for confirmation when not specified.
 
 **File:** `Sources/sysm/Commands/Calendar/CalendarDelete.swift`
-
----
-
-### T-021: Fix Swallowed Errors in ReminderService
-
-> **Created:** 2026-02-15
-> **Labels:** bug
-
-ReminderService silently swallows errors in some methods by returning empty arrays or default values instead of propagating failures. This makes it impossible to distinguish "no reminders found" from "access denied" or "service unavailable". Audit all methods and ensure errors propagate appropriately.
-
-**File:** `Sources/SysmCore/Services/ReminderService.swift`
 
 ---
 
@@ -143,21 +110,9 @@ Year range validation (2000-2100) is duplicated between `CalendarService.validat
 
 > **Created:** 2026-02-15
 > **Labels:** bug
-
-Several `AsyncParsableCommand` implementations call `readLine()` for user confirmation. `readLine()` blocks the current thread, which in an async context blocks the cooperative thread pool. Move confirmation prompts to synchronous commands, or wrap in `Task { @MainActor in }` to avoid blocking the pool.
+> **Status:** Deferred — negligible practical impact for single-user CLI. The `readLine()` calls occur before any `await` in each command. Only 3 commands affected: `RemindersDelete`, `RemindersDeleteList`, `ContactsDelete`.
 
 **Files:** Various async command files that use `readLine()`
-
----
-
-### T-030: Add Recursion Depth Limit to AnyCodable
-
-> **Created:** 2026-02-15
-> **Labels:** bug, security
-
-`AnyCodable` decodes arbitrarily nested JSON structures without a depth limit. Maliciously crafted cache files could cause stack overflow. Add a max recursion depth (e.g., 32 levels) to the decoder.
-
-**File:** `Sources/SysmCore/Utilities/AnyCodable.swift`
 
 ---
 
@@ -169,17 +124,6 @@ Several `AsyncParsableCommand` implementations call `readLine()` for user confir
 `Package.swift` specifies `.macOS(.v13)` but `CLAUDE.md` says deployment targets are "macOS 15+, iOS 18+". Either update Package.swift to `.macOS(.v15)` to match documented requirements, or update CLAUDE.md to reflect the actual minimum.
 
 **File:** `Package.swift` (line 7), `CLAUDE.md`
-
----
-
-### T-032: Remove Unused Variable in PhotosService.listPeople()
-
-> **Created:** 2026-02-15
-> **Labels:** cleanup
-
-Compiler warning: `let persons = PHAssetCollection.fetchAssetCollections(...)` at line ~522 in PhotosService.swift is never used. Either remove it or replace with `_`.
-
-**File:** `Sources/SysmCore/Services/PhotosService.swift` (line ~522)
 
 ---
 
@@ -274,6 +218,66 @@ MailInbox, MailUnread, and MailSearch have ~80% identical "print message list" p
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-018: Fix ICS Unescape Order Bug
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** bug
+
+Fixed `unescapeICS()` double-unescaping by using placeholder approach: replace `\\` with null char first, then unescape `\n`/`\N`/`\,`/`\;`, then restore backslashes. Also added RFC 5545 line folding support (CRLF + space/tab continuation lines).
+
+**File:** `Sources/SysmCore/Utilities/ICSParser.swift`
+
+---
+
+### T-019: Escape Message IDs in MailService AppleScript
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** bug, security
+
+Added `sanitizedId()` helper that validates message IDs are numeric integers before AppleScript interpolation. Applied to all 9 methods that interpolate message IDs: `getMessage`, `markMessage`, `deleteMessage`, `moveMessage`, `flagMessage`, `downloadAttachments`, `reply`, `forward`, `deleteDraft`.
+
+**File:** `Sources/SysmCore/Services/MailService.swift`
+
+---
+
+### T-021: Fix Swallowed Errors in ReminderService
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** bug
+
+Added `ReminderError.fetchFailed` case and replaced 4 silent `continuation.resume(returning: [])` / `returning: false` with `throwing: ReminderError.fetchFailed` when `ekReminders` is nil. Affected methods: `getReminders`, `getTodayReminders`, `completeReminder`, `validateReminders`.
+
+**File:** `Sources/SysmCore/Services/ReminderService.swift`
+
+---
+
+### T-030: Add Recursion Depth Limit to AnyCodable
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** bug, security
+
+Added 32-level recursion depth limit to `AnyCodable.init(from:)` using thread-local storage to track nesting depth. Prevents stack overflow from maliciously crafted cache files with deeply nested JSON.
+
+**File:** `Sources/SysmCore/Utilities/AnyCodable.swift`
+
+---
+
+### T-032: Remove Unused Variable in PhotosService.listPeople()
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** cleanup
+
+Removed unused `persons` variable and associated `options` fetch options from `listPeople()`.
+
+**File:** `Sources/SysmCore/Services/PhotosService.swift`
+
+---
 
 ### T-009: Standardize Error Handling Across Mail Commands
 

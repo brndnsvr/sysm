@@ -3,11 +3,23 @@ import Foundation
 public struct AnyCodable: Codable {
     public let value: Any
 
+    private static let maxDecodeDepth = 32
+    private static let depthKey = "AnyCodable.decodeDepth"
+
     public init(_ value: Any) {
         self.value = value
     }
 
     public init(from decoder: Decoder) throws {
+        let currentDepth = (Thread.current.threadDictionary[Self.depthKey] as? Int) ?? 0
+        guard currentDepth < Self.maxDecodeDepth else {
+            value = NSNull()
+            return
+        }
+
+        Thread.current.threadDictionary[Self.depthKey] = currentDepth + 1
+        defer { Thread.current.threadDictionary[Self.depthKey] = currentDepth }
+
         let container = try decoder.singleValueContainer()
         if let string = try? container.decode(String.self) {
             value = string

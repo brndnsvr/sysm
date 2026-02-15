@@ -51,7 +51,7 @@ public actor ReminderService: ReminderServiceProtocol {
         return try await withCheckedThrowingContinuation { continuation in
             store.fetchReminders(matching: predicate) { ekReminders in
                 guard let ekReminders = ekReminders else {
-                    continuation.resume(returning: [])
+                    continuation.resume(throwing: ReminderError.fetchFailed)
                     return
                 }
 
@@ -76,7 +76,7 @@ public actor ReminderService: ReminderServiceProtocol {
         return try await withCheckedThrowingContinuation { continuation in
             store.fetchReminders(matching: predicate) { ekReminders in
                 guard let ekReminders = ekReminders else {
-                    continuation.resume(returning: [])
+                    continuation.resume(throwing: ReminderError.fetchFailed)
                     return
                 }
 
@@ -303,7 +303,7 @@ public actor ReminderService: ReminderServiceProtocol {
         return try await withCheckedThrowingContinuation { continuation in
             eventStore.fetchReminders(matching: predicate) { ekReminders in
                 guard let ekReminders = ekReminders else {
-                    continuation.resume(returning: false)
+                    continuation.resume(throwing: ReminderError.fetchFailed)
                     return
                 }
 
@@ -335,7 +335,7 @@ public actor ReminderService: ReminderServiceProtocol {
         return try await withCheckedThrowingContinuation { continuation in
             store.fetchReminders(matching: predicate) { ekReminders in
                 guard let ekReminders = ekReminders else {
-                    continuation.resume(returning: [])
+                    continuation.resume(throwing: ReminderError.fetchFailed)
                     return
                 }
 
@@ -372,6 +372,7 @@ public enum ReminderError: LocalizedError {
     case invalidDateFormat(String)
     case invalidYear(Int)
     case reminderNotFound(String)
+    case fetchFailed
 
     public var errorDescription: String? {
         switch self {
@@ -389,6 +390,8 @@ public enum ReminderError: LocalizedError {
             return "Year \(year) out of valid range (2000-2100)"
         case .reminderNotFound(let name):
             return "Reminder '\(name)' not found"
+        case .fetchFailed:
+            return "Failed to fetch reminders"
         }
     }
 
@@ -454,6 +457,16 @@ public enum ReminderError: LocalizedError {
             - List reminders: sysm reminders list
             - Include completed: sysm reminders list --all
             - Use reminder ID instead of name
+            """
+        case .fetchFailed:
+            return """
+            The reminders fetch returned no data. This may indicate:
+            - Reminders access was revoked during the request
+            - The EventKit store encountered an internal error
+
+            Try:
+            - Check reminders access in System Settings > Privacy & Security > Reminders
+            - Restart sysm and try again
             """
         }
     }

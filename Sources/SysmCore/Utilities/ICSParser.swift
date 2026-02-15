@@ -33,8 +33,15 @@ public struct ICSParser {
     }
 
     public func parse() throws -> [ICSEventData] {
+        // RFC 5545: Unfold continuation lines (CRLF + space/tab joins to previous line)
+        let unfolded = content
+            .replacingOccurrences(of: "\r\n ", with: "")
+            .replacingOccurrences(of: "\r\n\t", with: "")
+            .replacingOccurrences(of: "\n ", with: "")
+            .replacingOccurrences(of: "\n\t", with: "")
+
         var events = [ICSEventData]()
-        let lines = content.components(separatedBy: .newlines)
+        let lines = unfolded.components(separatedBy: .newlines)
 
         var inEvent = false
         var currentEvent: [String: String] = [:]
@@ -104,10 +111,14 @@ public struct ICSParser {
     }
 
     private func unescapeICS(_ text: String) -> String {
+        // RFC 5545: Process escaped backslash first via placeholder to prevent
+        // double-unescaping (e.g., \\n in ICS should become \n literal, not newline)
         return text
+            .replacingOccurrences(of: "\\\\", with: "\u{0000}")
             .replacingOccurrences(of: "\\n", with: "\n")
+            .replacingOccurrences(of: "\\N", with: "\n")
             .replacingOccurrences(of: "\\,", with: ",")
             .replacingOccurrences(of: "\\;", with: ";")
-            .replacingOccurrences(of: "\\\\", with: "\\")
+            .replacingOccurrences(of: "\u{0000}", with: "\\")
     }
 }

@@ -516,15 +516,6 @@ public actor PhotosService: PhotosServiceProtocol {
 
         var people: [PhotoPerson] = []
 
-        let options = PHFetchOptions()
-        options.sortDescriptors = [NSSortDescriptor(key: "name", ascending: true)]
-
-        let persons = PHAssetCollection.fetchAssetCollections(
-            with: .smartAlbum,
-            subtype: .smartAlbumUserLibrary,
-            options: nil
-        )
-
         // Fetch people using person type
         let personOptions = PHFetchOptions()
         let personCollections = PHCollection.fetchTopLevelUserCollections(with: personOptions)

@@ -130,10 +130,11 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Read Message
 
     public func getMessage(id: String, maxContentLength: Int? = nil) throws -> MailMessageDetail? {
+        let safeId = try sanitizedId(id)
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(id)
+                set msg to first message of inbox whose id is \(safeId)
                 set msgMessageId to ""
                 try
                     set msgMessageId to message id of msg
@@ -279,10 +280,11 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Mark Read/Unread
 
     public func markMessage(id: String, read: Bool) throws {
+        let safeId = try sanitizedId(id)
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(id)
+                set msg to first message of inbox whose id is \(safeId)
                 set read status of msg to \(read)
                 return "ok"
             on error errMsg
@@ -300,10 +302,11 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Delete Message
 
     public func deleteMessage(id: String) throws {
+        let safeId = try sanitizedId(id)
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(id)
+                set msg to first message of inbox whose id is \(safeId)
                 delete msg
                 return "ok"
             on error errMsg
@@ -385,6 +388,7 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Move Message
 
     public func moveMessage(id: String, toMailbox: String, accountName: String? = nil) throws {
+        let safeId = try sanitizedId(id)
         let escapedMailbox = escapeForAppleScript(toMailbox)
         let targetMailbox: String
         if let accountName = accountName {
@@ -397,7 +401,7 @@ public struct MailService: MailServiceProtocol {
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(id)
+                set msg to first message of inbox whose id is \(safeId)
                 set targetMb to \(targetMailbox)
                 move msg to targetMb
                 return "ok"
@@ -421,10 +425,11 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Flag/Unflag
 
     public func flagMessage(id: String, flagged: Bool) throws {
+        let safeId = try sanitizedId(id)
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(id)
+                set msg to first message of inbox whose id is \(safeId)
                 set flagged status of msg to \(flagged)
                 return "ok"
             on error errMsg
@@ -561,6 +566,8 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Attachments
 
     public func downloadAttachments(messageId: String, outputDir: String) throws -> [String] {
+        let safeId = try sanitizedId(messageId)
+
         // Ensure output directory exists
         let fileManager = FileManager.default
         var isDirectory: ObjCBool = false
@@ -574,7 +581,7 @@ public struct MailService: MailServiceProtocol {
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(messageId)
+                set msg to first message of inbox whose id is \(safeId)
                 set attachmentList to {}
                 set outputDir to POSIX file "\(escapeForAppleScript(outputDir))"
                 repeat with att in mail attachments of msg
@@ -609,13 +616,14 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Reply & Forward
 
     public func reply(messageId: String, body: String, replyAll: Bool, send: Bool) throws -> String {
+        let safeId = try sanitizedId(messageId)
         let replyType = replyAll ? "reply all" : "reply"
         let sendAction = send ? "send theReply" : ""
 
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(messageId)
+                set msg to first message of inbox whose id is \(safeId)
                 set theReply to \(replyType) msg with opening window
                 set content of theReply to "\(escapeForAppleScript(body))"
                 \(sendAction)
@@ -634,12 +642,13 @@ public struct MailService: MailServiceProtocol {
     }
 
     public func forward(messageId: String, to: String, body: String, send: Bool) throws -> String {
+        let safeId = try sanitizedId(messageId)
         let sendAction = send ? "send theForward" : ""
 
         let script = """
         tell application "Mail"
             try
-                set msg to first message of inbox whose id is \(messageId)
+                set msg to first message of inbox whose id is \(safeId)
                 set theForward to forward msg with opening window
                 set content of theForward to "\(escapeForAppleScript(body))"
                 make new to recipient at theForward with properties {address:"\(escapeForAppleScript(to))"}
@@ -781,11 +790,12 @@ public struct MailService: MailServiceProtocol {
     }
 
     public func deleteDraft(messageId: String) throws {
+        let safeId = try sanitizedId(messageId)
         let script = """
         tell application "Mail"
             try
                 set draftsBox to drafts mailbox
-                set msg to first message of draftsBox whose id is \(messageId)
+                set msg to first message of draftsBox whose id is \(safeId)
                 delete msg
                 return "ok"
             on error errMsg
@@ -801,6 +811,14 @@ public struct MailService: MailServiceProtocol {
     }
 
     // MARK: - Private Helpers
+
+    /// Validates that a message ID is a numeric integer (safe for AppleScript interpolation).
+    private func sanitizedId(_ id: String) throws -> String {
+        guard Int(id) != nil else {
+            throw MailError.messageNotFound(id)
+        }
+        return id
+    }
 
     private func runAppleScript(_ script: String) throws -> String {
         do {
