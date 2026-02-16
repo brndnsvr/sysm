@@ -14,10 +14,6 @@ public actor WeatherKitService: WeatherServiceProtocol {
     // MARK: - Public API
 
     public func getCurrentWeather(location: String) async throws -> CurrentWeather {
-        guard #available(macOS 13.0, *) else {
-            throw WeatherError.apiError("WeatherKit requires macOS 13.0 or later")
-        }
-
         let coords = try await resolveLocation(location)
         let clLocation = CLLocation(latitude: coords.latitude, longitude: coords.longitude)
 
@@ -43,10 +39,6 @@ public actor WeatherKitService: WeatherServiceProtocol {
     }
 
     public func getForecast(location: String, days: Int = 7) async throws -> Forecast {
-        guard #available(macOS 13.0, *) else {
-            throw WeatherError.apiError("WeatherKit requires macOS 13.0 or later")
-        }
-
         let coords = try await resolveLocation(location)
         let clLocation = CLLocation(latitude: coords.latitude, longitude: coords.longitude)
 
@@ -77,10 +69,6 @@ public actor WeatherKitService: WeatherServiceProtocol {
     }
 
     public func getHourlyForecast(location: String, hours: Int = 24) async throws -> HourlyForecast {
-        guard #available(macOS 13.0, *) else {
-            throw WeatherError.apiError("WeatherKit requires macOS 13.0 or later")
-        }
-
         let coords = try await resolveLocation(location)
         let clLocation = CLLocation(latitude: coords.latitude, longitude: coords.longitude)
 
@@ -108,10 +96,6 @@ public actor WeatherKitService: WeatherServiceProtocol {
     }
 
     public func getAlerts(location: String) async throws -> [WeatherAlert] {
-        guard #available(macOS 13.0, *) else {
-            throw WeatherError.apiError("WeatherKit requires macOS 13.0 or later")
-        }
-
         let coords = try await resolveLocation(location)
         let clLocation = CLLocation(latitude: coords.latitude, longitude: coords.longitude)
 
@@ -142,10 +126,6 @@ public actor WeatherKitService: WeatherServiceProtocol {
     }
 
     public func getDetailedWeather(location: String) async throws -> DetailedWeather {
-        guard #available(macOS 13.0, *) else {
-            throw WeatherError.apiError("WeatherKit requires macOS 13.0 or later")
-        }
-
         let coords = try await resolveLocation(location)
         let clLocation = CLLocation(latitude: coords.latitude, longitude: coords.longitude)
 
@@ -222,7 +202,6 @@ public actor WeatherKitService: WeatherServiceProtocol {
 
     // MARK: - Condition Mapping
 
-    @available(macOS 13.0, *)
     private func mapCondition(_ condition: WeatherKit.WeatherCondition) -> WeatherCondition {
         switch condition {
         // Clear
@@ -284,7 +263,6 @@ public actor WeatherKitService: WeatherServiceProtocol {
         }
     }
 
-    @available(macOS 13.0, *)
     private func mapAlertSeverity(_ severity: WeatherKit.WeatherSeverity) -> AlertSeverity {
         switch severity {
         case .extreme:

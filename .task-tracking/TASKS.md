@@ -29,17 +29,6 @@ Current test coverage is ~28% (142 tests, mostly for AppleScript, DateParser, Ca
 
 ---
 
-### T-025: Review and Complete Entitlements
-
-> **Created:** 2026-02-15
-> **Labels:** infra
-
-Verify entitlements file includes all required capabilities for the services used: Calendar, Contacts, Photos, Reminders, Location (for weather geocoding). Missing entitlements may cause silent failures on first run or after notarization.
-
-**File:** Entitlements plist (if exists), or create one
-
----
-
 ### T-026: Add CI/CD Pipeline
 
 > **Created:** 2026-02-15
@@ -58,17 +47,6 @@ No CI/CD pipeline exists. Add GitHub Actions workflow for: `swift build` on push
 > **Status:** Deferred — negligible practical impact for single-user CLI. The `readLine()` calls occur before any `await` in each command. Only 3 commands affected: `RemindersDelete`, `RemindersDeleteList`, `ContactsDelete`.
 
 **Files:** Various async command files that use `readLine()`
-
----
-
-### T-031: Align Package.swift Platform Target with CLAUDE.md
-
-> **Created:** 2026-02-15
-> **Labels:** infra
-
-`Package.swift` specifies `.macOS(.v13)` but `CLAUDE.md` says deployment targets are "macOS 15+, iOS 18+". Either update Package.swift to `.macOS(.v15)` to match documented requirements, or update CLAUDE.md to reflect the actual minimum.
-
-**File:** `Package.swift` (line 7), `CLAUDE.md`
 
 ---
 
@@ -163,6 +141,30 @@ MailInbox, MailUnread, and MailSearch have ~80% identical "print message list" p
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-025: Review and Complete Entitlements
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** infra
+
+Reviewed entitlements for non-sandboxed CLI tool. `sysm.entitlements` correctly contains only `com.apple.developer.weatherkit` (developer capability). Calendar/Contacts/Photos/Reminders access is handled by macOS TCC (system privacy prompts), not entitlements. Also removed 5 redundant `#available(macOS 13.0, *)` guards and 2 `@available` annotations in WeatherKitService since deployment target already guarantees macOS 13+.
+
+**Files:** `sysm.entitlements` (verified), `Sources/SysmCore/Services/WeatherKitService.swift`
+
+---
+
+### T-031: Align Package.swift Platform Target with CLAUDE.md
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** infra
+
+Kept Package.swift at `.macOS(.v13)` / swift-tools-version 5.9. Upgrading to `.macOS(.v15)` requires swift-tools-version 6.0 which enables Swift 6 strict concurrency — too large a migration for this task. Updated project CLAUDE.md to document actual minimum (macOS 13+) and note the Swift 6 migration prerequisite.
+
+**Files:** `CLAUDE.md`
+
+---
 
 ### T-023: Standardize Error Handling Patterns
 

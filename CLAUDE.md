@@ -16,6 +16,8 @@ swift build -c release   # Release build
 swift test               # Run tests
 ```
 
+**Platform:** macOS 13+ (swift-tools-version 5.9). Upgrading to macOS 15+ / swift-tools-version 6.0 requires Swift 6 strict concurrency migration across all actors and models.
+
 ## Code Patterns
 
 ### Services
