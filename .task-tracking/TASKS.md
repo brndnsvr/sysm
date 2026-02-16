@@ -18,28 +18,6 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-024: Increase Test Coverage
-
-> **Created:** 2026-02-15
-> **Labels:** test
-
-Current test coverage is ~28% (142 tests, mostly for AppleScript, DateParser, Cache, ICS, OutputFormatter). Key gaps: no tests for PluginManager, ScriptRunner, LaunchdService, Shell utility, any CLI commands. Target 50%+ coverage. Add unit tests with mocked protocols for service layer, and argument parsing tests for commands.
-
-**Files:** `Tests/SysmCoreTests/`, `Tests/IntegrationTests/`
-
----
-
-### T-026: Add CI/CD Pipeline
-
-> **Created:** 2026-02-15
-> **Labels:** infra
-
-No CI/CD pipeline exists. Add GitHub Actions workflow for: `swift build` on push, `swift test` on PR, lint checks, release binary builds. Consider caching SPM dependencies for faster builds.
-
-**File:** `.github/workflows/ci.yml` (to create)
-
----
-
 ### T-029: Fix readLine() Blocking in Async Contexts
 
 > **Created:** 2026-02-15
@@ -141,6 +119,27 @@ MailInbox, MailUnread, and MailSearch have ~80% identical "print message list" p
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-024: Increase Test Coverage
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** test
+
+Added 44 new tests (142 → 186 total): ICSParser (14 tests: parsing, escaping, line folding, RFC 5545 compliance), Shell utility (11 tests: run/execute, stdin, env vars, timeout, error handling), PluginManager (19 tests: discovery, CRUD, path traversal prevention, command execution, script path validation). Added testable `init(home:)` to PluginManager for test isolation.
+
+**Files:** `Tests/SysmCoreTests/Utilities/ICSParserTests.swift` (new), `Tests/SysmCoreTests/Utilities/ShellTests.swift` (new), `Tests/SysmCoreTests/Services/PluginManagerTests.swift` (new), `Sources/SysmCore/Services/PluginManager.swift` (testable init)
+
+---
+
+### T-026: Add CI/CD Pipeline
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** infra
+> **Status:** Already existed — CI workflow at `.github/workflows/ci.yml` includes lint (SwiftLint/SwiftFormat), debug build, release build, test with coverage, and DocC validation. Also has `release.yml` and `docs.yml` workflows.
+
+---
 
 ### T-025: Review and Complete Entitlements
 

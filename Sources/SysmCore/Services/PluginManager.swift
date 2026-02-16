@@ -80,6 +80,11 @@ public struct PluginManager: PluginManagerProtocol {
         self.pluginsDir = "\(home)/.sysm/plugins"
     }
 
+    /// Testable initializer with custom home directory.
+    public init(home: String) {
+        self.pluginsDir = "\(home)/.sysm/plugins"
+    }
+
     /// Validates a plugin name contains no path traversal sequences.
     private func validatePluginName(_ name: String) throws {
         guard !name.isEmpty,
