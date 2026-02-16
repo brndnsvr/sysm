@@ -117,7 +117,7 @@ public actor ContactsService: ContactsServiceProtocol {
         do {
             let contact = try store.unifiedContact(withIdentifier: identifier, keysToFetch: keysToFetch)
             return Contact(from: contact, detailed: true)
-        } catch {
+        } catch let error as NSError where error.domain == CNErrorDomain && error.code == CNError.recordDoesNotExist.rawValue {
             return nil
         }
     }

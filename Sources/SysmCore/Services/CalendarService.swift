@@ -4,6 +4,15 @@ import Foundation
 public actor CalendarService: CalendarServiceProtocol {
     private let store = EKEventStore()
 
+    static let validYearRange = 2000...2100
+
+    private func validateYear(of date: Date) throws {
+        let year = Foundation.Calendar.current.component(.year, from: date)
+        guard Self.validYearRange.contains(year) else {
+            throw CalendarError.invalidYear(year)
+        }
+    }
+
     public func requestAccess() async throws -> Bool {
         if #available(macOS 14.0, *) {
             return try await store.requestFullAccessToEvents()
@@ -151,10 +160,7 @@ public actor CalendarService: CalendarServiceProtocol {
             calendar = defaultCal
         }
 
-        let year = Foundation.Calendar.current.component(.year, from: startDate)
-        if year < 2000 || year > 2100 {
-            throw CalendarError.invalidYear(year)
-        }
+        try validateYear(of: startDate)
 
         let event = EKEvent(eventStore: store)
         event.title = title
@@ -250,10 +256,7 @@ public actor CalendarService: CalendarServiceProtocol {
             event.title = newTitle
         }
         if let newStart = newStart {
-            let year = Foundation.Calendar.current.component(.year, from: newStart)
-            if year < 2000 || year > 2100 {
-                throw CalendarError.invalidYear(year)
-            }
+            try validateYear(of: newStart)
             event.startDate = newStart
         }
         if let newEnd = newEnd {
@@ -277,7 +280,7 @@ public actor CalendarService: CalendarServiceProtocol {
 
         return ekEvents.compactMap { event -> CalendarEvent? in
             let year = Foundation.Calendar.current.component(.year, from: event.startDate)
-            if year < 2000 || year > 2100 {
+            guard Self.validYearRange.contains(year) else {
                 return CalendarEvent(from: event)
             }
             return nil
@@ -392,7 +395,7 @@ public enum CalendarError: LocalizedError {
         case .noDefaultCalendar:
             return "No default calendar configured"
         case .invalidYear(let year):
-            return "Year \(year) out of valid range (2000-2100)"
+            return "Year \(year) out of valid range (\(CalendarService.validYearRange.lowerBound)-\(CalendarService.validYearRange.upperBound))"
         case .eventNotFound(let name):
             return "Event '\(name)' not found"
         case .invalidDateFormat(let date):

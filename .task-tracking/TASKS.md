@@ -18,17 +18,6 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-023: Standardize Error Handling Patterns
-
-> **Created:** 2026-02-15
-> **Labels:** refactor
-
-Inconsistent error handling across services. Some throw domain errors, some throw generic errors, some return optionals. Standardize: all services should throw domain-specific `LocalizedError` enums. Remove any remaining `try?` that silently swallows important failures.
-
-**Files:** Various service files in `Sources/SysmCore/Services/`
-
----
-
 ### T-024: Increase Test Coverage
 
 > **Created:** 2026-02-15
@@ -59,17 +48,6 @@ Verify entitlements file includes all required capabilities for the services use
 No CI/CD pipeline exists. Add GitHub Actions workflow for: `swift build` on push, `swift test` on PR, lint checks, release binary builds. Consider caching SPM dependencies for faster builds.
 
 **File:** `.github/workflows/ci.yml` (to create)
-
----
-
-### T-028: Deduplicate Year Validation Logic
-
-> **Created:** 2026-02-15
-> **Labels:** refactor, cleanup
-
-Year range validation (2000-2100) is duplicated between `CalendarService.validateEvents()` and `CalendarError.invalidYear`. Extract to a shared constant or validation method.
-
-**Files:** `Sources/SysmCore/Services/CalendarService.swift`
 
 ---
 
@@ -185,6 +163,30 @@ MailInbox, MailUnread, and MailSearch have ~80% identical "print message list" p
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-023: Standardize Error Handling Patterns
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** refactor
+
+Audited all 25 service files. Most already have proper domain-specific `LocalizedError` enums. Fixed `ContactsService.getContact()` which silently caught all errors (including access denied) — now only catches `CNError.recordDoesNotExist` as nil, re-throws other errors. CacheService `try?` usages are intentional (cache resilience). LaunchdService `try?` on job parsing is appropriate (skip corrupt plists in listings).
+
+**File:** `Sources/SysmCore/Services/ContactsService.swift`
+
+---
+
+### T-028: Deduplicate Year Validation Logic
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** refactor, cleanup
+
+Extracted `validYearRange` constant and `validateYear(of:)` helper in CalendarService. Replaced 3 inline year range checks (addEvent, editEvent, validateEvents) with the shared method/constant. Error description now references the constant.
+
+**File:** `Sources/SysmCore/Services/CalendarService.swift`
+
+---
 
 ### T-020: Add Confirmation Prompt to CalendarDelete
 
