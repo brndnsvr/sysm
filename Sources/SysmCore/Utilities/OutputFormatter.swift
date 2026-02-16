@@ -4,6 +4,14 @@ import Foundation
 ///
 /// Provides consistent JSON encoding for all command output when the `--json` flag is used.
 public enum OutputFormatter {
+    /// Formats a byte count as a human-readable file size (KB, MB, GB).
+    public static func formatFileSize(_ bytes: Int64) -> String {
+        let formatter = ByteCountFormatter()
+        formatter.allowedUnits = [.useKB, .useMB, .useGB]
+        formatter.countStyle = .file
+        return formatter.string(fromByteCount: bytes)
+    }
+
     /// Prints an Encodable value as pretty-printed, sorted JSON to stdout.
     /// - Parameter value: The value to encode and print.
     /// - Throws: `OutputError.encodingFailed` if encoding fails.

@@ -38,18 +38,11 @@ struct MailAttachments: ParsableCommand {
                 } else {
                     print("Attachments (\(message.attachments.count)):")
                     for attachment in message.attachments {
-                        let sizeStr = attachment.size > 0 ? formatBytes(attachment.size) : "unknown"
+                        let sizeStr = attachment.size > 0 ? OutputFormatter.formatFileSize(Int64(attachment.size)) : "unknown"
                         print("  \(attachment.name) (\(sizeStr)) - \(attachment.mimeType)")
                     }
                 }
             }
-        }
-
-        private func formatBytes(_ bytes: Int) -> String {
-            let formatter = ByteCountFormatter()
-            formatter.allowedUnits = [.useKB, .useMB, .useGB]
-            formatter.countStyle = .file
-            return formatter.string(fromByteCount: Int64(bytes))
         }
     }
 

@@ -30,7 +30,7 @@ struct PhotosMetadata: AsyncParsableCommand {
                 print("  Type: \(metadata.mediaType)")
                 print("  Dimensions: \(metadata.width) x \(metadata.height)")
                 if let size = metadata.fileSize {
-                    print("  File Size: \(formatFileSize(size))")
+                    print("  File Size: \(OutputFormatter.formatFileSize(size))")
                 }
                 if let duration = metadata.duration {
                     print("  Duration: \(formatDuration(duration))")
@@ -99,12 +99,6 @@ struct PhotosMetadata: AsyncParsableCommand {
             fputs("Error: \(error.localizedDescription)\n", stderr)
             throw ExitCode.failure
         }
-    }
-
-    private func formatFileSize(_ bytes: Int64) -> String {
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .file
-        return formatter.string(fromByteCount: bytes)
     }
 
     private func formatDuration(_ duration: TimeInterval) -> String {
