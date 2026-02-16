@@ -10,8 +10,22 @@ public struct MailService: MailServiceProtocol {
 
     // MARK: - Constants
 
+    private enum Delimiters {
+        static let field = "|||"
+        static let record = "###"
+        static let richField = "|||FIELD|||"
+        static let attachment = "||ATT||"
+        static let attachmentList = "||ATTLIST||"
+    }
+
     private static let unreadScanMultiplier = 5
     private static let searchScanMultiplier = 10
+
+    private static let appleScriptDateFormatter: DateFormatter = {
+        let fmt = DateFormatter()
+        fmt.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm:ss a"
+        return fmt
+    }()
 
     private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
 
@@ -33,8 +47,8 @@ public struct MailService: MailServiceProtocol {
         let result = try runAppleScript(script)
         if result.isEmpty { return [] }
 
-        return result.components(separatedBy: "###").compactMap { item -> MailAccount? in
-            let parts = item.components(separatedBy: "|||")
+        return result.components(separatedBy: Delimiters.record).compactMap { item -> MailAccount? in
+            let parts = item.components(separatedBy: Delimiters.field)
             guard parts.count >= 3 else { return nil }
             return MailAccount(id: parts[0], name: parts[1], email: parts[2])
         }
@@ -199,15 +213,19 @@ public struct MailService: MailServiceProtocol {
         let result = try runAppleScript(script)
         if result.isEmpty { return nil }
 
-        let parts = result.components(separatedBy: "|||FIELD|||")
+        let parts = result.components(separatedBy: Delimiters.richField)
         guard parts.count >= 5 else { return nil }
+
+        func optionalPart(_ index: Int) -> String? {
+            parts.count > index && !parts[index].isEmpty ? parts[index] : nil
+        }
 
         // Parse attachments
         var attachments: [MailAttachment] = []
-        if parts.count >= 13 && !parts[12].isEmpty {
-            let attachmentItems = parts[12].components(separatedBy: "||ATTLIST||")
+        if let attachmentData = optionalPart(12) {
+            let attachmentItems = attachmentData.components(separatedBy: Delimiters.attachmentList)
             for item in attachmentItems where !item.isEmpty {
-                let attParts = item.components(separatedBy: "||ATT||")
+                let attParts = item.components(separatedBy: Delimiters.attachment)
                 if attParts.count >= 3 {
                     attachments.append(MailAttachment(
                         name: attParts[0],
@@ -225,20 +243,20 @@ public struct MailService: MailServiceProtocol {
 
         return MailMessageDetail(
             id: id,
-            messageId: parts.count > 13 ? parts[13] : "",
+            messageId: optionalPart(13) ?? "",
             subject: parts[0],
             from: parts[1],
             to: parts[2],
-            cc: parts.count > 7 && !parts[7].isEmpty ? parts[7] : nil,
+            cc: optionalPart(7),
             bcc: nil,  // BCC not available for received messages
-            replyTo: parts.count > 8 && !parts[8].isEmpty ? parts[8] : nil,
+            replyTo: optionalPart(8),
             dateReceived: parts[3],
-            dateSent: parts.count > 9 && !parts[9].isEmpty ? parts[9] : nil,
+            dateSent: optionalPart(9),
             content: content,
             isRead: parts.count > 5 ? parts[5] == "true" : true,
             isFlagged: parts.count > 6 ? parts[6] == "true" : false,
-            mailbox: parts.count > 10 && !parts[10].isEmpty ? parts[10] : nil,
-            accountName: parts.count > 11 && !parts[11].isEmpty ? parts[11] : nil,
+            mailbox: optionalPart(10),
+            accountName: optionalPart(11),
             attachments: attachments
         )
     }
@@ -372,8 +390,8 @@ public struct MailService: MailServiceProtocol {
         }
         if result.isEmpty { return [] }
 
-        return result.components(separatedBy: "###").compactMap { item -> MailMailbox? in
-            let parts = item.components(separatedBy: "|||")
+        return result.components(separatedBy: Delimiters.record).compactMap { item -> MailMailbox? in
+            let parts = item.components(separatedBy: Delimiters.field)
             guard parts.count >= 5 else { return nil }
             return MailMailbox(
                 name: parts[0],
@@ -465,9 +483,7 @@ public struct MailService: MailServiceProtocol {
         var conditionalChecks: [String] = []
 
         if let after = afterDate {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm:ss a"
-            let dateStr = formatter.string(from: after)
+            let dateStr = Self.appleScriptDateFormatter.string(from: after)
             conditionalChecks.append("""
                         set afterDate to date "\(dateStr)"
                         if msgDate < afterDate then
@@ -477,9 +493,7 @@ public struct MailService: MailServiceProtocol {
         }
 
         if let before = beforeDate {
-            let formatter = DateFormatter()
-            formatter.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm:ss a"
-            let dateStr = formatter.string(from: before)
+            let dateStr = Self.appleScriptDateFormatter.string(from: before)
             conditionalChecks.append("""
                         set beforeDate to date "\(dateStr)"
                         if msgDate > beforeDate then
@@ -609,7 +623,7 @@ public struct MailService: MailServiceProtocol {
         }
         if result.isEmpty { return [] }
 
-        let attachmentNames = result.components(separatedBy: "|||")
+        let attachmentNames = result.components(separatedBy: Delimiters.field)
         return attachmentNames.map { outputDir + "/" + $0 }
     }
 
@@ -849,8 +863,8 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Parsing Helpers
 
     private func parseMailMessages(from result: String) -> [MailMessage] {
-        result.components(separatedBy: "###").compactMap { item -> MailMessage? in
-            let parts = item.components(separatedBy: "|||")
+        result.components(separatedBy: Delimiters.record).compactMap { item -> MailMessage? in
+            let parts = item.components(separatedBy: Delimiters.field)
             guard parts.count >= 7 else { return nil }
             return MailMessage(
                 id: parts[0],
@@ -861,179 +875,6 @@ public struct MailService: MailServiceProtocol {
                 isRead: parts[5] == "true",
                 accountName: parts[6]
             )
-        }
-    }
-}
-
-// MARK: - Models
-
-public struct MailAccount: Codable {
-    public let id: String
-    public let name: String
-    public let email: String
-}
-
-public struct MailMessage: Codable {
-    public let id: String
-    public let messageId: String
-    public let subject: String
-    public let from: String
-    public let dateReceived: String
-    public let isRead: Bool
-    public let accountName: String
-}
-
-public struct MailMessageDetail: Codable {
-    public let id: String
-    public let messageId: String
-    public let subject: String
-    public let from: String
-    public let to: String
-    public let cc: String?
-    public let bcc: String?
-    public let replyTo: String?
-    public let dateReceived: String
-    public let dateSent: String?
-    public let content: String
-    public let isRead: Bool
-    public let isFlagged: Bool
-    public let mailbox: String?
-    public let accountName: String?
-    public let attachments: [MailAttachment]
-}
-
-public struct MailAttachment: Codable {
-    public let name: String
-    public let mimeType: String
-    public let size: Int
-}
-
-public struct MailMailbox: Codable {
-    public let name: String
-    public let accountName: String
-    public let unreadCount: Int
-    public let messageCount: Int
-    public let fullPath: String
-}
-
-// MARK: - Errors
-
-public enum MailError: LocalizedError {
-    case appleScriptError(String)
-    case mailNotRunning
-    case messageNotFound(String)
-    case mailboxNotFound(String)
-    case accountNotFound(String)
-    case sendFailed(String)
-    case invalidDateRange
-    case noRecipientsSpecified
-    case invalidOutputDirectory(String)
-
-    public var errorDescription: String? {
-        switch self {
-        case .appleScriptError(let message):
-            return "AppleScript error: \(message)"
-        case .mailNotRunning:
-            return "Mail app is not running"
-        case .messageNotFound(let id):
-            return "Message '\(id)' not found"
-        case .mailboxNotFound(let name):
-            return "Mailbox '\(name)' not found"
-        case .accountNotFound(let name):
-            return "Account '\(name)' not found"
-        case .sendFailed(let reason):
-            return "Failed to send message: \(reason)"
-        case .invalidDateRange:
-            return "Invalid date range specified"
-        case .noRecipientsSpecified:
-            return "No recipients specified"
-        case .invalidOutputDirectory(let path):
-            return "Invalid output directory: '\(path)'"
-        }
-    }
-
-    public var recoverySuggestion: String? {
-        switch self {
-        case .appleScriptError(let message):
-            return """
-            AppleScript execution failed: \(message)
-
-            This may require automation permission:
-            1. Open System Settings
-            2. Navigate to Privacy & Security > Automation
-            3. Find Terminal (or your terminal app)
-            4. Enable Mail
-            5. Restart sysm
-            """
-        case .mailNotRunning:
-            return """
-            Mail app must be running to access messages.
-
-            Try:
-            1. Open Mail app: open -a Mail
-            2. Wait a few seconds for it to start
-            3. Run the command again
-            """
-        case .messageNotFound:
-            return """
-            Message not found with that identifier.
-
-            Try:
-            - List recent messages: sysm mail inbox --limit 20
-            - Search messages: sysm mail search "subject"
-            - Check different account: sysm mail inbox --account "Work"
-            """
-        case .mailboxNotFound(let name):
-            return """
-            Mailbox '\(name)' not found.
-
-            Try:
-            - List mailboxes: sysm mail mailboxes
-            - Use standard names: "Inbox", "Sent", "Drafts", "Archive"
-            - Include account: sysm mail mailboxes --account "Work"
-            """
-        case .accountNotFound(let name):
-            return """
-            Mail account '\(name)' not found.
-
-            Try:
-            - List accounts: sysm mail accounts
-            - Check spelling and capitalization
-            - Omit --account to search all accounts
-            """
-        case .sendFailed(let reason):
-            return """
-            Failed to send message: \(reason)
-
-            Try:
-            - Verify recipient email address is valid
-            - Check your internet connection
-            - Ensure Mail app is configured correctly
-            - Try sending from Mail app directly first
-            """
-        case .invalidDateRange:
-            return """
-            Invalid date range. Start date must be before end date.
-
-            Example:
-            sysm mail search --after "2024-01-01" --before "2024-12-31"
-            """
-        case .noRecipientsSpecified:
-            return """
-            At least one recipient is required to send a message.
-
-            Example:
-            sysm mail send --to "user@example.com" --subject "Test" --body "Message"
-            """
-        case .invalidOutputDirectory(let path):
-            return """
-            Output directory doesn't exist or isn't writable: \(path)
-
-            Try:
-            - Create the directory: mkdir -p "\(path)"
-            - Check permissions: ls -ld "\(path)"
-            - Use a different directory
-            """
         }
     }
 }
