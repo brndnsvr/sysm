@@ -20,6 +20,12 @@ struct CalendarSearch: AsyncParsableCommand {
     @Flag(name: .long, help: "Show calendar name for each event")
     var showCalendar = false
 
+    func validate() throws {
+        if days <= 0 {
+            throw ValidationError("--days must be a positive integer")
+        }
+    }
+
     func run() async throws {
         let service = Services.calendar()
         let events = try await service.searchEvents(query: query, daysAhead: days)

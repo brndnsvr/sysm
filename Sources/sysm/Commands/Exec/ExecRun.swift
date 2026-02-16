@@ -64,6 +64,10 @@ struct ExecRun: ParsableCommand {
         if typeFlags.filter({ $0 }).count > 1 {
             throw ValidationError("Specify only one of: --shell, --python, --applescript, --swift")
         }
+
+        if timeout <= 0 {
+            throw ValidationError("--timeout must be a positive integer")
+        }
     }
 
     // MARK: - Execution

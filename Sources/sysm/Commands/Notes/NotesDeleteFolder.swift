@@ -18,11 +18,7 @@ struct NotesDeleteFolder: ParsableCommand {
         let service = Services.notes()
 
         if !force {
-            print("Delete folder '\(name)' and all its notes? [y/N]: ", terminator: "")
-            guard let response = readLine(), response.lowercased() == "y" else {
-                print("Cancelled")
-                return
-            }
+            guard CLI.confirm("Delete folder '\(name)' and all its notes? [y/N] ") else { return }
         }
 
         do {

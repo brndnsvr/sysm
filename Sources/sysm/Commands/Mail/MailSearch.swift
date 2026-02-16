@@ -30,9 +30,20 @@ struct MailSearch: ParsableCommand {
     var json = false
 
     func validate() throws {
-        // At least one search criteria required
         if query == nil && body == nil && after == nil && before == nil {
             throw ValidationError("At least one search criteria required (query, --body, --after, or --before)")
+        }
+        if limit <= 0 {
+            throw ValidationError("--limit must be a positive integer")
+        }
+        if let after = after, let before = before {
+            let fmt = DateFormatter()
+            fmt.dateFormat = "yyyy-MM-dd"
+            if let afterDate = fmt.date(from: after),
+               let beforeDate = fmt.date(from: before),
+               afterDate > beforeDate {
+                throw ValidationError("--after date must be before --before date")
+            }
         }
     }
 

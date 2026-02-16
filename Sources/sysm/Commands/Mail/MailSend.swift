@@ -74,12 +74,7 @@ struct MailSend: ParsableCommand {
             if let bcc = bcc {
                 print("BCC: \(bcc)")
             }
-            print("\nSend this message? [y/N]: ", terminator: "")
-
-            guard let response = readLine(), response.lowercased() == "y" else {
-                print("Cancelled")
-                return
-            }
+            guard CLI.confirm("\nSend this message? [y/N] ") else { return }
         }
 
         try service.sendMessage(

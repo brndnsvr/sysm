@@ -18,17 +18,13 @@ struct MailDelete: ParsableCommand {
         let service = Services.mail()
 
         if !force {
-            // Try to get message subject for confirmation
+            let prompt: String
             if let message = try? service.getMessage(id: id) {
-                print("Delete message '\(message.subject)'? [y/N]: ", terminator: "")
+                prompt = "Delete message '\(message.subject)'? [y/N] "
             } else {
-                print("Delete message with ID '\(id)'? [y/N]: ", terminator: "")
+                prompt = "Delete message with ID '\(id)'? [y/N] "
             }
-
-            guard let response = readLine(), response.lowercased() == "y" else {
-                print("Cancelled")
-                return
-            }
+            guard CLI.confirm(prompt) else { return }
         }
 
         try service.deleteMessage(id: id)

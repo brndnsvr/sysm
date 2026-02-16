@@ -18,28 +18,6 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-020: Add Confirmation Prompt to CalendarDelete
-
-> **Created:** 2026-02-15
-> **Labels:** feature, safety
-
-`CalendarDelete` command deletes events without confirmation. Other destructive commands (MailDelete, ContactsDelete) use confirmation prompts. Add a `--force` flag and prompt for confirmation when not specified.
-
-**File:** `Sources/sysm/Commands/Calendar/CalendarDelete.swift`
-
----
-
-### T-022: Add Input Validation Across Commands
-
-> **Created:** 2026-02-15
-> **Labels:** feature, security
-
-Many commands pass user input directly to services without validation. Add validation for: empty strings where names are required, excessively long strings, invalid characters in identifiers, date ranges that make no sense (end before start). Use ArgumentParser's `validate()` method where possible.
-
-**Files:** Various command files in `Sources/sysm/Commands/`
-
----
-
 ### T-023: Standardize Error Handling Patterns
 
 > **Created:** 2026-02-15
@@ -81,17 +59,6 @@ Verify entitlements file includes all required capabilities for the services use
 No CI/CD pipeline exists. Add GitHub Actions workflow for: `swift build` on push, `swift test` on PR, lint checks, release binary builds. Consider caching SPM dependencies for faster builds.
 
 **File:** `.github/workflows/ci.yml` (to create)
-
----
-
-### T-027: Deduplicate Confirmation Dialog Code
-
-> **Created:** 2026-02-15
-> **Labels:** refactor, cleanup
-
-At least 7 commands implement nearly identical `readLine()`-based confirmation prompts (e.g., "Are you sure? [y/N]"). Extract to a shared utility like `func confirmAction(_ message: String) -> Bool` on a helper enum or as an extension.
-
-**Files:** Various command files (MailDelete, ContactsDelete, ReminderDelete, etc.)
 
 ---
 
@@ -218,6 +185,42 @@ MailInbox, MailUnread, and MailSearch have ~80% identical "print message list" p
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-020: Add Confirmation Prompt to CalendarDelete
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** feature, safety
+
+Added `--force` / `-f` flag to `CalendarDelete` command. Without it, the command now prompts for confirmation before deleting events, consistent with other destructive commands. Uses shared `CLI.confirm()` helper.
+
+**File:** `Sources/sysm/Commands/Calendar/CalendarDelete.swift`
+
+---
+
+### T-022: Add Input Validation Across Commands
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** feature, security
+
+Added ArgumentParser `validate()` methods to commands missing input validation: `MailSearch` (limit > 0, after < before date range), `CalendarSearch` (days > 0), `ContactsAdd` (moved name requirement from runtime to validate), `ExecRun` (timeout > 0).
+
+**Files:** `MailSearch.swift`, `CalendarSearch.swift`, `ContactsAdd.swift`, `ExecRun.swift`
+
+---
+
+### T-027: Deduplicate Confirmation Dialog Code
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-15
+> **Labels:** refactor, cleanup
+
+Created shared `CLI.confirm()` helper in `Sources/sysm/CLI.swift` and refactored 7 commands to use it: `RemindersDelete`, `RemindersDeleteList`, `ContactsDelete`, `MailDelete`, `MailSend`, `NotesDelete`, `NotesDeleteFolder`. Standardized to accept both "y" and "yes".
+
+**Files:** `Sources/sysm/CLI.swift` (new), 7 command files
+
+---
 
 ### T-018: Fix ICS Unescape Order Bug
 

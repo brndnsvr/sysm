@@ -18,17 +18,13 @@ struct NotesDelete: ParsableCommand {
         let service = Services.notes()
 
         if !force {
-            // Try to get note name for confirmation
+            let prompt: String
             if let note = try? service.getNote(id: id) {
-                print("Delete note '\(note.name)'? [y/N]: ", terminator: "")
+                prompt = "Delete note '\(note.name)'? [y/N] "
             } else {
-                print("Delete note with ID '\(id)'? [y/N]: ", terminator: "")
+                prompt = "Delete note with ID '\(id)'? [y/N] "
             }
-
-            guard let response = readLine(), response.lowercased() == "y" else {
-                print("Cancelled")
-                return
-            }
+            guard CLI.confirm(prompt) else { return }
         }
 
         do {

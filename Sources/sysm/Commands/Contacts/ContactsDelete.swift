@@ -28,11 +28,7 @@ struct ContactsDelete: AsyncParsableCommand {
                     print("  Phones: \(contact.phones.joined(separator: ", "))")
                 }
             }
-            print("Are you sure? (y/N) ", terminator: "")
-            guard let response = readLine()?.lowercased(), response == "y" || response == "yes" else {
-                print("Cancelled")
-                return
-            }
+            guard CLI.confirm("Are you sure? [y/N] ") else { return }
         }
 
         do {

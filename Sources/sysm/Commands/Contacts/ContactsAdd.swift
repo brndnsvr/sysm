@@ -38,13 +38,13 @@ struct ContactsAdd: AsyncParsableCommand {
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
-    func run() async throws {
-        // Require at least a name or organization
-        guard firstName != nil || lastName != nil || organization != nil else {
-            fputs("Error: At least --first-name, --last-name, or --organization is required\n", stderr)
-            throw ExitCode.failure
+    func validate() throws {
+        if firstName == nil && lastName == nil && organization == nil {
+            throw ValidationError("At least --first-name, --last-name, or --organization is required")
         }
+    }
 
+    func run() async throws {
         let service = Services.contacts()
 
         // Parse birthday if provided

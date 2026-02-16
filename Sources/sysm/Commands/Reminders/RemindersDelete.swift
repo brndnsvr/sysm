@@ -18,11 +18,7 @@ struct RemindersDelete: AsyncParsableCommand {
         let service = Services.reminders()
 
         if !force {
-            print("Are you sure you want to delete this reminder? (y/N) ", terminator: "")
-            guard let response = readLine()?.lowercased(), response == "y" || response == "yes" else {
-                print("Cancelled")
-                return
-            }
+            guard CLI.confirm("Are you sure you want to delete this reminder? [y/N] ") else { return }
         }
 
         do {
