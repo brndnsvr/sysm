@@ -93,17 +93,11 @@ struct MailSearch: ParsableCommand {
             if let before = before { searchDesc.append("before:\(before)") }
             let searchText = searchDesc.joined(separator: " ")
 
-            if messages.isEmpty {
-                print("No messages found for \(searchText)")
-            } else {
-                print("Search Results for \(searchText) (\(messages.count)):")
-                for msg in messages {
-                    let readStatus = msg.isRead ? " " : "*"
-                    print("\n  \(readStatus)[\(msg.id)] \(msg.subject)")
-                    print("   From: \(msg.from)")
-                    print("   Date: \(msg.dateReceived)")
-                }
-            }
+            MailFormatting.printMessageList(
+                messages,
+                header: "Search Results for \(searchText)",
+                emptyMessage: "No messages found for \(searchText)"
+            )
         }
     }
 }

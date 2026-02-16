@@ -24,18 +24,11 @@ struct MailInbox: ParsableCommand {
         if json {
             try OutputFormatter.printJSON(messages)
         } else {
-            if messages.isEmpty {
-                print("Inbox is empty")
-            } else {
-                print("Inbox (\(messages.count) messages):")
-                for msg in messages {
-                    let readStatus = msg.isRead ? " " : "*"
-                    print("\n  \(readStatus)[\(msg.id)] \(msg.subject)")
-                    print("   From: \(msg.from)")
-                    print("   Date: \(msg.dateReceived)")
-                }
-                print("\n  (* = unread)")
-            }
+            MailFormatting.printMessageList(
+                messages,
+                header: "Inbox",
+                emptyMessage: "Inbox is empty"
+            )
         }
     }
 }

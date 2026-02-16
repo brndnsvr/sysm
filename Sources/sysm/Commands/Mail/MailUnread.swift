@@ -24,16 +24,12 @@ struct MailUnread: ParsableCommand {
         if json {
             try OutputFormatter.printJSON(messages)
         } else {
-            if messages.isEmpty {
-                print("No unread messages")
-            } else {
-                print("Unread Messages (\(messages.count)):")
-                for msg in messages {
-                    print("\n  [\(msg.id)] \(msg.subject)")
-                    print("  From: \(msg.from)")
-                    print("  Date: \(msg.dateReceived)")
-                }
-            }
+            MailFormatting.printMessageList(
+                messages,
+                header: "Unread Messages",
+                emptyMessage: "No unread messages",
+                showReadStatus: false
+            )
         }
     }
 }
