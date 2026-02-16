@@ -13,6 +13,7 @@ struct PhotosCommand: AsyncParsableCommand {
             PhotosSearch.self,
             PhotosExport.self,
             PhotosMetadata.self,
+            PhotosEdit.self,
             PhotosPeople.self,
             PhotosFavorite.self,
             PhotosHidden.self,

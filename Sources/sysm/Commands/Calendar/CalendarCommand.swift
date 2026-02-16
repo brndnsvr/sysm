@@ -12,6 +12,7 @@ struct CalendarCommand: AsyncParsableCommand {
             CalendarWeek.self,
             CalendarList.self,
             CalendarSearch.self,
+            CalendarShow.self,
             CalendarAdd.self,
             CalendarEdit.self,
             CalendarDelete.self,

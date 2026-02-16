@@ -9,6 +9,7 @@ struct NotesCommand: ParsableCommand {
         subcommands: [
             NotesCheck.self,
             NotesList.self,
+            NotesCount.self,
             NotesShow.self,
             NotesSearch.self,
             NotesFolders.self,
