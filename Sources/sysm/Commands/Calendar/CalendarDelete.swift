@@ -18,7 +18,7 @@ struct CalendarDelete: AsyncParsableCommand {
         let service = Services.calendar()
 
         if !force {
-            guard CLI.confirm("Delete event '\(title)'? [y/N] ") else { return }
+            guard await CLI.confirm("Delete event '\(title)'? [y/N] ") else { return }
         }
 
         let success = try await service.deleteEvent(title: title)

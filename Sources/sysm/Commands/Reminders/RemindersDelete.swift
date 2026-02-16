@@ -18,7 +18,7 @@ struct RemindersDelete: AsyncParsableCommand {
         let service = Services.reminders()
 
         if !force {
-            guard CLI.confirm("Are you sure you want to delete this reminder? [y/N] ") else { return }
+            guard await CLI.confirm("Are you sure you want to delete this reminder? [y/N] ") else { return }
         }
 
         do {

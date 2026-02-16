@@ -28,7 +28,7 @@ struct ContactsDelete: AsyncParsableCommand {
                     print("  Phones: \(contact.phones.joined(separator: ", "))")
                 }
             }
-            guard CLI.confirm("Are you sure? [y/N] ") else { return }
+            guard await CLI.confirm("Are you sure? [y/N] ") else { return }
         }
 
         do {

@@ -19,7 +19,7 @@ struct RemindersDeleteList: AsyncParsableCommand {
 
         if !force {
             print("WARNING: This will delete the list '\(name)' and ALL its reminders.")
-            guard CLI.confirm("Are you sure? [y/N] ") else { return }
+            guard await CLI.confirm("Are you sure? [y/N] ") else { return }
         }
 
         do {

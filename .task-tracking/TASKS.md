@@ -18,19 +18,22 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-029: Fix readLine() Blocking in Async Contexts
-
-> **Created:** 2026-02-15
-> **Labels:** bug
-> **Status:** Deferred — negligible practical impact for single-user CLI. The `readLine()` calls occur before any `await` in each command. Only 3 commands affected: `RemindersDelete`, `RemindersDeleteList`, `ContactsDelete`.
-
-**Files:** Various async command files that use `readLine()`
-
----
 
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-029: Fix readLine() Blocking in Async Contexts
+
+> **Created:** 2026-02-15
+> **Updated:** 2026-02-16
+> **Labels:** bug
+
+Added async overload of `CLI.confirm()` that moves the blocking `readLine()` off the cooperative thread pool via `DispatchQueue.global()` + `withCheckedContinuation`. Updated 4 async commands to use `await CLI.confirm()`: `RemindersDelete`, `RemindersDeleteList`, `ContactsDelete`, `CalendarDelete`. Sync callers continue using the original overload.
+
+**Files:** `Sources/sysm/CLI.swift`, `RemindersDelete.swift`, `RemindersDeleteList.swift`, `ContactsDelete.swift`, `CalendarDelete.swift`
+
+---
 
 ### T-010: Extract Shared MailMessage Parser Helper
 

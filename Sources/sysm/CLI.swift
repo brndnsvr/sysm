@@ -1,3 +1,4 @@
+import Dispatch
 import Foundation
 
 enum CLI {
@@ -6,6 +7,22 @@ enum CLI {
     static func confirm(_ message: String) -> Bool {
         print(message, terminator: "")
         guard let response = readLine()?.lowercased(),
+              response == "y" || response == "yes" else {
+            print("Cancelled")
+            return false
+        }
+        return true
+    }
+
+    /// Async variant that moves the blocking readLine() off the cooperative thread pool.
+    static func confirm(_ message: String) async -> Bool {
+        print(message, terminator: "")
+        let response: String? = await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(returning: readLine())
+            }
+        }
+        guard let response = response?.lowercased(),
               response == "y" || response == "yes" else {
             print("Cancelled")
             return false
