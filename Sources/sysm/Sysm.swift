@@ -36,6 +36,10 @@ struct Sysm: AsyncParsableCommand {
             NetworkCommand.self,
             ImageCommand.self,
             BluetoothCommand.self,
+            DiskCommand.self,
+            PodcastsCommand.self,
+            BooksCommand.self,
+            TimeMachineCommand.self,
             // Phase 4: Automation
             ExecCommand.self,
             WorkflowCommand.self,

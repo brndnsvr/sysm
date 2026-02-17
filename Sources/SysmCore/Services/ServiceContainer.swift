@@ -90,6 +90,10 @@ public final class ServiceContainer: @unchecked Sendable {
     public var networkFactory: () -> any NetworkServiceProtocol = { NetworkService() }
     public var imageFactory: () -> any ImageServiceProtocol = { ImageService() }
     public var bluetoothFactory: () -> any BluetoothServiceProtocol = { BluetoothService() }
+    public var diskFactory: () -> any DiskServiceProtocol = { DiskService() }
+    public var podcastsFactory: () -> any PodcastsServiceProtocol = { PodcastsService() }
+    public var booksFactory: () -> any BooksServiceProtocol = { BooksService() }
+    public var timeMachineFactory: () -> any TimeMachineServiceProtocol = { TimeMachineService() }
 
     // MARK: - Cached Instances
 
@@ -127,6 +131,10 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _network: (any NetworkServiceProtocol)?
     private var _image: (any ImageServiceProtocol)?
     private var _bluetooth: (any BluetoothServiceProtocol)?
+    private var _disk: (any DiskServiceProtocol)?
+    private var _podcasts: (any PodcastsServiceProtocol)?
+    private var _books: (any BooksServiceProtocol)?
+    private var _timeMachine: (any TimeMachineServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -368,6 +376,34 @@ public final class ServiceContainer: @unchecked Sendable {
         return _bluetooth!
     }
 
+    public func disk() -> any DiskServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _disk == nil { _disk = diskFactory() }
+        return _disk!
+    }
+
+    public func podcasts() -> any PodcastsServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _podcasts == nil { _podcasts = podcastsFactory() }
+        return _podcasts!
+    }
+
+    public func books() -> any BooksServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _books == nil { _books = booksFactory() }
+        return _books!
+    }
+
+    public func timeMachine() -> any TimeMachineServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _timeMachine == nil { _timeMachine = timeMachineFactory() }
+        return _timeMachine!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -411,6 +447,10 @@ public final class ServiceContainer: @unchecked Sendable {
         networkFactory = { NetworkService() }
         imageFactory = { ImageService() }
         bluetoothFactory = { BluetoothService() }
+        diskFactory = { DiskService() }
+        podcastsFactory = { PodcastsService() }
+        booksFactory = { BooksService() }
+        timeMachineFactory = { TimeMachineService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -459,6 +499,10 @@ public final class ServiceContainer: @unchecked Sendable {
         _network = nil
         _image = nil
         _bluetooth = nil
+        _disk = nil
+        _podcasts = nil
+        _books = nil
+        _timeMachine = nil
     }
 
     private init() {}

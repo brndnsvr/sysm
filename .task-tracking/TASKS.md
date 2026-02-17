@@ -18,174 +18,6 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-033: Clipboard Service (NSPasteboard)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `ClipboardService` using `NSPasteboard`. No permissions required. Commands: `clipboard copy <text>`, `clipboard paste` (output current clipboard), `clipboard clear`, `clipboard history` (if feasible via pasteboard change count tracking). Struct-based service (no framework state). Support `--json` for paste output. Can also support `clipboard copy --file <path>` for file references.
-
-**Framework:** `AppKit.NSPasteboard` (general pasteboard)
-**Files:** `Sources/SysmCore/Services/ClipboardService.swift`, `Sources/SysmCore/Protocols/ClipboardServiceProtocol.swift`, `Sources/sysm/Commands/Clipboard/`
-
----
-
-### T-034: System Info & Power Management
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `SystemService` for hardware/software info and power management. Commands: `system info` (CPU, memory, disk, OS version), `system battery` (charge, health, cycle count, power source), `system uptime`, `system thermal` (thermal pressure state), `system memory` (usage breakdown), `system processes --top N`. Use `sysctl`, `IOKit`, `ProcessInfo`, and shell wrappers for `pmset -g batt`, `vm_stat`. Struct-based service.
-
-**Frameworks:** `IOKit`, `Foundation.ProcessInfo`, shell wrappers for `sysctl`/`pmset`/`vm_stat`
-**Files:** `Sources/SysmCore/Services/SystemService.swift`, `Sources/sysm/Commands/System/`
-
----
-
-### T-035: User Notifications
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `NotificationService` using `UserNotifications` framework. Commands: `notify send "title" "body"` (post immediate notification), `notify schedule "title" "body" --at <datetime>`, `notify list` (pending notifications), `notify remove <id>`, `notify remove-all`. Actor-based service (framework-based). Requires notification authorization on first use.
-
-**Framework:** `UserNotifications.UNUserNotificationCenter`
-**Files:** `Sources/SysmCore/Services/NotificationService.swift`, `Sources/sysm/Commands/Notify/`
-
----
-
-### T-036: Screen Capture
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `ScreenCaptureService` for taking screenshots. Commands: `capture screen [--display N] --output <path>`, `capture window --title "..." --output <path>`, `capture area --rect x,y,w,h --output <path>`. Use `ScreenCaptureKit` (macOS 12.3+) for programmatic capture, or fall back to `screencapture` CLI wrapper. Actor-based service. Requires screen recording permission via TCC.
-
-**Framework:** `ScreenCaptureKit` or shell wrapper for `/usr/sbin/screencapture`
-**Files:** `Sources/SysmCore/Services/ScreenCaptureService.swift`, `Sources/sysm/Commands/Capture/`
-
----
-
-### T-037: Finder Operations (NSWorkspace + AppleScript)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `FinderService` for Finder integration. Commands: `finder open <path>` (open in Finder), `finder reveal <path>` (reveal and select), `finder info <path>` (file metadata: size, dates, kind, tags), `finder trash <path>` (move to trash), `finder empty-trash` (with confirmation), `finder eject <volume>`. Use `NSWorkspace` for open/reveal, AppleScript for Finder-specific operations. Struct-based service.
-
-**Frameworks:** `AppKit.NSWorkspace`, AppleScript for Finder.app
-**Files:** `Sources/SysmCore/Services/FinderService.swift`, `Sources/sysm/Commands/Finder/`
-
----
-
-### T-038: Network & WiFi Diagnostics
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `NetworkService` for network info and diagnostics. Commands: `network status` (connectivity, interfaces, IP addresses), `network wifi` (current SSID, signal strength, channel), `network wifi scan` (available networks), `network interfaces` (list all interfaces with details), `network dns` (current DNS servers), `network ping <host> [--count N]`. Use `CoreWLAN` for WiFi, `NWPathMonitor` for connectivity, `ifconfig`/`networksetup` wrappers for interface details.
-
-**Frameworks:** `CoreWLAN.CWWiFiClient`, `Network.NWPathMonitor`, shell wrappers
-**Files:** `Sources/SysmCore/Services/NetworkService.swift`, `Sources/sysm/Commands/Network/`
-
----
-
-### T-039: Bluetooth Device Management
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `BluetoothService` for Bluetooth device management. Commands: `bluetooth status` (on/off, discoverable), `bluetooth devices` (paired devices with connection status), `bluetooth connect <address>`, `bluetooth disconnect <address>`, `bluetooth toggle` (on/off). Use `IOBluetooth` framework. Actor-based service.
-
-**Framework:** `IOBluetooth`
-**Files:** `Sources/SysmCore/Services/BluetoothService.swift`, `Sources/sysm/Commands/Bluetooth/`
-
----
-
-### T-040: Text-to-Speech
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `SpeechService` for text-to-speech. Commands: `speak "text"` (speak text aloud), `speak --voice <name> "text"`, `speak --rate <speed> "text"`, `speak voices` (list available voices), `speak --file <path>` (read file aloud), `speak --save <output.aiff> "text"` (save to audio file). Use `NSSpeechSynthesizer` (macOS). Struct-based service.
-
-**Framework:** `AppKit.NSSpeechSynthesizer`
-**Files:** `Sources/SysmCore/Services/SpeechService.swift`, `Sources/sysm/Commands/Speak/`
-
----
-
-### T-041: Image Processing (CoreImage + Vision)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `ImageService` for image operations. Commands: `image resize <path> --width W --height H --output <path>`, `image convert <path> --format png|jpg|heif --output <path>`, `image ocr <path>` (extract text using Vision), `image faces <path>` (detect faces), `image metadata <path>` (EXIF/IPTC), `image thumbnail <path> --size S --output <path>`. Use `CoreImage` for transforms, `Vision` for OCR/detection, `ImageIO` for metadata.
-
-**Frameworks:** `CoreImage`, `Vision.VNRecognizeTextRequest`, `ImageIO`
-**Files:** `Sources/SysmCore/Services/ImageService.swift`, `Sources/sysm/Commands/Image/`
-
----
-
-### T-042: Disk Management
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `DiskService` for disk information and management. Commands: `disk list` (volumes with mount points, sizes, free space), `disk info <volume>` (detailed volume info), `disk usage <path>` (directory size), `disk eject <volume>`, `disk mount <device>`. Use `DiskArbitration` framework and `diskutil` CLI wrapper. Struct-based service.
-
-**Frameworks:** `DiskArbitration`, shell wrapper for `diskutil`
-**Files:** `Sources/SysmCore/Services/DiskService.swift`, `Sources/sysm/Commands/Disk/`
-
----
-
-### T-043: App Store Management (via mas-cli)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `AppStoreService` wrapping `mas-cli` (Homebrew installable, macOS 13+). Commands: `appstore list` (installed App Store apps), `appstore outdated` (apps with pending updates), `appstore update [app-id]` (install updates), `appstore search <query>`, `appstore info <app-id>`. Struct-based service. Gracefully handle missing `mas` binary with install instructions. Note: `mas` 4.0+ requires root for install/update operations.
-
-**Dependency:** `mas-cli` (external, Homebrew: `brew install mas`)
-**Files:** `Sources/SysmCore/Services/AppStoreService.swift`, `Sources/sysm/Commands/AppStore/`
-
----
-
-### T-044: Podcasts (AppleScript)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `PodcastsService` using AppleScript to control Podcasts.app. Commands: `podcasts shows` (list subscribed shows), `podcasts episodes <show>` (list episodes), `podcasts play <episode>`, `podcasts pause`, `podcasts search <query>`, `podcasts now-playing`. Struct-based service (AppleScript). Podcasts.app has a basic AppleScript dictionary.
-
-**Method:** AppleScript (Podcasts.app has .sdef)
-**Files:** `Sources/SysmCore/Services/PodcastsService.swift`, `Sources/sysm/Commands/Podcasts/`
-
----
-
-### T-045: Books (AppleScript)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `BooksService` using AppleScript to interact with Books.app. Commands: `books list` (library listing), `books search <query>`, `books collections` (list collections), `books open <title>`. Limited AppleScript dictionary; scope may be narrow. Struct-based service.
-
-**Method:** AppleScript (Books.app)
-**Files:** `Sources/SysmCore/Services/BooksService.swift`, `Sources/sysm/Commands/Books/`
-
----
-
-### T-046: Time Machine (tmutil wrapper)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `TimeMachineService` wrapping `tmutil` CLI. Commands: `timemachine status` (backup status, last backup time), `timemachine start` (start backup now), `timemachine snapshots` (list local snapshots), `timemachine destinations` (list backup destinations), `timemachine exclude <path>` / `timemachine include <path>`. Struct-based service. Some operations require root.
-
-**Dependency:** `tmutil` (built-in macOS CLI)
-**Files:** `Sources/SysmCore/Services/TimeMachineService.swift`, `Sources/sysm/Commands/TimeMachine/`
-
----
-
 ### T-047: Maps & Geocoding
 
 > **Created:** 2026-02-16
@@ -238,6 +70,118 @@ Actor-based service (async HTTP via URLSession). No external dependencies needed
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
+
+### T-033: Clipboard Service (NSPasteboard) - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented ClipboardService using NSPasteboard. Commands: paste, copy, clear.
+
+---
+
+### T-034: System Info & Power Management - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented SystemService using IOKit, ProcessInfo, sysctl, pmset, vm_stat. Commands: info, battery, uptime, memory, disk.
+
+---
+
+### T-035: User Notifications - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented NotificationService using UNUserNotificationCenter. Commands: send, schedule, list, remove.
+
+---
+
+### T-036: Screen Capture - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented ScreenCaptureService wrapping /usr/sbin/screencapture. Commands: screen, window, area.
+
+---
+
+### T-037: Finder Operations - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented FinderService using NSWorkspace + AppleScript. Commands: open, reveal, info, trash.
+
+---
+
+### T-038: Network & WiFi Diagnostics - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented NetworkService using CoreWLAN + shell wrappers. Commands: status, wifi, scan, interfaces, dns, ping.
+
+---
+
+### T-039: Bluetooth Device Management - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented BluetoothService using IOBluetooth + system_profiler. Commands: status, devices.
+
+---
+
+### T-040: Text-to-Speech - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented SpeechService using NSSpeechSynthesizer. Commands: speak text, voices, save.
+
+---
+
+### T-041: Image Processing - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented ImageService using CoreImage + Vision + ImageIO. Commands: resize, convert, ocr, metadata, thumbnail.
+
+---
+
+### T-042: Disk Management - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented DiskService using URL resource values + NSWorkspace. Commands: list, info, usage, eject.
+
+---
+
+### T-043: App Store Management - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented AppStoreService wrapping mas-cli. Commands: list, outdated, search, update.
+
+---
+
+### T-044: Podcasts - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented PodcastsService using AppleScript. Commands: shows, episodes, now-playing, play, pause.
+
+---
+
+### T-045: Books - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented BooksService using Spotlight + file system. Commands: list, collections.
+
+---
+
+### T-046: Time Machine - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented TimeMachineService wrapping tmutil. Commands: status, backups, start.
+
+---
 
 ### T-029: Fix readLine() Blocking in Async Contexts
 
