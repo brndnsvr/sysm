@@ -94,6 +94,9 @@ public final class ServiceContainer: @unchecked Sendable {
     public var podcastsFactory: () -> any PodcastsServiceProtocol = { PodcastsService() }
     public var booksFactory: () -> any BooksServiceProtocol = { BooksService() }
     public var timeMachineFactory: () -> any TimeMachineServiceProtocol = { TimeMachineService() }
+    public var geoFactory: () -> any GeoServiceProtocol = { GeoService() }
+    public var outlookFactory: () -> any OutlookServiceProtocol = { OutlookService() }
+    public var slackFactory: () -> any SlackServiceProtocol = { SlackService() }
 
     // MARK: - Cached Instances
 
@@ -135,6 +138,9 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _podcasts: (any PodcastsServiceProtocol)?
     private var _books: (any BooksServiceProtocol)?
     private var _timeMachine: (any TimeMachineServiceProtocol)?
+    private var _geo: (any GeoServiceProtocol)?
+    private var _outlook: (any OutlookServiceProtocol)?
+    private var _slack: (any SlackServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -404,6 +410,27 @@ public final class ServiceContainer: @unchecked Sendable {
         return _timeMachine!
     }
 
+    public func geo() -> any GeoServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _geo == nil { _geo = geoFactory() }
+        return _geo!
+    }
+
+    public func outlook() -> any OutlookServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _outlook == nil { _outlook = outlookFactory() }
+        return _outlook!
+    }
+
+    public func slack() -> any SlackServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _slack == nil { _slack = slackFactory() }
+        return _slack!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -451,6 +478,9 @@ public final class ServiceContainer: @unchecked Sendable {
         podcastsFactory = { PodcastsService() }
         booksFactory = { BooksService() }
         timeMachineFactory = { TimeMachineService() }
+        geoFactory = { GeoService() }
+        outlookFactory = { OutlookService() }
+        slackFactory = { SlackService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -503,6 +533,9 @@ public final class ServiceContainer: @unchecked Sendable {
         _podcasts = nil
         _books = nil
         _timeMachine = nil
+        _geo = nil
+        _outlook = nil
+        _slack = nil
     }
 
     private init() {}

@@ -18,55 +18,6 @@ Ready to start or blocked.
 
 Prioritized future work (top = highest priority).
 
-### T-047: Maps & Geocoding
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `GeoService` for geocoding and location utilities. Commands: `geo lookup "address"` (geocode to coordinates), `geo reverse <lat> <lon>` (reverse geocode to address), `geo distance <lat1,lon1> <lat2,lon2>` (calculate distance). Use `CoreLocation.CLGeocoder` (already used by WeatherKitService). Actor-based service. Note: WeatherKitService already has geocoding internally; consider extracting shared geocoding logic.
-
-**Framework:** `CoreLocation.CLGeocoder`, `MapKit` (optional for directions)
-**Files:** `Sources/SysmCore/Services/GeoService.swift`, `Sources/sysm/Commands/Geo/`
-
----
-
-### T-048: Microsoft Outlook Integration (AppleScript)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `OutlookService` using Outlook's rich AppleScript dictionary (confirmed at `/Applications/Microsoft Outlook.app/Contents/Resources/Outlook.sdef`). Covers email, calendar, tasks, contacts, and notes - significantly more capable than Apple Mail's AppleScript.
-
-**Phase 1 (MVP):** `outlook inbox [--limit N]`, `outlook unread`, `outlook search <query>`, `outlook send --to <email> --subject "..." --body "..."`, `outlook calendar [--from DATE --to DATE]`, `outlook tasks [--priority high|normal|low]`
-
-**Phase 2:** `outlook rsvp <event-id> --accept|--decline|--tentative`, `outlook contacts search <query>`, `outlook contacts groups`, `outlook status` (account info, online/offline), `outlook tasks create --name "..." [--priority] [--due-date]`
-
-Struct-based service (AppleScript). Only available when Outlook is installed. Outlook has unique features vs Apple Mail: RSVP handling, task management, distribution list expansion, Exchange delegate management.
-
-**Method:** AppleScript (Outlook.sdef, ~2800 lines)
-**Files:** `Sources/SysmCore/Services/OutlookService.swift`, `Sources/sysm/Commands/Outlook/`
-
----
-
-### T-049: Slack Integration (Web API)
-
-> **Created:** 2026-02-16
-> **Labels:** feature
-
-Add `SlackService` using Slack Web API (REST). No AppleScript support; URL schemes (`slack://`) only useful for navigation. Requires user to create a Slack app and provide bot/user tokens. Store tokens in macOS Keychain (`Security` framework), workspace config in `~/.config/sysm/slack.json`.
-
-**Phase 1 (MVP):** `slack send "#channel" "message"` (`chat.postMessage`), `slack status "text" ":emoji:"` (`users.profile.set`, requires user token), `slack auth setup` (store token in Keychain)
-
-**Phase 2:** `slack channels` (`conversations.list`), `slack dm "@user" "message"`, `slack presence online|away|dnd` (`dnd.setSnooze`), `slack snooze <minutes>`
-
-**Phase 3:** `slack search "query"` (paid workspaces only), `slack unread`, `slack react <msg-id> ":emoji:"`
-
-Actor-based service (async HTTP via URLSession). No external dependencies needed beyond `Foundation.URLSession` and `Security` framework for Keychain. Scopes needed: `chat:write`, `channels:read`, `users:read`, `users.profile:write` (for status).
-
-**Files:** `Sources/SysmCore/Services/SlackService.swift`, `Sources/sysm/Commands/Slack/`
-
----
-
 ## Done
 
 Completed tasks. Archive monthly or when this section gets long.
@@ -172,6 +123,30 @@ Implemented PodcastsService using AppleScript. Commands: shows, episodes, now-pl
 > **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
 
 Implemented BooksService using Spotlight + file system. Commands: list, collections.
+
+---
+
+### T-049: Slack Integration - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented SlackService using Slack Web API (REST) with Keychain token storage. Commands: auth, send, status, channels.
+
+---
+
+### T-048: Microsoft Outlook Integration - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented OutlookService using AppleScript. Commands: inbox, unread, search, read, send, calendar, tasks.
+
+---
+
+### T-047: Maps & Geocoding - DONE
+
+> **Created:** 2026-02-16 | **Updated:** 2026-02-16 | **Labels:** feature
+
+Implemented GeoService using CoreLocation.CLGeocoder. Commands: lookup, reverse, distance.
 
 ---
 
