@@ -20,7 +20,10 @@ let package = Package(
             ],
             path: "Sources/SysmCore",
             linkerSettings: [
+                .linkedFramework("CoreWLAN"),
+                .linkedFramework("IOBluetooth"),
                 .linkedFramework("Photos"),
+                .linkedFramework("UserNotifications"),
             ]
         ),
         .executableTarget(

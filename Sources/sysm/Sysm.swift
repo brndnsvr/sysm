@@ -31,6 +31,11 @@ struct Sysm: AsyncParsableCommand {
             SpeakCommand.self,
             FinderCommand.self,
             AppStoreCommand.self,
+            NotifyCommand.self,
+            CaptureCommand.self,
+            NetworkCommand.self,
+            ImageCommand.self,
+            BluetoothCommand.self,
             // Phase 4: Automation
             ExecCommand.self,
             WorkflowCommand.self,

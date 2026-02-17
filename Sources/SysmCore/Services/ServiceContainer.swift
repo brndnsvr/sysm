@@ -85,6 +85,11 @@ public final class ServiceContainer: @unchecked Sendable {
     public var speechFactory: () -> any SpeechServiceProtocol = { SpeechService() }
     public var finderFactory: () -> any FinderServiceProtocol = { FinderService() }
     public var appStoreFactory: () -> any AppStoreServiceProtocol = { AppStoreService() }
+    public var notificationFactory: () -> any NotificationServiceProtocol = { NotificationService() }
+    public var screenCaptureFactory: () -> any ScreenCaptureServiceProtocol = { ScreenCaptureService() }
+    public var networkFactory: () -> any NetworkServiceProtocol = { NetworkService() }
+    public var imageFactory: () -> any ImageServiceProtocol = { ImageService() }
+    public var bluetoothFactory: () -> any BluetoothServiceProtocol = { BluetoothService() }
 
     // MARK: - Cached Instances
 
@@ -117,6 +122,11 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _speech: (any SpeechServiceProtocol)?
     private var _finder: (any FinderServiceProtocol)?
     private var _appStore: (any AppStoreServiceProtocol)?
+    private var _notification: (any NotificationServiceProtocol)?
+    private var _screenCapture: (any ScreenCaptureServiceProtocol)?
+    private var _network: (any NetworkServiceProtocol)?
+    private var _image: (any ImageServiceProtocol)?
+    private var _bluetooth: (any BluetoothServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -323,6 +333,41 @@ public final class ServiceContainer: @unchecked Sendable {
         return _appStore!
     }
 
+    public func notification() -> any NotificationServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _notification == nil { _notification = notificationFactory() }
+        return _notification!
+    }
+
+    public func screenCapture() -> any ScreenCaptureServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _screenCapture == nil { _screenCapture = screenCaptureFactory() }
+        return _screenCapture!
+    }
+
+    public func network() -> any NetworkServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _network == nil { _network = networkFactory() }
+        return _network!
+    }
+
+    public func image() -> any ImageServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _image == nil { _image = imageFactory() }
+        return _image!
+    }
+
+    public func bluetooth() -> any BluetoothServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _bluetooth == nil { _bluetooth = bluetoothFactory() }
+        return _bluetooth!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -361,6 +406,11 @@ public final class ServiceContainer: @unchecked Sendable {
         speechFactory = { SpeechService() }
         finderFactory = { FinderService() }
         appStoreFactory = { AppStoreService() }
+        notificationFactory = { NotificationService() }
+        screenCaptureFactory = { ScreenCaptureService() }
+        networkFactory = { NetworkService() }
+        imageFactory = { ImageService() }
+        bluetoothFactory = { BluetoothService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -404,6 +454,11 @@ public final class ServiceContainer: @unchecked Sendable {
         _speech = nil
         _finder = nil
         _appStore = nil
+        _notification = nil
+        _screenCapture = nil
+        _network = nil
+        _image = nil
+        _bluetooth = nil
     }
 
     private init() {}
