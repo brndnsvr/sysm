@@ -120,10 +120,24 @@ public struct AppleScriptRunner: AppleScriptRunnerProtocol {
         task.standardError = errorPipe
 
         try task.run()
-        task.waitUntilExit()
 
-        let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-        let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        // Read stdout and stderr concurrently BEFORE waitUntilExit to avoid
+        // pipe buffer deadlocks. If a pipe's buffer fills (~64KB), the process
+        // blocks until the buffer is drained. Reading after waitUntilExit would
+        // deadlock since waitUntilExit can't return while the process is blocked.
+        var outputData = Data()
+        var errorData = Data()
+        let readGroup = DispatchGroup()
+
+        readGroup.enter()
+        DispatchQueue.global().async {
+            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
+            readGroup.leave()
+        }
+        errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        readGroup.wait()
+
+        task.waitUntilExit()
 
         if task.terminationStatus != 0 {
             let errorMessage = String(data: errorData, encoding: .utf8) ?? "Unknown error"

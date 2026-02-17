@@ -141,4 +141,22 @@ final class AppleScriptRunnerTests: XCTestCase {
         let result = try runner.run(script, identifier: "test")
         XCTAssertEqual(result, "15")
     }
+
+    // MARK: - Pipe Buffer Tests
+
+    func testRun_LargeOutput_DoesNotDeadlock() throws {
+        // Generate output exceeding the ~64KB pipe buffer to verify
+        // concurrent pipe draining prevents deadlock.
+        // Each iteration produces ~80 chars, 1000 iterations ≈ 80KB.
+        let script = """
+        set output to ""
+        repeat 1000 times
+            set output to output & "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz0123456789-pad" & linefeed
+        end repeat
+        return output
+        """
+        let result = try runner.run(script, identifier: "large-output-test")
+        // Verify we got substantial output (at least 64KB)
+        XCTAssertGreaterThan(result.count, 64 * 1024, "Output should exceed 64KB pipe buffer")
+    }
 }

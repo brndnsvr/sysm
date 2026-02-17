@@ -22,11 +22,17 @@ struct NotesCheck: ParsableCommand {
         let exporter = Services.markdownExporter()
         let outputDir = URL(fileURLWithPath: (output as NSString).expandingTildeInPath)
 
-        let notes = try service.getNotes(from: folder)
-        let newNotes = exporter.checkForNew(notes, outputDir: outputDir)
+        let allNotes = try service.listNotes(folder: folder)
+        let importedIds = exporter.loadImportedIds(outputDir: outputDir)
+        let newNotes = allNotes.filter { !importedIds.contains($0.id) }
 
         if json {
-            try OutputFormatter.printJSON(newNotes)
+            let jsonArray = newNotes.map { [
+                "name": $0.name,
+                "folder": $0.folder,
+                "id": $0.id
+            ] }
+            try OutputFormatter.printJSON(jsonArray)
         } else {
             if newNotes.isEmpty {
                 print("No new notes in '\(folder)'")
