@@ -80,6 +80,9 @@ public final class ServiceContainer: @unchecked Sendable {
     public var markdownExporterFactory: () -> any MarkdownExporterProtocol = { MarkdownExporter() }
     public var triggerFactory: () -> any TriggerServiceProtocol = { TriggerService() }
     public var dateParserFactory: () -> any DateParserProtocol = { DateParser() }
+    public var clipboardFactory: () -> any ClipboardServiceProtocol = { ClipboardService() }
+    public var systemFactory: () -> any SystemServiceProtocol = { SystemService() }
+    public var speechFactory: () -> any SpeechServiceProtocol = { SpeechService() }
 
     // MARK: - Cached Instances
 
@@ -107,6 +110,9 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _markdownExporter: (any MarkdownExporterProtocol)?
     private var _trigger: (any TriggerServiceProtocol)?
     private var _dateParser: (any DateParserProtocol)?
+    private var _clipboard: (any ClipboardServiceProtocol)?
+    private var _system: (any SystemServiceProtocol)?
+    private var _speech: (any SpeechServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -278,6 +284,27 @@ public final class ServiceContainer: @unchecked Sendable {
         return _dateParser!
     }
 
+    public func clipboard() -> any ClipboardServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _clipboard == nil { _clipboard = clipboardFactory() }
+        return _clipboard!
+    }
+
+    public func system() -> any SystemServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _system == nil { _system = systemFactory() }
+        return _system!
+    }
+
+    public func speech() -> any SpeechServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _speech == nil { _speech = speechFactory() }
+        return _speech!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -311,6 +338,9 @@ public final class ServiceContainer: @unchecked Sendable {
         markdownExporterFactory = { MarkdownExporter() }
         triggerFactory = { TriggerService() }
         dateParserFactory = { DateParser() }
+        clipboardFactory = { ClipboardService() }
+        systemFactory = { SystemService() }
+        speechFactory = { SpeechService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -349,6 +379,9 @@ public final class ServiceContainer: @unchecked Sendable {
         _markdownExporter = nil
         _trigger = nil
         _dateParser = nil
+        _clipboard = nil
+        _system = nil
+        _speech = nil
     }
 
     private init() {}

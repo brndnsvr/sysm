@@ -25,6 +25,10 @@ struct Sysm: AsyncParsableCommand {
             SpotlightCommand.self,
             MusicCommand.self,
             PhotosCommand.self,
+            // Phase 3b: System Utilities
+            ClipboardCommand.self,
+            SystemCommand.self,
+            SpeakCommand.self,
             // Phase 4: Automation
             ExecCommand.self,
             WorkflowCommand.self,
