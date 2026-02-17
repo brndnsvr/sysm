@@ -83,6 +83,8 @@ public final class ServiceContainer: @unchecked Sendable {
     public var clipboardFactory: () -> any ClipboardServiceProtocol = { ClipboardService() }
     public var systemFactory: () -> any SystemServiceProtocol = { SystemService() }
     public var speechFactory: () -> any SpeechServiceProtocol = { SpeechService() }
+    public var finderFactory: () -> any FinderServiceProtocol = { FinderService() }
+    public var appStoreFactory: () -> any AppStoreServiceProtocol = { AppStoreService() }
 
     // MARK: - Cached Instances
 
@@ -113,6 +115,8 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _clipboard: (any ClipboardServiceProtocol)?
     private var _system: (any SystemServiceProtocol)?
     private var _speech: (any SpeechServiceProtocol)?
+    private var _finder: (any FinderServiceProtocol)?
+    private var _appStore: (any AppStoreServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -305,6 +309,20 @@ public final class ServiceContainer: @unchecked Sendable {
         return _speech!
     }
 
+    public func finder() -> any FinderServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _finder == nil { _finder = finderFactory() }
+        return _finder!
+    }
+
+    public func appStore() -> any AppStoreServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _appStore == nil { _appStore = appStoreFactory() }
+        return _appStore!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -341,6 +359,8 @@ public final class ServiceContainer: @unchecked Sendable {
         clipboardFactory = { ClipboardService() }
         systemFactory = { SystemService() }
         speechFactory = { SpeechService() }
+        finderFactory = { FinderService() }
+        appStoreFactory = { AppStoreService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -382,6 +402,8 @@ public final class ServiceContainer: @unchecked Sendable {
         _clipboard = nil
         _system = nil
         _speech = nil
+        _finder = nil
+        _appStore = nil
     }
 
     private init() {}
