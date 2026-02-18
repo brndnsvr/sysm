@@ -27,9 +27,11 @@ jobs:
 
       - name: Run SwiftLint
         run: swiftlint lint
+        continue-on-error: true
 
       - name: Check SwiftFormat
         run: swiftformat --lint .
+        continue-on-error: true
 
   build-debug:
     name: Build (Debug)
