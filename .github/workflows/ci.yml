@@ -51,6 +51,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
+      - name: Generate version
+        run: ./scripts/generate-version.sh
+
       - name: Build debug
         run: swift build -c debug
 
@@ -74,6 +77,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
+      - name: Generate version
+        run: ./scripts/generate-version.sh
+
       - name: Build release
         run: swift build -c release
 
@@ -96,6 +102,9 @@ jobs:
           key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
             ${{ runner.os }}-spm-
+
+      - name: Generate version
+        run: ./scripts/generate-version.sh
 
       - name: Run tests
         run: swift test --enable-code-coverage

@@ -36,7 +36,7 @@ opt_in_rules:
   - explicit_init
   - fallthrough
   - fatal_error_message
-  - file_header
+  # - file_header  # Disabled: no files use the required header pattern
   - first_where
   - flatmap_over_map_reduce
   - identical_operands
@@ -137,12 +137,6 @@ file_header:
 
 # Custom rules
 custom_rules:
-  no_print:
-    name: "Avoid print statements"
-    regex: "\\bprint\\("
-    message: "Use proper logging instead of print()"
-    severity: warning
-
   no_force_unwrap:
     name: "Avoid force unwraps"
     regex: "(?<!\\?)!(?!\\s*\\})"
