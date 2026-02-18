@@ -259,6 +259,19 @@ public actor ReminderService: ReminderServiceProtocol {
         return Reminder(from: reminder)
     }
 
+    /// Returns the iCloud source, falling back to calDAV then local sources.
+    private func iCloudSource() -> EKSource? {
+        // Prefer iCloud (calDAV with "iCloud" title)
+        if let icloud = store.sources.first(where: {
+            $0.sourceType == .calDAV && $0.title.lowercased().contains("icloud")
+        }) {
+            return icloud
+        }
+        // Fall back to any calDAV source, then local
+        return store.sources.first(where: { $0.sourceType == .calDAV })
+            ?? store.sources.first(where: { $0.sourceType == .local })
+    }
+
     public func createList(name: String) async throws -> Bool {
         try await ensureAccess()
 
@@ -267,10 +280,8 @@ public actor ReminderService: ReminderServiceProtocol {
             throw ReminderError.listAlreadyExists(name)
         }
 
-        // Find a source that supports reminder lists
-        guard let source = store.sources.first(where: { source in
-            source.sourceType == .local || source.sourceType == .calDAV || source.sourceType == .exchange
-        }) else {
+        // Always target iCloud; never fall back to Exchange
+        guard let source = iCloudSource() else {
             throw ReminderError.noValidSource
         }
 
@@ -426,15 +437,15 @@ public enum ReminderError: LocalizedError {
             """
         case .noValidSource:
             return """
-            Cannot create reminder lists because no valid source is available.
+            Cannot create reminder lists because no iCloud source is available.
 
             This usually means:
+            - iCloud Reminders is not enabled
             - Reminders app hasn't been opened yet
-            - No iCloud or local account is configured
 
             Try:
-            1. Open Reminders app
-            2. Wait for it to sync
+            1. Open System Settings > Apple Account > iCloud and enable Reminders
+            2. Open Reminders app and wait for it to sync
             3. Try the command again
             """
         case .invalidDateFormat(let date):
