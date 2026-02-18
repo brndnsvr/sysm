@@ -51,6 +51,7 @@ struct Sysm: AsyncParsableCommand {
             OutlookCommand.self,
             SlackCommand.self,
             // Utilities
+            UpdateCommand.self,
             CompletionsCommand.self,
         ]
     )

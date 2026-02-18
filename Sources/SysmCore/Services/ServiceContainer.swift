@@ -97,6 +97,7 @@ public final class ServiceContainer: @unchecked Sendable {
     public var geoFactory: () -> any GeoServiceProtocol = { GeoService() }
     public var outlookFactory: () -> any OutlookServiceProtocol = { OutlookService() }
     public var slackFactory: () -> any SlackServiceProtocol = { SlackService() }
+    public var updateFactory: () -> any UpdateServiceProtocol = { UpdateService() }
 
     // MARK: - Cached Instances
 
@@ -141,6 +142,7 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _geo: (any GeoServiceProtocol)?
     private var _outlook: (any OutlookServiceProtocol)?
     private var _slack: (any SlackServiceProtocol)?
+    private var _update: (any UpdateServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -431,6 +433,13 @@ public final class ServiceContainer: @unchecked Sendable {
         return _slack!
     }
 
+    public func update() -> any UpdateServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _update == nil { _update = updateFactory() }
+        return _update!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -481,6 +490,7 @@ public final class ServiceContainer: @unchecked Sendable {
         geoFactory = { GeoService() }
         outlookFactory = { OutlookService() }
         slackFactory = { SlackService() }
+        updateFactory = { UpdateService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -536,6 +546,7 @@ public final class ServiceContainer: @unchecked Sendable {
         _geo = nil
         _outlook = nil
         _slack = nil
+        _update = nil
     }
 
     private init() {}
