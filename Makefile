@@ -13,7 +13,7 @@ NOTARY_PROFILE ?=
 PROFILE_UUID ?=
 
 # Version
-VERSION ?= 1.2.8
+VERSION ?= 1.4.0
 
 # Debug build
 build:

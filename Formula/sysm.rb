@@ -5,7 +5,7 @@
 class Sysm < Formula
   desc "Unified CLI for Apple ecosystem integration on macOS"
   homepage "https://github.com/brndnsvr/sysm"
-  url "https://github.com/brndnsvr/sysm/archive/v1.0.0.tar.gz"
+  url "https://github.com/brndnsvr/sysm/archive/v1.4.0.tar.gz"
   sha256 "" # Will be filled in during release
   license "MIT"
   head "https://github.com/brndnsvr/sysm.git", branch: "main"
