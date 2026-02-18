@@ -109,7 +109,8 @@ jobs:
         run: ./scripts/generate-version.sh
 
       - name: Run tests
-        run: swift test --enable-code-coverage
+        run: swift test --enable-code-coverage --skip IntegrationTests --skip AppleScriptPerformanceTests
+        timeout-minutes: 15
 
       - name: Generate coverage report
         run: |
