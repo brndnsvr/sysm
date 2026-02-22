@@ -98,6 +98,7 @@ public final class ServiceContainer: @unchecked Sendable {
     public var outlookFactory: () -> any OutlookServiceProtocol = { OutlookService() }
     public var slackFactory: () -> any SlackServiceProtocol = { SlackService() }
     public var updateFactory: () -> any UpdateServiceProtocol = { UpdateService() }
+    public var nativeTagFactory: () -> any NativeTagServiceProtocol = { NativeTagService() }
 
     // MARK: - Cached Instances
 
@@ -143,6 +144,7 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _outlook: (any OutlookServiceProtocol)?
     private var _slack: (any SlackServiceProtocol)?
     private var _update: (any UpdateServiceProtocol)?
+    private var _nativeTag: (any NativeTagServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -440,6 +442,13 @@ public final class ServiceContainer: @unchecked Sendable {
         return _update!
     }
 
+    public func nativeTag() -> any NativeTagServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _nativeTag == nil { _nativeTag = nativeTagFactory() }
+        return _nativeTag!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -491,6 +500,7 @@ public final class ServiceContainer: @unchecked Sendable {
         outlookFactory = { OutlookService() }
         slackFactory = { SlackService() }
         updateFactory = { UpdateService() }
+        nativeTagFactory = { NativeTagService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -547,6 +557,7 @@ public final class ServiceContainer: @unchecked Sendable {
         _outlook = nil
         _slack = nil
         _update = nil
+        _nativeTag = nil
     }
 
     private init() {}

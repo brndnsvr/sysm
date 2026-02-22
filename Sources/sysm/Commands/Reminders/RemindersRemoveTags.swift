@@ -14,27 +14,71 @@ struct RemindersRemoveTags: AsyncParsableCommand {
     @Argument(help: "Tags to remove (space-separated)")
     var tags: [String]
 
+    @Flag(name: .long, help: "Use native Reminders tags (visible in Reminders.app)")
+    var native = false
+
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
     func run() async throws {
+        if native {
+            try runNative()
+        } else {
+            try await runHashtag()
+        }
+    }
+
+    private func runNative() throws {
+        let nativeTagService = Services.nativeTag()
+
+        var removed: [String] = []
+        var notFound: [String] = []
+
+        for tag in tags {
+            let wasRemoved = try nativeTagService.removeTag(tag, fromReminder: id)
+            if wasRemoved {
+                removed.append(tag)
+            } else {
+                notFound.append(tag)
+            }
+        }
+
+        if json {
+            struct NativeRemoveResult: Codable {
+                let reminderId: String
+                let removed: [String]
+                let notFound: [String]
+            }
+            try OutputFormatter.printJSON(NativeRemoveResult(
+                reminderId: id, removed: removed, notFound: notFound
+            ))
+        } else {
+            if !removed.isEmpty {
+                print("Removed native tags:")
+                for tag in removed { print("  #\(tag)") }
+            }
+            if !notFound.isEmpty {
+                print("Not found:")
+                for tag in notFound { print("  #\(tag)") }
+            }
+        }
+    }
+
+    private func runHashtag() async throws {
         let service = Services.reminders()
 
         do {
-            // Get the current reminder
             let reminders = try await service.getReminders(listName: nil, includeCompleted: true)
             guard let currentReminder = reminders.first(where: { $0.id == id }) else {
                 fputs("Error: Reminder not found\n", stderr)
                 throw ExitCode.failure
             }
 
-            // Remove tags from notes
             var updatedNotes = currentReminder.notes
             for tag in tags {
                 updatedNotes = TagHelper.removeTag(tag, from: updatedNotes)
             }
 
-            // Update the reminder
             let reminder = try await service.editReminder(
                 id: id,
                 newTitle: nil,

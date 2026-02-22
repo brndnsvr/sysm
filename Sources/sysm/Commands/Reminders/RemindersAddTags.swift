@@ -14,24 +14,74 @@ struct RemindersAddTags: AsyncParsableCommand {
     @Argument(help: "Tags to add (space-separated)")
     var tags: [String]
 
+    @Flag(name: .long, help: "Use native Reminders tags (visible in Reminders.app)")
+    var native = false
+
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
     func run() async throws {
+        if native {
+            try runNative()
+        } else {
+            try await runHashtag()
+        }
+    }
+
+    private func runNative() throws {
+        let nativeTagService = Services.nativeTag()
+
+        let backupPath = try nativeTagService.backupDatabase()
+        if !json {
+            print("Database backed up to: \(backupPath)")
+        }
+
+        var added: [String] = []
+        var skipped: [String] = []
+
+        for tag in tags {
+            let wasAdded = try nativeTagService.addTag(tag, toReminder: id)
+            if wasAdded {
+                added.append(tag)
+            } else {
+                skipped.append(tag)
+            }
+        }
+
+        if json {
+            struct NativeAddResult: Codable {
+                let reminderId: String
+                let added: [String]
+                let skipped: [String]
+                let backupPath: String
+            }
+            try OutputFormatter.printJSON(NativeAddResult(
+                reminderId: id, added: added, skipped: skipped, backupPath: backupPath
+            ))
+        } else {
+            if !added.isEmpty {
+                print("Added native tags:")
+                for tag in added { print("  #\(tag)") }
+            }
+            if !skipped.isEmpty {
+                print("Already present:")
+                for tag in skipped { print("  #\(tag)") }
+            }
+        }
+    }
+
+    private func runHashtag() async throws {
         let service = Services.reminders()
 
         do {
-            // Get the current reminder
             let reminders = try await service.getReminders(listName: nil, includeCompleted: true)
             guard let currentReminder = reminders.first(where: { $0.id == id }) else {
                 fputs("Error: Reminder not found\n", stderr)
                 throw ExitCode.failure
             }
 
-            // Add tags to notes
             let updatedNotes = TagHelper.addTags(tags, to: currentReminder.notes)
 
-            // Update the reminder
             let reminder = try await service.editReminder(
                 id: id,
                 newTitle: nil,
