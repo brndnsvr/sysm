@@ -35,6 +35,7 @@ struct Sysm: AsyncParsableCommand {
             CaptureCommand.self,
             NetworkCommand.self,
             ImageCommand.self,
+            PDFCommand.self,
             BluetoothCommand.self,
             DiskCommand.self,
             PodcastsCommand.self,

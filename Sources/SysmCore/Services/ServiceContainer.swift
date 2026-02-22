@@ -99,6 +99,7 @@ public final class ServiceContainer: @unchecked Sendable {
     public var slackFactory: () -> any SlackServiceProtocol = { SlackService() }
     public var updateFactory: () -> any UpdateServiceProtocol = { UpdateService() }
     public var nativeTagFactory: () -> any NativeTagServiceProtocol = { NativeTagService() }
+    public var pdfFactory: () -> any PDFServiceProtocol = { PDFService() }
 
     // MARK: - Cached Instances
 
@@ -145,6 +146,7 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _slack: (any SlackServiceProtocol)?
     private var _update: (any UpdateServiceProtocol)?
     private var _nativeTag: (any NativeTagServiceProtocol)?
+    private var _pdf: (any PDFServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -449,6 +451,13 @@ public final class ServiceContainer: @unchecked Sendable {
         return _nativeTag!
     }
 
+    public func pdf() -> any PDFServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _pdf == nil { _pdf = pdfFactory() }
+        return _pdf!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -501,6 +510,7 @@ public final class ServiceContainer: @unchecked Sendable {
         slackFactory = { SlackService() }
         updateFactory = { UpdateService() }
         nativeTagFactory = { NativeTagService() }
+        pdfFactory = { PDFService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -558,6 +568,7 @@ public final class ServiceContainer: @unchecked Sendable {
         _slack = nil
         _update = nil
         _nativeTag = nil
+        _pdf = nil
     }
 
     private init() {}
