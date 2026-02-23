@@ -32,9 +32,6 @@ struct RemindersSearch: AsyncParsableCommand {
     @Option(name: .long, help: "Filter by tag (hashtag format, e.g., work)")
     var tag: String?
 
-    @Option(name: .long, help: "Filter by native Reminders tag")
-    var nativeTag: String?
-
     @Flag(name: .long, help: "Show additional details")
     var details = false
 
@@ -82,14 +79,6 @@ struct RemindersSearch: AsyncParsableCommand {
             reminders = reminders.filter { $0.hasTag(tagFilter) }
         }
 
-        if let nativeTagFilter = nativeTag {
-            let nativeTagService = Services.nativeTag()
-            reminders = reminders.filter { reminder in
-                let tags = (try? nativeTagService.getTagsForReminder(eventKitId: reminder.id)) ?? []
-                return tags.contains(where: { $0.lowercased() == nativeTagFilter.lowercased() })
-            }
-        }
-
         // Output results
         if json {
             struct SearchResult: Codable {
@@ -101,7 +90,6 @@ struct RemindersSearch: AsyncParsableCommand {
                     let hasAlarms: Bool
                     let recurring: Bool
                     let tag: String?
-                    let nativeTag: String?
                 }
                 let query: String
                 let filters: Filters
@@ -117,8 +105,7 @@ struct RemindersSearch: AsyncParsableCommand {
                     overdue: overdue,
                     hasAlarms: hasAlarms,
                     recurring: recurring,
-                    tag: tag,
-                    nativeTag: nativeTag
+                    tag: tag
                 ),
                 count: reminders.count,
                 results: reminders

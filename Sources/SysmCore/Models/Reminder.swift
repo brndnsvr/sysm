@@ -49,8 +49,6 @@ public struct Reminder: Codable {
     public let recurrenceRule: RecurrenceRule?
     public let hasAlarms: Bool
     public let alarms: [EventAlarm]?
-    public var nativeTags: [String]?
-
     /// Creates a Reminder from an EventKit reminder.
     /// - Parameter ekReminder: The EventKit reminder to convert.
     public init(from ekReminder: EKReminder) {
@@ -92,7 +90,6 @@ public struct Reminder: Codable {
             self.alarms = nil
         }
 
-        self.nativeTags = nil
     }
 
     /// Human-readable due date string.
@@ -125,10 +122,6 @@ public struct Reminder: Codable {
 
         if hasRecurrence {
             result += " [repeating]"
-        }
-
-        if let native = nativeTags, !native.isEmpty {
-            result += " " + native.map { "#\($0)" }.joined(separator: " ")
         }
 
         if includeList {
@@ -192,10 +185,6 @@ public struct Reminder: Codable {
 
         if let reminderUrl = url {
             lines.append("URL: \(reminderUrl)")
-        }
-
-        if let native = nativeTags, !native.isEmpty {
-            lines.append("Tags: \(native.map { "#\($0)" }.joined(separator: " "))")
         }
 
         if let reminderNotes = notes, !reminderNotes.isEmpty {

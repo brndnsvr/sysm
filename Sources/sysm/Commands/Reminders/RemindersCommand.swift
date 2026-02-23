@@ -19,7 +19,7 @@ struct RemindersCommand: AsyncParsableCommand {
             RemindersAddTags.self,
             RemindersRemoveTags.self,
             RemindersListTags.self,
-            RemindersMigrateTags.self,
+
             RemindersCreateList.self,
             RemindersDeleteList.self,
             RemindersValidate.self,

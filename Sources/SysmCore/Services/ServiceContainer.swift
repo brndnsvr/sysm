@@ -98,7 +98,7 @@ public final class ServiceContainer: @unchecked Sendable {
     public var outlookFactory: () -> any OutlookServiceProtocol = { OutlookService() }
     public var slackFactory: () -> any SlackServiceProtocol = { SlackService() }
     public var updateFactory: () -> any UpdateServiceProtocol = { UpdateService() }
-    public var nativeTagFactory: () -> any NativeTagServiceProtocol = { NativeTagService() }
+
     public var pdfFactory: () -> any PDFServiceProtocol = { PDFService() }
     public var languageFactory: () -> any LanguageServiceProtocol = { LanguageService() }
     public var visionFactory: () -> any VisionServiceProtocol = { VisionService() }
@@ -149,7 +149,7 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _outlook: (any OutlookServiceProtocol)?
     private var _slack: (any SlackServiceProtocol)?
     private var _update: (any UpdateServiceProtocol)?
-    private var _nativeTag: (any NativeTagServiceProtocol)?
+
     private var _pdf: (any PDFServiceProtocol)?
     private var _language: (any LanguageServiceProtocol)?
     private var _vision: (any VisionServiceProtocol)?
@@ -452,12 +452,6 @@ public final class ServiceContainer: @unchecked Sendable {
         return _update!
     }
 
-    public func nativeTag() -> any NativeTagServiceProtocol {
-        lock.lock()
-        defer { lock.unlock() }
-        if _nativeTag == nil { _nativeTag = nativeTagFactory() }
-        return _nativeTag!
-    }
 
     public func pdf() -> any PDFServiceProtocol {
         lock.lock()
@@ -545,7 +539,7 @@ public final class ServiceContainer: @unchecked Sendable {
         outlookFactory = { OutlookService() }
         slackFactory = { SlackService() }
         updateFactory = { UpdateService() }
-        nativeTagFactory = { NativeTagService() }
+
         pdfFactory = { PDFService() }
         languageFactory = { LanguageService() }
         visionFactory = { VisionService() }
@@ -607,7 +601,7 @@ public final class ServiceContainer: @unchecked Sendable {
         _outlook = nil
         _slack = nil
         _update = nil
-        _nativeTag = nil
+
         _pdf = nil
         _language = nil
         _vision = nil

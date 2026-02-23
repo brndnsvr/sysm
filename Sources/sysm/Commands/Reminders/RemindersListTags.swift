@@ -14,39 +14,10 @@ struct RemindersListTags: AsyncParsableCommand {
     @Flag(name: .long, help: "Include completed reminders")
     var all = false
 
-    @Flag(name: .long, help: "List native Reminders tags (visible in Reminders.app)")
-    var native = false
-
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
     func run() async throws {
-        if native {
-            try runNative()
-        } else {
-            try await runHashtag()
-        }
-    }
-
-    private func runNative() throws {
-        let nativeTagService = Services.nativeTag()
-        let tags = try nativeTagService.listTags()
-
-        if json {
-            try OutputFormatter.printJSON(tags)
-        } else {
-            if tags.isEmpty {
-                print("No native tags found")
-            } else {
-                print("Native tags (\(tags.count) unique):")
-                for tag in tags {
-                    print("  \(tag.formatted())")
-                }
-            }
-        }
-    }
-
-    private func runHashtag() async throws {
         let service = Services.reminders()
 
         do {
