@@ -45,6 +45,7 @@ struct Sysm: AsyncParsableCommand {
             BooksCommand.self,
             TimeMachineCommand.self,
             AudioCommand.self,
+            AVCommand.self,
             // Phase 4: Automation
             ExecCommand.self,
             WorkflowCommand.self,
@@ -55,6 +56,8 @@ struct Sysm: AsyncParsableCommand {
             GeoCommand.self,
             OutlookCommand.self,
             SlackCommand.self,
+            // Phase 6: On-Device Intelligence
+            AICommand.self,
             // Utilities
             UpdateCommand.self,
             CompletionsCommand.self,

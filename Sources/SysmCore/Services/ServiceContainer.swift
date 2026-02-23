@@ -104,6 +104,15 @@ public final class ServiceContainer: @unchecked Sendable {
     public var visionFactory: () -> any VisionServiceProtocol = { VisionService() }
     public var keychainFactory: () -> any KeychainServiceProtocol = { KeychainService() }
     public var audioFactory: () -> any AudioServiceProtocol = { AudioService() }
+    public var avFactory: () -> any AVServiceProtocol = { AVService() }
+    public var foundationModelsFactory: () -> any FoundationModelsServiceProtocol = {
+        #if canImport(FoundationModels)
+        if #available(macOS 26, *) {
+            return FoundationModelsService()
+        }
+        #endif
+        return FoundationModelsUnavailableService()
+    }
 
     // MARK: - Cached Instances
 
@@ -155,6 +164,8 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _vision: (any VisionServiceProtocol)?
     private var _keychain: (any KeychainServiceProtocol)?
     private var _audio: (any AudioServiceProtocol)?
+    private var _av: (any AVServiceProtocol)?
+    private var _foundationModels: (any FoundationModelsServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -488,6 +499,20 @@ public final class ServiceContainer: @unchecked Sendable {
         return _audio!
     }
 
+    public func av() -> any AVServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _av == nil { _av = avFactory() }
+        return _av!
+    }
+
+    public func foundationModels() -> any FoundationModelsServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _foundationModels == nil { _foundationModels = foundationModelsFactory() }
+        return _foundationModels!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -545,6 +570,15 @@ public final class ServiceContainer: @unchecked Sendable {
         visionFactory = { VisionService() }
         keychainFactory = { KeychainService() }
         audioFactory = { AudioService() }
+        avFactory = { AVService() }
+        foundationModelsFactory = {
+            #if canImport(FoundationModels)
+            if #available(macOS 26, *) {
+                return FoundationModelsService()
+            }
+            #endif
+            return FoundationModelsUnavailableService()
+        }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -607,6 +641,8 @@ public final class ServiceContainer: @unchecked Sendable {
         _vision = nil
         _keychain = nil
         _audio = nil
+        _av = nil
+        _foundationModels = nil
     }
 
     private init() {}

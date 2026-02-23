@@ -20,11 +20,14 @@ let package = Package(
             ],
             path: "Sources/SysmCore",
             linkerSettings: [
+                .linkedFramework("AVFoundation"),
                 .linkedFramework("CoreAudio"),
                 .linkedFramework("CoreWLAN"),
                 .linkedFramework("IOBluetooth"),
                 .linkedFramework("Photos"),
+                .linkedFramework("Speech"),
                 .linkedFramework("UserNotifications"),
+                .unsafeFlags(["-Xlinker", "-weak_framework", "-Xlinker", "FoundationModels"]),
             ]
         ),
         .executableTarget(
