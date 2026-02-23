@@ -20,6 +20,7 @@ let package = Package(
             ],
             path: "Sources/SysmCore",
             linkerSettings: [
+                .linkedFramework("CoreAudio"),
                 .linkedFramework("CoreWLAN"),
                 .linkedFramework("IOBluetooth"),
                 .linkedFramework("Photos"),

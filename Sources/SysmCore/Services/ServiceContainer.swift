@@ -100,6 +100,10 @@ public final class ServiceContainer: @unchecked Sendable {
     public var updateFactory: () -> any UpdateServiceProtocol = { UpdateService() }
     public var nativeTagFactory: () -> any NativeTagServiceProtocol = { NativeTagService() }
     public var pdfFactory: () -> any PDFServiceProtocol = { PDFService() }
+    public var languageFactory: () -> any LanguageServiceProtocol = { LanguageService() }
+    public var visionFactory: () -> any VisionServiceProtocol = { VisionService() }
+    public var keychainFactory: () -> any KeychainServiceProtocol = { KeychainService() }
+    public var audioFactory: () -> any AudioServiceProtocol = { AudioService() }
 
     // MARK: - Cached Instances
 
@@ -147,6 +151,10 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _update: (any UpdateServiceProtocol)?
     private var _nativeTag: (any NativeTagServiceProtocol)?
     private var _pdf: (any PDFServiceProtocol)?
+    private var _language: (any LanguageServiceProtocol)?
+    private var _vision: (any VisionServiceProtocol)?
+    private var _keychain: (any KeychainServiceProtocol)?
+    private var _audio: (any AudioServiceProtocol)?
 
     // MARK: - Service Accessors
 
@@ -458,6 +466,34 @@ public final class ServiceContainer: @unchecked Sendable {
         return _pdf!
     }
 
+    public func language() -> any LanguageServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _language == nil { _language = languageFactory() }
+        return _language!
+    }
+
+    public func vision() -> any VisionServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _vision == nil { _vision = visionFactory() }
+        return _vision!
+    }
+
+    public func keychain() -> any KeychainServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _keychain == nil { _keychain = keychainFactory() }
+        return _keychain!
+    }
+
+    public func audio() -> any AudioServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _audio == nil { _audio = audioFactory() }
+        return _audio!
+    }
+
     // MARK: - Test Support
 
     /// Reset all factories to their default implementations and clear cached instances.
@@ -511,6 +547,10 @@ public final class ServiceContainer: @unchecked Sendable {
         updateFactory = { UpdateService() }
         nativeTagFactory = { NativeTagService() }
         pdfFactory = { PDFService() }
+        languageFactory = { LanguageService() }
+        visionFactory = { VisionService() }
+        keychainFactory = { KeychainService() }
+        audioFactory = { AudioService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
@@ -569,6 +609,10 @@ public final class ServiceContainer: @unchecked Sendable {
         _update = nil
         _nativeTag = nil
         _pdf = nil
+        _language = nil
+        _vision = nil
+        _keychain = nil
+        _audio = nil
     }
 
     private init() {}
