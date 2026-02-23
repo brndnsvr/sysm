@@ -3,6 +3,7 @@
 .swiftpm/
 DerivedData/
 *.tar.gz
+*.profraw
 
 # Xcode
 *.xcodeproj/
