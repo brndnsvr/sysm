@@ -216,11 +216,8 @@ cmd_package() {
     arch=$(uname -m)
     archive="${BINARY_NAME}-${version}-macos-${arch}.tar.gz"
 
-    # Ensure release binary exists
-    local binary="${PROJECT_ROOT}/.build/release/${BINARY_NAME}"
-    if [[ ! -f "$binary" ]]; then
-        cmd_release
-    fi
+    # Always rebuild to ensure binary matches current VERSION
+    cmd_release
 
     cd "$PROJECT_ROOT"
     run tar -czf "$archive" -C .build/release "${BINARY_NAME}"
