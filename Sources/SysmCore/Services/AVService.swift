@@ -133,7 +133,9 @@ public actor AVService: AVServiceProtocol {
         let asset = AVURLAsset(url: url)
         let duration = try await asset.load(.duration).seconds
 
-        let maxChunkDuration = chunkDuration ?? 3300 // 55 minutes default
+        // Apple's speech recognizer works best with short segments (< 60s).
+        // Always chunk files longer than the limit.
+        let maxChunkDuration = chunkDuration ?? 55
 
         if duration > maxChunkDuration {
             return try await transcribeChunked(
@@ -209,34 +211,14 @@ public actor AVService: AVServiceProtocol {
         request.shouldReportPartialResults = false
         request.taskHint = .dictation
 
-        let result: SFSpeechRecognitionResult = try await withUnsafeThrowingContinuation { continuation in
-            let lock = NSLock()
-            var hasResumed = false
-            recognizer.recognitionTask(with: request) { result, error in
-                lock.lock()
-                guard !hasResumed else {
-                    lock.unlock()
-                    return
-                }
-                if let result = result, result.isFinal {
-                    hasResumed = true
-                    lock.unlock()
-                    continuation.resume(returning: result)
-                } else if let error = error {
-                    hasResumed = true
-                    lock.unlock()
-                    let nsError = error as NSError
-                    if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 1110 {
-                        continuation.resume(throwing: AVError.transcriptionFailed(
-                            "No speech detected in audio. The recording may be too quiet, too short, or contain only background noise."
-                        ))
-                    } else {
-                        continuation.resume(throwing: error)
-                    }
-                } else {
-                    lock.unlock()
-                }
-            }
+        let delegate = RecognitionDelegate()
+        let task = recognizer.recognitionTask(with: request, delegate: delegate)
+
+        let result = try await delegate.waitForResult()
+
+        // Cancel task if still running (e.g. after getting final result)
+        if task.state == .running || task.state == .starting {
+            task.cancel()
         }
 
         var segments: [AVTranscriptionSegment] = []
@@ -263,38 +245,54 @@ public actor AVService: AVServiceProtocol {
         var allText = ""
         var allSegments: [AVTranscriptionSegment] = []
         var offset: TimeInterval = 0
+        var chunkIndex = 0
 
         while offset < totalDuration {
             let chunkEnd = min(offset + chunkDuration, totalDuration)
+            chunkIndex += 1
 
             // Export chunk using AVAssetExportSession
             let chunkURL = try await exportChunk(from: url, start: offset, end: chunkEnd)
             defer { try? FileManager.default.removeItem(at: chunkURL) }
 
-            let chunkResult = try await transcribeSingle(
-                url: chunkURL,
-                recognizer: recognizer,
-                duration: chunkEnd - offset,
-                timestamps: timestamps,
-                language: language
-            )
+            do {
+                let chunkResult = try await transcribeSingle(
+                    url: chunkURL,
+                    recognizer: recognizer,
+                    duration: chunkEnd - offset,
+                    timestamps: timestamps,
+                    language: language
+                )
 
-            if !allText.isEmpty { allText += " " }
-            allText += chunkResult.text
+                if !allText.isEmpty { allText += " " }
+                allText += chunkResult.text
 
-            if timestamps {
-                let offsetSegments = chunkResult.segments.map { segment in
-                    AVTranscriptionSegment(
-                        text: segment.text,
-                        timestamp: segment.timestamp + offset,
-                        duration: segment.duration,
-                        confidence: segment.confidence
-                    )
+                if timestamps {
+                    let offsetSegments = chunkResult.segments.map { segment in
+                        AVTranscriptionSegment(
+                            text: segment.text,
+                            timestamp: segment.timestamp + offset,
+                            duration: segment.duration,
+                            confidence: segment.confidence
+                        )
+                    }
+                    allSegments.append(contentsOf: offsetSegments)
                 }
-                allSegments.append(contentsOf: offsetSegments)
+            } catch {
+                // Skip chunks that fail (e.g. silence) instead of aborting entirely
+                let nsError = error as NSError
+                let isSpeechError = nsError.domain == "kAFAssistantErrorDomain"
+                if !isSpeechError {
+                    throw error
+                }
+                // Speech errors (no speech detected, etc.) - skip this chunk
             }
 
             offset = chunkEnd
+        }
+
+        if allText.isEmpty {
+            throw AVError.transcriptionFailed("No speech detected in any segment of the audio")
         }
 
         return AVTranscriptionResult(
@@ -332,6 +330,72 @@ public actor AVService: AVServiceProtocol {
         }
 
         return tempURL
+    }
+}
+
+// MARK: - Delegate-based recognition (avoids continuation crash)
+
+private final class RecognitionDelegate: NSObject, SFSpeechRecognitionTaskDelegate, @unchecked Sendable {
+    private let lock = NSLock()
+    private var continuation: CheckedContinuation<SFSpeechRecognitionResult, Error>?
+    private var bestResult: SFSpeechRecognitionResult?
+    private var taskError: Error?
+    private var isFinished = false
+
+    func waitForResult() async throws -> SFSpeechRecognitionResult {
+        try await withCheckedThrowingContinuation { cont in
+            lock.lock()
+            if isFinished {
+                // Task already completed before we started waiting
+                lock.unlock()
+                if let result = bestResult {
+                    cont.resume(returning: result)
+                } else {
+                    let error = taskError ?? AVError.transcriptionFailed(
+                        "No speech detected in audio. The recording may be too quiet, too short, or contain only background noise."
+                    )
+                    cont.resume(throwing: error)
+                }
+            } else {
+                continuation = cont
+                lock.unlock()
+            }
+        }
+    }
+
+    // Called when recognizer produces a result (partial or final)
+    func speechRecognitionTask(_ task: SFSpeechRecognitionTask, didHypothesizeTranscription transcription: SFTranscription) {
+        // Partial results - we don't need these
+    }
+
+    // Called when a final result is available
+    func speechRecognitionTask(_ task: SFSpeechRecognitionTask, didFinishRecognition recognitionResult: SFSpeechRecognitionResult) {
+        lock.lock()
+        bestResult = recognitionResult
+        lock.unlock()
+    }
+
+    // Called when the task finishes (success or error)
+    func speechRecognitionTask(_ task: SFSpeechRecognitionTask, didFinishSuccessfully successfully: Bool) {
+        lock.lock()
+        isFinished = true
+        if !successfully {
+            taskError = task.error
+        }
+        if let cont = continuation {
+            continuation = nil
+            lock.unlock()
+            if let result = bestResult {
+                cont.resume(returning: result)
+            } else {
+                let error = taskError ?? AVError.transcriptionFailed(
+                    "No speech detected in audio. The recording may be too quiet, too short, or contain only background noise."
+                )
+                cont.resume(throwing: error)
+            }
+        } else {
+            lock.unlock()
+        }
     }
 }
 
