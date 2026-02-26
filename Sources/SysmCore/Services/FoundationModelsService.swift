@@ -44,7 +44,7 @@ public struct FoundationModelsService: FoundationModelsServiceProtocol {
         }
 
         // Multi-chunk: summarize each chunk, then summarize summaries
-        let chunks = chunkText(text, size: effectiveChunkSize)
+        let chunks = FMTextProcessing.chunkText(text, size: effectiveChunkSize)
         var chunkSummaries: [String] = []
 
         for chunk in chunks {
@@ -60,7 +60,7 @@ public struct FoundationModelsService: FoundationModelsServiceProtocol {
         try ensureAvailable()
         let effectiveChunkSize = chunkSize ?? 4000
 
-        let chunks = text.count <= effectiveChunkSize ? [text] : chunkText(text, size: effectiveChunkSize)
+        let chunks = text.count <= effectiveChunkSize ? [text] : FMTextProcessing.chunkText(text, size: effectiveChunkSize)
         var allItems: [FMActionItem] = []
 
         for chunk in chunks {
@@ -70,7 +70,7 @@ public struct FoundationModelsService: FoundationModelsServiceProtocol {
                 Only output action lines, nothing else.
                 """)
             let response = try await session.respond(to: chunk)
-            let items = parseActionItems(response.content)
+            let items = FMTextProcessing.parseActionItems(response.content)
             allItems.append(contentsOf: items)
         }
 
@@ -104,7 +104,38 @@ public struct FoundationModelsService: FoundationModelsServiceProtocol {
         return FMSummary(summary: summary, wordCount: wordCount)
     }
 
-    private func chunkText(_ text: String, size: Int) -> [String] {
+}
+#endif
+
+// Fallback for systems without FoundationModels
+public struct FoundationModelsUnavailableService: FoundationModelsServiceProtocol {
+    public init() {}
+
+    public func checkAvailability() -> FMAvailability {
+        FMAvailability(available: false, status: .frameworkUnavailable, message: "FoundationModels framework not available on this system (requires macOS 26+)")
+    }
+
+    public func prompt(text: String, systemPrompt: String?) async throws -> FMResponse {
+        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
+    }
+
+    public func summarize(text: String, chunkSize: Int?) async throws -> FMSummary {
+        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
+    }
+
+    public func extractActionItems(text: String, chunkSize: Int?) async throws -> FMActionItemsResult {
+        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
+    }
+
+    public func analyze(text: String, prompt: String) async throws -> FMAnalysisResult {
+        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
+    }
+}
+
+// MARK: - Text Processing (testable on all platforms)
+
+enum FMTextProcessing {
+    static func chunkText(_ text: String, size: Int) -> [String] {
         var chunks: [String] = []
         let paragraphs = text.components(separatedBy: "\n\n")
         var current = ""
@@ -125,7 +156,7 @@ public struct FoundationModelsService: FoundationModelsServiceProtocol {
         return chunks
     }
 
-    private func parseActionItems(_ text: String) -> [FMActionItem] {
+    static func parseActionItems(_ text: String) -> [FMActionItem] {
         var items: [FMActionItem] = []
         let lines = text.components(separatedBy: "\n")
 
@@ -155,32 +186,6 @@ public struct FoundationModelsService: FoundationModelsServiceProtocol {
         }
 
         return items
-    }
-}
-#endif
-
-// Fallback for systems without FoundationModels
-public struct FoundationModelsUnavailableService: FoundationModelsServiceProtocol {
-    public init() {}
-
-    public func checkAvailability() -> FMAvailability {
-        FMAvailability(available: false, status: .frameworkUnavailable, message: "FoundationModels framework not available on this system (requires macOS 26+)")
-    }
-
-    public func prompt(text: String, systemPrompt: String?) async throws -> FMResponse {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
-    }
-
-    public func summarize(text: String, chunkSize: Int?) async throws -> FMSummary {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
-    }
-
-    public func extractActionItems(text: String, chunkSize: Int?) async throws -> FMActionItemsResult {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
-    }
-
-    public func analyze(text: String, prompt: String) async throws -> FMAnalysisResult {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
     }
 }
 

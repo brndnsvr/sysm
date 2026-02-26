@@ -207,13 +207,25 @@ public actor AVService: AVServiceProtocol {
     private func transcribeSingle(url: URL, recognizer: SFSpeechRecognizer, duration: Double, timestamps: Bool, language: String?) async throws -> AVTranscriptionResult {
         let request = SFSpeechURLRecognitionRequest(url: url)
         request.shouldReportPartialResults = false
+        request.taskHint = .dictation
 
-        let result = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<SFSpeechRecognitionResult, Error>) in
+        let result: SFSpeechRecognitionResult = try await withCheckedThrowingContinuation { continuation in
+            var hasResumed = false
             recognizer.recognitionTask(with: request) { result, error in
-                if let error = error {
-                    continuation.resume(throwing: error)
-                } else if let result = result, result.isFinal {
+                guard !hasResumed else { return }
+                if let result = result, result.isFinal {
+                    hasResumed = true
                     continuation.resume(returning: result)
+                } else if let error = error {
+                    hasResumed = true
+                    let nsError = error as NSError
+                    if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 1110 {
+                        continuation.resume(throwing: AVError.transcriptionFailed(
+                            "No speech detected in audio. The recording may be too quiet, too short, or contain only background noise."
+                        ))
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
                 }
             }
         }
