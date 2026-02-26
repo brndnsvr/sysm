@@ -209,15 +209,22 @@ public actor AVService: AVServiceProtocol {
         request.shouldReportPartialResults = false
         request.taskHint = .dictation
 
-        let result: SFSpeechRecognitionResult = try await withCheckedThrowingContinuation { continuation in
+        let result: SFSpeechRecognitionResult = try await withUnsafeThrowingContinuation { continuation in
+            let lock = NSLock()
             var hasResumed = false
             recognizer.recognitionTask(with: request) { result, error in
-                guard !hasResumed else { return }
+                lock.lock()
+                guard !hasResumed else {
+                    lock.unlock()
+                    return
+                }
                 if let result = result, result.isFinal {
                     hasResumed = true
+                    lock.unlock()
                     continuation.resume(returning: result)
                 } else if let error = error {
                     hasResumed = true
+                    lock.unlock()
                     let nsError = error as NSError
                     if nsError.domain == "kAFAssistantErrorDomain" && nsError.code == 1110 {
                         continuation.resume(throwing: AVError.transcriptionFailed(
@@ -226,6 +233,8 @@ public actor AVService: AVServiceProtocol {
                     } else {
                         continuation.resume(throwing: error)
                     }
+                } else {
+                    lock.unlock()
                 }
             }
         }
