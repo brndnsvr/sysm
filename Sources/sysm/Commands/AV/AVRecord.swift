@@ -6,8 +6,17 @@ import SysmCore
 struct AVRecord: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "record",
-        abstract: "Record audio from microphone"
+        abstract: "Record audio from a device (shortcuts: teams, mic, all)"
     )
+
+    private static let deviceAliases: [String: String] = [
+        "teams": "MSLoopbackDriverDevice_UID",
+        "mic": "BuiltInMicrophoneDevice",
+        "all": "BlackHole2ch_UID",
+    ]
+
+    @Argument(help: "Device shortcut: teams, mic, all")
+    var shortcut: String?
 
     @Option(name: .shortAndLong, help: "Output file path")
     var output: String?
@@ -29,10 +38,22 @@ struct AVRecord: AsyncParsableCommand {
             throw ValidationError("Unsupported format '\(format)'. Use: m4a, wav, aiff, caf")
         }
 
+        // Resolve device: shortcut takes precedence over --device
+        let resolvedDevice: String?
+        if let shortcut = shortcut {
+            guard let mapped = Self.deviceAliases[shortcut] else {
+                let valid = Self.deviceAliases.keys.sorted().joined(separator: ", ")
+                throw ValidationError("Unknown shortcut '\(shortcut)'. Use: \(valid)")
+            }
+            resolvedDevice = mapped
+        } else {
+            resolvedDevice = device
+        }
+
         let outputPath = output ?? defaultOutputPath(format: audioFormat)
         let service = Services.av()
 
-        try await service.startRecording(outputPath: outputPath, format: audioFormat, deviceID: device)
+        try await service.startRecording(outputPath: outputPath, format: audioFormat, deviceID: resolvedDevice)
 
         if let duration = duration {
             // Timed recording
