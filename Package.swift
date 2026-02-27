@@ -1,6 +1,23 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
+// FoundationModels requires macOS 26+ SDK (Xcode 26 / Swift 6.2+)
+var sysmCoreLinkerSettings: [LinkerSetting] = [
+    .linkedFramework("AVFoundation"),
+    .linkedFramework("CoreAudio"),
+    .linkedFramework("CoreWLAN"),
+    .linkedFramework("IOBluetooth"),
+    .linkedFramework("Photos"),
+    .linkedFramework("Speech"),
+    .linkedFramework("UserNotifications"),
+]
+
+#if compiler(>=6.2)
+sysmCoreLinkerSettings.append(
+    .unsafeFlags(["-Xlinker", "-weak_framework", "-Xlinker", "FoundationModels"])
+)
+#endif
+
 let package = Package(
     name: "sysm",
     platforms: [
@@ -19,16 +36,7 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/SysmCore",
-            linkerSettings: [
-                .linkedFramework("AVFoundation"),
-                .linkedFramework("CoreAudio"),
-                .linkedFramework("CoreWLAN"),
-                .linkedFramework("IOBluetooth"),
-                .linkedFramework("Photos"),
-                .linkedFramework("Speech"),
-                .linkedFramework("UserNotifications"),
-                .unsafeFlags(["-Xlinker", "-weak_framework", "-Xlinker", "FoundationModels"]),
-            ]
+            linkerSettings: sysmCoreLinkerSettings
         ),
         .executableTarget(
             name: "sysm",
