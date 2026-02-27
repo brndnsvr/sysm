@@ -116,25 +116,12 @@ public actor AVService: AVServiceProtocol {
             throw AVError.transcriptionFailed("Speech recognizer not available")
         }
 
-        // Request authorization
-        let authStatus = await withCheckedContinuation { continuation in
-            SFSpeechRecognizer.requestAuthorization { status in
-                continuation.resume(returning: status)
-            }
-        }
-
-        guard authStatus == .authorized else {
-            throw AVError.permissionDenied("Speech recognition access denied")
-        }
+        // Skip requestAuthorization() — it crashes CLI tools on macOS 26+ (TCC privacy violation).
+        // Rely on the terminal app's Speech Recognition permission instead.
 
         let url = URL(fileURLWithPath: filePath)
-
-        // Get audio duration
         let asset = AVURLAsset(url: url)
         let duration = try await asset.load(.duration).seconds
-
-        // Apple's speech recognizer works best with short segments (< 60s).
-        // Always chunk files longer than the limit.
         let maxChunkDuration = chunkDuration ?? 55
 
         if duration > maxChunkDuration {
@@ -251,7 +238,6 @@ public actor AVService: AVServiceProtocol {
             let chunkEnd = min(offset + chunkDuration, totalDuration)
             chunkIndex += 1
 
-            // Export chunk using AVAssetExportSession
             let chunkURL = try await exportChunk(from: url, start: offset, end: chunkEnd)
             defer { try? FileManager.default.removeItem(at: chunkURL) }
 

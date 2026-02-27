@@ -20,7 +20,7 @@ struct AVTranscribe: AsyncParsableCommand {
     @Flag(name: .long, help: "Include timestamps for each segment")
     var timestamps = false
 
-    @Option(name: .long, help: "Chunk duration in seconds for long audio (default: 3300)")
+    @Option(name: .long, help: "Chunk duration in seconds for long audio (default: 55)")
     var chunkDuration: Double?
 
     @Flag(name: .long, help: "Output as JSON")
