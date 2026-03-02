@@ -1,6 +1,6 @@
 import Dispatch
 import Foundation
-import Virtualization
+@preconcurrency import Virtualization
 
 public struct VirtualizationService: VirtualizationServiceProtocol {
     public init() {}
@@ -154,7 +154,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
 
         let platform = VZMacPlatformConfiguration()
         platform.machineIdentifier = machineId
-        platform.auxiliaryStorage = try VZMacAuxiliaryStorage(contentsOf: auxPath)
+        platform.auxiliaryStorage = VZMacAuxiliaryStorage(contentsOf: auxPath)
         platform.hardwareModel = requirements.hardwareModel
         vmConfig.platform = platform
 
@@ -466,7 +466,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         // EFI boot loader
         let efiPath = vmDir.appendingPathComponent("efi_vars.bin")
         let bootLoader = VZEFIBootLoader()
-        bootLoader.variableStore = try VZEFIVariableStore(url: efiPath)
+        bootLoader.variableStore = VZEFIVariableStore(url: efiPath)
         vmConfig.bootLoader = bootLoader
 
         // Generic platform
@@ -513,7 +513,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         let platform = VZMacPlatformConfiguration()
         platform.machineIdentifier = machineId
         platform.hardwareModel = hardwareModel
-        platform.auxiliaryStorage = try VZMacAuxiliaryStorage(contentsOf: auxPath)
+        platform.auxiliaryStorage = VZMacAuxiliaryStorage(contentsOf: auxPath)
         vmConfig.platform = platform
 
         vmConfig.bootLoader = VZMacOSBootLoader()
