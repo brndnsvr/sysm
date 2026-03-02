@@ -29,4 +29,14 @@ enum CLI {
         }
         return true
     }
+
+    /// Non-blocking async readline that moves the blocking call off the cooperative thread pool.
+    static func readLineAsync(prompt: String? = nil) async -> String? {
+        if let prompt { print(prompt, terminator: "") }
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global().async {
+                continuation.resume(returning: readLine())
+            }
+        }
+    }
 }

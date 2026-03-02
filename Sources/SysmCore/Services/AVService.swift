@@ -7,11 +7,12 @@ public actor AVService: AVServiceProtocol {
     private var recordingStartTime: Date?
     private var recordingOutputPath: String?
     private var recordingFormat: AVAudioFormat?
+    private var isPaused: Bool = false
 
     public init() {}
 
     public var isRecording: Bool {
-        recorder?.isRecording ?? false
+        recorder != nil
     }
 
     public func listInputDevices() async throws -> [AVInputDevice] {
@@ -66,7 +67,7 @@ public actor AVService: AVServiceProtocol {
     }
 
     public func stopRecording() async throws -> AVRecordingResult {
-        guard let audioRecorder = recorder, audioRecorder.isRecording else {
+        guard let audioRecorder = recorder else {
             throw AVError.notRecording
         }
 
@@ -84,12 +85,57 @@ public actor AVService: AVServiceProtocol {
         recordingStartTime = nil
         recordingOutputPath = nil
         recordingFormat = nil
+        isPaused = false
 
         return AVRecordingResult(
             path: path,
             format: format.rawValue,
             duration: duration,
             fileSize: fileSize
+        )
+    }
+
+    public func pauseRecording() async throws {
+        guard let audioRecorder = recorder else {
+            throw AVError.notRecording
+        }
+        guard !isPaused else {
+            throw AVError.alreadyPaused
+        }
+        audioRecorder.pause()
+        isPaused = true
+    }
+
+    public func resumeRecording() async throws {
+        guard let audioRecorder = recorder else {
+            throw AVError.notRecording
+        }
+        guard isPaused else {
+            throw AVError.notPaused
+        }
+        audioRecorder.record()
+        isPaused = false
+    }
+
+    public func recordingStatus() async throws -> AVRecordingStatus {
+        guard let audioRecorder = recorder else {
+            throw AVError.notRecording
+        }
+
+        let path = recordingOutputPath ?? audioRecorder.url.path
+        let format = recordingFormat ?? .m4a
+
+        var fileSize: Int64 = 0
+        if let attrs = try? FileManager.default.attributesOfItem(atPath: path) {
+            fileSize = attrs[.size] as? Int64 ?? 0
+        }
+
+        return AVRecordingStatus(
+            filePath: path,
+            format: format.displayName,
+            elapsedTime: audioRecorder.currentTime,
+            currentFileSize: fileSize,
+            isPaused: isPaused
         )
     }
 
@@ -388,6 +434,8 @@ private final class RecognitionDelegate: NSObject, SFSpeechRecognitionTaskDelega
 public enum AVError: LocalizedError {
     case alreadyRecording
     case notRecording
+    case alreadyPaused
+    case notPaused
     case recordingFailed(String)
     case fileNotFound(String)
     case languageNotSupported(String)
@@ -400,6 +448,10 @@ public enum AVError: LocalizedError {
             return "Already recording"
         case .notRecording:
             return "Not currently recording"
+        case .alreadyPaused:
+            return "Recording is already paused"
+        case .notPaused:
+            return "Recording is not paused"
         case .recordingFailed(let reason):
             return "Recording failed: \(reason)"
         case .fileNotFound(let path):

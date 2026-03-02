@@ -26,6 +26,17 @@ public enum OutputFormatter {
         print(jsonString)
     }
 
+    /// Formats a duration in seconds as a human-readable string (e.g., "2:34" or "1:02:15").
+    public static func formatDuration(_ seconds: TimeInterval) -> String {
+        let hours = Int(seconds) / 3600
+        let minutes = (Int(seconds) % 3600) / 60
+        let secs = Int(seconds) % 60
+        if hours > 0 {
+            return String(format: "%d:%02d:%02d", hours, minutes, secs)
+        }
+        return String(format: "%d:%02d", minutes, secs)
+    }
+
     /// Encodes a value to pretty-printed JSON Data.
     /// - Parameter value: The value to encode.
     /// - Returns: JSON-encoded data.

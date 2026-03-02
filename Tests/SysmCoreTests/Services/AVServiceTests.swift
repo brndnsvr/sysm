@@ -29,6 +29,17 @@ final class AVServiceTests: XCTestCase {
         XCTAssertEqual(decoded.displayName, "AAC (M4A)")
     }
 
+    func testAVRecordingStatusCodable() throws {
+        let status = AVRecordingStatus(filePath: "/tmp/recording.m4a", format: "AAC (M4A)", elapsedTime: 154.0, currentFileSize: 1258291, isPaused: false)
+        let data = try JSONEncoder().encode(status)
+        let decoded = try JSONDecoder().decode(AVRecordingStatus.self, from: data)
+        XCTAssertEqual(decoded.filePath, "/tmp/recording.m4a")
+        XCTAssertEqual(decoded.format, "AAC (M4A)")
+        XCTAssertEqual(decoded.elapsedTime, 154.0)
+        XCTAssertEqual(decoded.currentFileSize, 1258291)
+        XCTAssertFalse(decoded.isPaused)
+    }
+
     func testAVRecordingResultCodable() throws {
         let result = AVRecordingResult(path: "/tmp/recording.m4a", format: "m4a", duration: 10.5, fileSize: 102400)
         let data = try JSONEncoder().encode(result)
@@ -117,6 +128,48 @@ final class AVServiceTests: XCTestCase {
         }
     }
 
+    func testPauseRecordingWhenNotRecordingThrows() async {
+        do {
+            try await service.pauseRecording()
+            XCTFail("Expected AVError.notRecording")
+        } catch let error as AVError {
+            guard case .notRecording = error else {
+                XCTFail("Expected .notRecording, got \(error)")
+                return
+            }
+        } catch {
+            XCTFail("Expected AVError, got \(error)")
+        }
+    }
+
+    func testResumeRecordingWhenNotRecordingThrows() async {
+        do {
+            try await service.resumeRecording()
+            XCTFail("Expected AVError.notRecording")
+        } catch let error as AVError {
+            guard case .notRecording = error else {
+                XCTFail("Expected .notRecording, got \(error)")
+                return
+            }
+        } catch {
+            XCTFail("Expected AVError, got \(error)")
+        }
+    }
+
+    func testRecordingStatusWhenNotRecordingThrows() async {
+        do {
+            _ = try await service.recordingStatus()
+            XCTFail("Expected AVError.notRecording")
+        } catch let error as AVError {
+            guard case .notRecording = error else {
+                XCTFail("Expected .notRecording, got \(error)")
+                return
+            }
+        } catch {
+            XCTFail("Expected AVError, got \(error)")
+        }
+    }
+
     func testTranscribeNonexistentFileThrows() async {
         do {
             _ = try await service.transcribe(filePath: "/nonexistent/audio.m4a", language: nil, timestamps: false, chunkDuration: nil)
@@ -137,6 +190,8 @@ final class AVServiceTests: XCTestCase {
         let cases: [AVError] = [
             .alreadyRecording,
             .notRecording,
+            .alreadyPaused,
+            .notPaused,
             .recordingFailed("test"),
             .fileNotFound("/tmp/test.m4a"),
             .languageNotSupported("xx-XX"),

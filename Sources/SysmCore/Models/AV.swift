@@ -42,6 +42,22 @@ public struct AVFormatInfo: Codable, Sendable {
     }
 }
 
+public struct AVRecordingStatus: Codable, Sendable {
+    public let filePath: String
+    public let format: String
+    public let elapsedTime: TimeInterval
+    public let currentFileSize: Int64
+    public let isPaused: Bool
+
+    public init(filePath: String, format: String, elapsedTime: TimeInterval, currentFileSize: Int64, isPaused: Bool) {
+        self.filePath = filePath
+        self.format = format
+        self.elapsedTime = elapsedTime
+        self.currentFileSize = currentFileSize
+        self.isPaused = isPaused
+    }
+}
+
 public struct AVRecordingResult: Codable, Sendable {
     public let path: String
     public let format: String
