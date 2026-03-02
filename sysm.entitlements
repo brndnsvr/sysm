@@ -4,5 +4,7 @@
 <dict>
     <key>com.apple.developer.weatherkit</key>
     <true/>
+    <key>com.apple.security.virtualization</key>
+    <true/>
 </dict>
 </plist>

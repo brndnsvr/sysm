@@ -10,6 +10,7 @@ var sysmCoreLinkerSettings: [LinkerSetting] = [
     .linkedFramework("Photos"),
     .linkedFramework("Speech"),
     .linkedFramework("UserNotifications"),
+    .linkedFramework("Virtualization"),
 ]
 
 #if compiler(>=6.2)

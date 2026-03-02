@@ -46,6 +46,7 @@ struct Sysm: AsyncParsableCommand {
             TimeMachineCommand.self,
             AudioCommand.self,
             AVCommand.self,
+            VMCommand.self,
             // Phase 4: Automation
             ExecCommand.self,
             WorkflowCommand.self,

@@ -105,6 +105,7 @@ public final class ServiceContainer: @unchecked Sendable {
     public var keychainFactory: () -> any KeychainServiceProtocol = { KeychainService() }
     public var audioFactory: () -> any AudioServiceProtocol = { AudioService() }
     public var avFactory: () -> any AVServiceProtocol = { AVService() }
+    public var virtualizationFactory: () -> any VirtualizationServiceProtocol = { VirtualizationService() }
     public var foundationModelsFactory: () -> any FoundationModelsServiceProtocol = {
         #if canImport(FoundationModels)
         if #available(macOS 26, *) {
@@ -165,6 +166,7 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _keychain: (any KeychainServiceProtocol)?
     private var _audio: (any AudioServiceProtocol)?
     private var _av: (any AVServiceProtocol)?
+    private var _virtualization: (any VirtualizationServiceProtocol)?
     private var _foundationModels: (any FoundationModelsServiceProtocol)?
 
     // MARK: - Service Accessors
@@ -506,6 +508,13 @@ public final class ServiceContainer: @unchecked Sendable {
         return _av!
     }
 
+    public func virtualization() -> any VirtualizationServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _virtualization == nil { _virtualization = virtualizationFactory() }
+        return _virtualization!
+    }
+
     public func foundationModels() -> any FoundationModelsServiceProtocol {
         lock.lock()
         defer { lock.unlock() }
@@ -571,6 +580,7 @@ public final class ServiceContainer: @unchecked Sendable {
         keychainFactory = { KeychainService() }
         audioFactory = { AudioService() }
         avFactory = { AVService() }
+        virtualizationFactory = { VirtualizationService() }
         foundationModelsFactory = {
             #if canImport(FoundationModels)
             if #available(macOS 26, *) {
@@ -642,6 +652,7 @@ public final class ServiceContainer: @unchecked Sendable {
         _keychain = nil
         _audio = nil
         _av = nil
+        _virtualization = nil
         _foundationModels = nil
     }
 
