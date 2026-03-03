@@ -1,4 +1,5 @@
 import AVFoundation
+import CoreAudio
 import Foundation
 import Speech
 
@@ -8,6 +9,8 @@ public actor AVService: AVServiceProtocol {
     private var recordingOutputPath: String?
     private var recordingFormat: AVAudioFormat?
     private var isPaused: Bool = false
+    private var previousDefaultInputID: AudioDeviceID?
+    private var didSwitchInputDevice: Bool = false
 
     public init() {}
 
@@ -44,6 +47,20 @@ public actor AVService: AVServiceProtocol {
             throw AVError.alreadyRecording
         }
 
+        // Switch system default input device if a specific device was requested
+        if let deviceUID = deviceID {
+            let targetID = try resolveAudioDeviceID(uid: deviceUID)
+            let currentDefaultID = try getDefaultInputDeviceID()
+
+            if targetID != currentDefaultID {
+                previousDefaultInputID = currentDefaultID
+                try setDefaultInputDevice(targetID)
+                didSwitchInputDevice = true
+                // Brief pause for Core Audio to propagate the device change
+                try await Task.sleep(nanoseconds: 100_000_000)
+            }
+        }
+
         let url = URL(fileURLWithPath: outputPath)
 
         // Ensure parent directory exists
@@ -53,10 +70,18 @@ public actor AVService: AVServiceProtocol {
         }
 
         let settings = audioSettings(for: format)
-        let audioRecorder = try AVFoundation.AVAudioRecorder(url: url, settings: settings)
+        let audioRecorder: AVFoundation.AVAudioRecorder
+        do {
+            audioRecorder = try AVFoundation.AVAudioRecorder(url: url, settings: settings)
+        } catch {
+            // Restore default input if recorder creation fails
+            restorePreviousInputDevice()
+            throw AVError.recordingFailed("Failed to create recorder: \(error.localizedDescription)")
+        }
         audioRecorder.isMeteringEnabled = true
 
         guard audioRecorder.record() else {
+            restorePreviousInputDevice()
             throw AVError.recordingFailed("Failed to start recording")
         }
 
@@ -73,6 +98,9 @@ public actor AVService: AVServiceProtocol {
 
         let duration = audioRecorder.currentTime
         audioRecorder.stop()
+
+        // Restore previous default input device
+        restorePreviousInputDevice()
 
         let path = recordingOutputPath ?? audioRecorder.url.path
         let format = recordingFormat ?? .m4a
@@ -113,7 +141,9 @@ public actor AVService: AVServiceProtocol {
         guard isPaused else {
             throw AVError.notPaused
         }
-        audioRecorder.record()
+        guard audioRecorder.record() else {
+            throw AVError.recordingFailed("Failed to resume — device may have been disconnected")
+        }
         isPaused = false
     }
 
@@ -198,6 +228,98 @@ public actor AVService: AVServiceProtocol {
                 displayName: format.displayName
             )
         }
+    }
+
+    // MARK: - Core Audio Device Switching
+
+    private func resolveAudioDeviceID(uid: String) throws -> AudioDeviceID {
+        let deviceIDs = try getAllAudioDeviceIDs()
+        for deviceID in deviceIDs {
+            if let deviceUID = getDeviceUID(deviceID: deviceID), deviceUID == uid {
+                return deviceID
+            }
+        }
+        throw AVError.deviceNotFound(uid)
+    }
+
+    private func getDefaultInputDeviceID() throws -> AudioDeviceID {
+        var deviceID = AudioDeviceID()
+        var size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceID
+        )
+        guard status == noErr else {
+            throw AVError.deviceSwitchFailed("get default input", status)
+        }
+        return deviceID
+    }
+
+    private func setDefaultInputDevice(_ deviceID: AudioDeviceID) throws {
+        var id = deviceID
+        let size = UInt32(MemoryLayout<AudioDeviceID>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDefaultInputDevice,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectSetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, size, &id
+        )
+        guard status == noErr else {
+            throw AVError.deviceSwitchFailed("set default input", status)
+        }
+    }
+
+    private func getAllAudioDeviceIDs() throws -> [AudioDeviceID] {
+        var size: UInt32 = 0
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioHardwarePropertyDevices,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var status = AudioObjectGetPropertyDataSize(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size
+        )
+        guard status == noErr else {
+            throw AVError.deviceSwitchFailed("enumerate devices", status)
+        }
+        let count = Int(size) / MemoryLayout<AudioDeviceID>.size
+        var deviceIDs = [AudioDeviceID](repeating: 0, count: count)
+        status = AudioObjectGetPropertyData(
+            AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &deviceIDs
+        )
+        guard status == noErr else {
+            throw AVError.deviceSwitchFailed("enumerate devices", status)
+        }
+        return deviceIDs
+    }
+
+    private func getDeviceUID(deviceID: AudioDeviceID) -> String? {
+        var uid: Unmanaged<CFString>?
+        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        let status = AudioObjectGetPropertyData(deviceID, &address, 0, nil, &size, &uid)
+        guard status == noErr, let cfString = uid?.takeUnretainedValue() else {
+            return nil
+        }
+        return cfString as String
+    }
+
+    private func restorePreviousInputDevice() {
+        if didSwitchInputDevice, let previousID = previousDefaultInputID {
+            try? setDefaultInputDevice(previousID)
+        }
+        previousDefaultInputID = nil
+        didSwitchInputDevice = false
     }
 
     // MARK: - Private
@@ -441,6 +563,8 @@ public enum AVError: LocalizedError {
     case languageNotSupported(String)
     case transcriptionFailed(String)
     case permissionDenied(String)
+    case deviceNotFound(String)
+    case deviceSwitchFailed(String, OSStatus)
 
     public var errorDescription: String? {
         switch self {
@@ -462,6 +586,10 @@ public enum AVError: LocalizedError {
             return "Transcription failed: \(reason)"
         case .permissionDenied(let reason):
             return reason
+        case .deviceNotFound(let uid):
+            return "Audio input device not found: \(uid). Is the application running?"
+        case .deviceSwitchFailed(let operation, let status):
+            return "Failed to \(operation) (Core Audio status: \(status))"
         }
     }
 }

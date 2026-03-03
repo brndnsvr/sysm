@@ -197,9 +197,41 @@ final class AVServiceTests: XCTestCase {
             .languageNotSupported("xx-XX"),
             .transcriptionFailed("test reason"),
             .permissionDenied("test denied"),
+            .deviceNotFound("NonExistent_UID"),
+            .deviceSwitchFailed("set default input", -1),
         ]
         for error in cases {
             XCTAssertNotNil(error.errorDescription, "AVError.\(error) should have errorDescription")
+        }
+    }
+
+    func testDeviceNotFoundErrorMessage() {
+        let error = AVError.deviceNotFound("MSLoopbackDriverDevice_UID")
+        XCTAssertTrue(error.errorDescription!.contains("MSLoopbackDriverDevice_UID"))
+        XCTAssertTrue(error.errorDescription!.contains("not found"))
+    }
+
+    func testDeviceSwitchFailedErrorMessage() {
+        let error = AVError.deviceSwitchFailed("set default input", -50)
+        XCTAssertTrue(error.errorDescription!.contains("set default input"))
+        XCTAssertTrue(error.errorDescription!.contains("-50"))
+    }
+
+    func testStartRecordingWithInvalidDeviceIDThrows() async {
+        do {
+            try await service.startRecording(
+                outputPath: NSTemporaryDirectory() + "test_invalid_device.m4a",
+                format: .m4a,
+                deviceID: "NonExistent_Device_UID_12345"
+            )
+            XCTFail("Expected AVError.deviceNotFound")
+        } catch let error as AVError {
+            guard case .deviceNotFound = error else {
+                XCTFail("Expected .deviceNotFound, got \(error)")
+                return
+            }
+        } catch {
+            XCTFail("Expected AVError, got \(error)")
         }
     }
 }
