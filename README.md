@@ -1,6 +1,6 @@
 # sysm
 
-Unified CLI for the Apple ecosystem on macOS. Interact with Calendar, Reminders, Notes, Contacts, Mail, Messages, Safari, Music, Photos, Finder tags, Spotlight, Shortcuts, Focus modes, and Weather from the terminal.
+Unified CLI for the Apple ecosystem on macOS. Interact with Calendar, Reminders, Notes, Contacts, Mail, Messages, Safari, Music, Photos, Finder, Spotlight, Shortcuts, Focus, Weather, Clipboard, System, Notifications, Screen Capture, Bluetooth, Network, Speech, Images, PDFs, Audio, AV recording, Vision, NLP, Keychain, Virtual Machines, and more from the terminal.
 
 ## Installation
 
@@ -57,6 +57,31 @@ make install
 | `schedule` | Cron-like task scheduling |
 | `plugin` | Extend with custom plugins |
 | `weather` | Current conditions and forecasts |
+| `clipboard` | Copy, paste, clear pasteboard |
+| `system` | System info, battery, memory, disk |
+| `notify` | Send and schedule notifications |
+| `capture` | Screen, window, and area capture |
+| `finder` | Open, reveal, info, trash |
+| `network` | Status, WiFi, DNS, ping |
+| `bluetooth` | Device status and listing |
+| `speech` | Text-to-speech and voice listing |
+| `image` | Resize, convert, OCR, metadata |
+| `disk` | List, info, usage, eject |
+| `appstore` | List, search, update (via mas) |
+| `podcasts` | Shows, episodes, playback |
+| `books` | Library and collections |
+| `outlook` | Inbox, calendar, tasks (Outlook) |
+| `slack` | Send, status, channels (Slack API) |
+| `geo` | Geocoding, reverse, distance |
+| `timemachine` | Status, backups, start |
+| `pdf` | Info, extract, merge, split, OCR |
+| `language` | Sentiment, NER, tokenization |
+| `vision` | Barcode, face, classify, rectangles |
+| `keychain` | Search, get, add, update, delete |
+| `audio` | Volume, devices, input/output |
+| `av` | Record audio, transcribe speech |
+| `ai` | On-device AI (Apple Intelligence) |
+| `vm` | Create and manage virtual machines |
 
 ## Quick Examples
 
@@ -118,6 +143,29 @@ sysm focus dnd on
 # Shortcuts
 sysm shortcuts list
 sysm shortcuts run "My Shortcut"
+
+# Virtual Machines
+sysm vm create my-linux --os linux --cpus 4 --memory 4096 --disk 20
+sysm vm start my-linux --iso ~/Downloads/ubuntu.iso
+sysm vm ls
+sysm vm share add my-linux --path ~/shared --tag hostfs
+sysm vm stop my-linux
+
+# PDF
+sysm pdf info ~/report.pdf
+sysm pdf merge output.pdf file1.pdf file2.pdf
+sysm pdf ocr ~/scanned.pdf
+
+# Audio/AV
+sysm audio devices
+sysm audio volume 50
+sysm av record output.m4a --duration 30
+sysm av transcribe ~/recording.m4a
+
+# System
+sysm system info
+sysm system battery
+sysm clipboard paste
 ```
 
 ## Output Formats

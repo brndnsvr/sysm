@@ -611,12 +611,61 @@ Migrated from standalone tools: dayai-calendar, dayai-reminders, dayai-notes.
 
 ---
 
+## Phase 6 - System & Hardware Integration (Completed)
+
+Services shipped across v1.4.0–v1.6.0:
+
+| Subcommand | Framework | Status |
+|------------|-----------|--------|
+| `sysm clipboard` | NSPasteboard | Done |
+| `sysm system` | IOKit, sysctl, ProcessInfo | Done |
+| `sysm notify` | UNUserNotificationCenter | Done |
+| `sysm capture` | /usr/sbin/screencapture | Done |
+| `sysm finder` | NSWorkspace + AppleScript | Done |
+| `sysm network` | CoreWLAN + shell | Done |
+| `sysm bluetooth` | IOBluetooth + system_profiler | Done |
+| `sysm speech` | NSSpeechSynthesizer | Done |
+| `sysm image` | CoreImage + Vision + ImageIO | Done |
+| `sysm disk` | URL resource values + NSWorkspace | Done |
+| `sysm appstore` | mas-cli wrapper | Done |
+| `sysm podcasts` | AppleScript | Done |
+| `sysm books` | Spotlight + file system | Done |
+| `sysm outlook` | AppleScript | Done |
+| `sysm slack` | Slack Web API + Keychain | Done |
+| `sysm geo` | CoreLocation CLGeocoder | Done |
+| `sysm timemachine` | tmutil wrapper | Done |
+| `sysm pdf` | PDFKit | Done |
+| `sysm language` | NaturalLanguage | Done |
+| `sysm vision` | Vision | Done |
+| `sysm keychain` | Security | Done |
+| `sysm audio` | CoreAudio/AudioToolbox | Done |
+
+---
+
+## Phase 7 - AV, AI & Virtualization (Completed)
+
+Services shipped across v1.7.0–v1.12.0:
+
+| Subcommand | Framework | Status |
+|------------|-----------|--------|
+| `sysm av` | AVFoundation + Speech | Done |
+| `sysm ai` | FoundationModels (macOS 26+) | Done |
+| `sysm vm` | Virtualization | Done |
+
+### Virtual Machines (Virtualization.framework)
+
+Full VM lifecycle: create (Linux EFI + macOS IPSW install), start (foreground with serial console for Linux, headless for macOS), stop, list with state filter, info, delete. Additional features: VirtioFS directory sharing, Rosetta x86_64 translation for Linux VMs on Apple Silicon, save/restore VM state (macOS 14+), disk resize. 39 unit tests.
+
+---
+
 ## Future Possibilities
 
 | Feature | Framework | Feasibility | Notes |
 |---------|-----------|-------------|-------|
-| **Keychain** | Security.framework | Medium | Security concerns. Read-only for non-sensitive items. |
 | **Screen Time** | ScreenTime API | Low | Heavily restricted. Requires MDM or family sharing. |
+| **HomeKit** | HomeKit | Blocked | Only available via Mac Catalyst; no native macOS SDK support for CLI. |
+| **CoreML** | CoreML | Medium | Run .mlmodel inference, list models. |
+| **MapKit Directions** | MapKit | Medium | Directions, ETAs, POI search beyond existing GeoService. |
 
 ---
 
