@@ -3,9 +3,14 @@ import Foundation
 @preconcurrency import Virtualization
 
 public struct VirtualizationService: VirtualizationServiceProtocol {
-    public init() {}
+    private let baseDir: URL?
+
+    public init() { self.baseDir = nil }
+
+    public init(baseDirectory: URL) { self.baseDir = baseDirectory }
 
     public func vmDirectory() -> URL {
+        if let baseDir { return baseDir }
         let home = FileManager.default.homeDirectoryForCurrentUser
         return home.appendingPathComponent(".sysm/vms")
     }
@@ -33,7 +38,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let config = try decoder.decode(VMConfig.self, from: data)
-            let state = isVMRunning(vmDir: vmDir) ? VMState.running : VMState.stopped
+            let state = vmState(vmDir: vmDir)
             let diskPath = vmDir.appendingPathComponent("disk.img").path
             let info = VMInfo(config: config, state: state, diskPath: diskPath)
 
@@ -253,6 +258,26 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
             }
         }
 
+        // Restore saved state if present
+        if #available(macOS 14.0, *) {
+            let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
+            if FileManager.default.fileExists(atPath: statePath.path) {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    queue.async {
+                        vm.restoreMachineStateFrom(url: statePath) { error in
+                            if let error {
+                                continuation.resume(throwing: error)
+                            } else {
+                                continuation.resume()
+                            }
+                        }
+                    }
+                }
+                try? FileManager.default.removeItem(at: statePath)
+                print("VM '\(name)' restored from saved state.")
+            }
+        }
+
         if config.os == .linux {
             print("VM '\(name)' started (serial console attached). Press Ctrl+C to stop.")
         } else {
@@ -267,6 +292,24 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
             semaphore.signal()
         }
         signalSource.resume()
+
+        // Set up SIGUSR1 handler for save-and-stop (macOS 14+)
+        if #available(macOS 14.0, *) {
+            let saveSource = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: queue)
+            signal(SIGUSR1, SIG_IGN)
+            saveSource.setEventHandler { [vmDir] in
+                let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
+                vm.saveMachineStateTo(url: statePath) { error in
+                    if let error {
+                        print("\nFailed to save state: \(error.localizedDescription)")
+                    } else {
+                        print("\nVM state saved.")
+                    }
+                    semaphore.signal()
+                }
+            }
+            saveSource.resume()
+        }
 
         // Wait for either SIGINT or guest stop
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -370,7 +413,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         }
 
         let config = try loadConfig(from: vmDir)
-        let state: VMState = isVMRunning(vmDir: vmDir) ? .running : .stopped
+        let state = vmState(vmDir: vmDir)
         let diskPath = vmDir.appendingPathComponent("disk.img").path
 
         return VMInfo(config: config, state: state, diskPath: diskPath)
@@ -393,7 +436,163 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         try fm.removeItem(at: vmDir)
     }
 
+    // MARK: - Disk Resize
+
+    public func resizeDisk(name: String, newSizeGB: Int) throws {
+        let vmDir = vmDirectory().appendingPathComponent(name)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: vmDir.path) else {
+            throw VirtualizationError.vmNotFound(name)
+        }
+        guard !isVMRunning(vmDir: vmDir) else {
+            throw VirtualizationError.vmAlreadyRunning(name)
+        }
+
+        var config = try loadConfig(from: vmDir)
+        guard newSizeGB > config.diskSizeGB else {
+            throw VirtualizationError.invalidConfiguration(
+                "New size (\(newSizeGB)GB) must be larger than current size (\(config.diskSizeGB)GB)")
+        }
+
+        let diskPath = vmDir.appendingPathComponent("disk.img")
+        let handle = try FileHandle(forWritingTo: diskPath)
+        let newSizeBytes = UInt64(newSizeGB) * 1024 * 1024 * 1024
+        try handle.truncate(atOffset: newSizeBytes)
+        try handle.close()
+
+        config.diskSizeGB = newSizeGB
+        try writeConfig(config, to: vmDir)
+    }
+
+    // MARK: - Shared Directories
+
+    public func addSharedDirectory(name: String, hostPath: String, tag: String, readOnly: Bool) throws {
+        let vmDir = vmDirectory().appendingPathComponent(name)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: vmDir.path) else {
+            throw VirtualizationError.vmNotFound(name)
+        }
+        guard !isVMRunning(vmDir: vmDir) else {
+            throw VirtualizationError.vmAlreadyRunning(name)
+        }
+        guard fm.fileExists(atPath: hostPath) else {
+            throw VirtualizationError.invalidConfiguration("Host path does not exist: \(hostPath)")
+        }
+
+        var config = try loadConfig(from: vmDir)
+        var dirs = config.sharedDirectories ?? []
+        guard !dirs.contains(where: { $0.tag == tag }) else {
+            throw VirtualizationError.invalidConfiguration("Shared directory with tag '\(tag)' already exists")
+        }
+        dirs.append(SharedDirectoryConfig(hostPath: hostPath, tag: tag, readOnly: readOnly))
+        config.sharedDirectories = dirs
+        try writeConfig(config, to: vmDir)
+    }
+
+    public func removeSharedDirectory(name: String, tag: String) throws {
+        let vmDir = vmDirectory().appendingPathComponent(name)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: vmDir.path) else {
+            throw VirtualizationError.vmNotFound(name)
+        }
+        guard !isVMRunning(vmDir: vmDir) else {
+            throw VirtualizationError.vmAlreadyRunning(name)
+        }
+
+        var config = try loadConfig(from: vmDir)
+        var dirs = config.sharedDirectories ?? []
+        guard dirs.contains(where: { $0.tag == tag }) else {
+            throw VirtualizationError.invalidConfiguration("No shared directory with tag '\(tag)'")
+        }
+        dirs.removeAll(where: { $0.tag == tag })
+        config.sharedDirectories = dirs.isEmpty ? nil : dirs
+        try writeConfig(config, to: vmDir)
+    }
+
+    // MARK: - Rosetta
+
+    public func enableRosetta(name: String) throws {
+        #if arch(arm64)
+        let vmDir = vmDirectory().appendingPathComponent(name)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: vmDir.path) else {
+            throw VirtualizationError.vmNotFound(name)
+        }
+        guard !isVMRunning(vmDir: vmDir) else {
+            throw VirtualizationError.vmAlreadyRunning(name)
+        }
+
+        var config = try loadConfig(from: vmDir)
+        guard config.os == .linux else {
+            throw VirtualizationError.invalidConfiguration("Rosetta is only available for Linux VMs")
+        }
+
+        config.rosettaEnabled = true
+        try writeConfig(config, to: vmDir)
+        #else
+        throw VirtualizationError.invalidConfiguration("Rosetta requires Apple Silicon")
+        #endif
+    }
+
+    // MARK: - Save / Restore
+
+    public func saveVM(name: String) throws {
+        let vmDir = vmDirectory().appendingPathComponent(name)
+        let fm = FileManager.default
+
+        guard fm.fileExists(atPath: vmDir.path) else {
+            throw VirtualizationError.vmNotFound(name)
+        }
+
+        let pidPath = vmDir.appendingPathComponent("vm.pid")
+        guard fm.fileExists(atPath: pidPath.path) else {
+            throw VirtualizationError.vmNotRunning(name)
+        }
+
+        let pidStr = try String(contentsOf: pidPath, encoding: .utf8)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let pid = pid_t(pidStr), kill(pid, 0) == 0 else {
+            try? fm.removeItem(at: pidPath)
+            throw VirtualizationError.vmNotRunning(name)
+        }
+
+        if #available(macOS 14.0, *) {
+            kill(pid, SIGUSR1)
+        } else {
+            throw VirtualizationError.invalidConfiguration("Save/restore requires macOS 14+")
+        }
+    }
+
+    public func restoreVM(name: String) async throws {
+        let vmDir = vmDirectory().appendingPathComponent(name)
+
+        guard FileManager.default.fileExists(atPath: vmDir.path) else {
+            throw VirtualizationError.vmNotFound(name)
+        }
+
+        if #available(macOS 14.0, *) {
+            let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
+            guard FileManager.default.fileExists(atPath: statePath.path) else {
+                throw VirtualizationError.invalidConfiguration("No saved state found for VM '\(name)'")
+            }
+            try await startVM(name: name, isoPath: nil)
+        } else {
+            throw VirtualizationError.invalidConfiguration("Save/restore requires macOS 14+")
+        }
+    }
+
     // MARK: - Private Helpers
+
+    private func vmState(vmDir: URL) -> VMState {
+        if isVMRunning(vmDir: vmDir) { return .running }
+        let savedStatePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
+        if FileManager.default.fileExists(atPath: savedStatePath.path) { return .saved }
+        return .stopped
+    }
 
     private func isVMRunning(vmDir: URL) -> Bool {
         let pidPath = vmDir.appendingPathComponent("vm.pid")
@@ -450,7 +649,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
 
         switch config.os {
         case .linux:
-            try configureLinux(vmConfig: vmConfig, vmDir: vmDir, isoPath: isoPath)
+            try configureLinux(vmConfig: vmConfig, vmDir: vmDir, config: config, isoPath: isoPath)
         case .macos:
             #if arch(arm64)
             try configureMacOS(vmConfig: vmConfig, vmDir: vmDir)
@@ -462,7 +661,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         return vmConfig
     }
 
-    private func configureLinux(vmConfig: VZVirtualMachineConfiguration, vmDir: URL, isoPath: String?) throws {
+    private func configureLinux(vmConfig: VZVirtualMachineConfiguration, vmDir: URL, config: VMConfig, isoPath: String?) throws {
         // EFI boot loader
         let efiPath = vmDir.appendingPathComponent("efi_vars.bin")
         let bootLoader = VZEFIBootLoader()
@@ -480,6 +679,30 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         )
         serialPort.attachment = inputAttachment
         vmConfig.serialPorts = [serialPort]
+
+        // Shared directories (VirtioFS)
+        if let sharedDirs = config.sharedDirectories, !sharedDirs.isEmpty {
+            for dirConfig in sharedDirs {
+                let sharedDir = VZSharedDirectory(url: URL(fileURLWithPath: dirConfig.hostPath), readOnly: dirConfig.readOnly)
+                let share = VZSingleDirectoryShare(directory: sharedDir)
+                let fsDevice = VZVirtioFileSystemDeviceConfiguration(tag: dirConfig.tag)
+                fsDevice.share = share
+                vmConfig.directorySharingDevices.append(fsDevice)
+            }
+        }
+
+        // Rosetta (arm64 only)
+        #if arch(arm64)
+        if config.rosettaEnabled == true {
+            let rosettaAvailability = VZLinuxRosettaDirectoryShare.availability
+            if case .installed = rosettaAvailability {
+                let rosettaShare = try VZLinuxRosettaDirectoryShare()
+                let rosettaFS = VZVirtioFileSystemDeviceConfiguration(tag: "rosetta")
+                rosettaFS.share = rosettaShare
+                vmConfig.directorySharingDevices.append(rosettaFS)
+            }
+        }
+        #endif
 
         // Optional ISO attachment
         if let isoPath = isoPath {
@@ -555,6 +778,7 @@ public enum VirtualizationError: LocalizedError {
     case ipswLoadFailed(String)
     case configurationValidationFailed(String)
     case pidFileError(String)
+    case saveRestoreUnavailable
 
     public var errorDescription: String? {
         switch self {
@@ -580,6 +804,8 @@ public enum VirtualizationError: LocalizedError {
             return "Configuration validation failed: \(msg)"
         case .pidFileError(let msg):
             return "PID file error: \(msg)"
+        case .saveRestoreUnavailable:
+            return "Save/restore requires macOS 14+"
         }
     }
 }

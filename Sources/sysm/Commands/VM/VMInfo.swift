@@ -25,7 +25,7 @@ struct VMInfoCmd: ParsableCommand {
             formatter.dateStyle = .medium
             formatter.timeStyle = .medium
 
-            let state = info.state == .running ? "running" : "stopped"
+            let state = info.state.rawValue
             print("VM: \(info.name)")
             print("  State: \(state)")
             print("  OS: \(info.os.rawValue)")
@@ -34,6 +34,17 @@ struct VMInfoCmd: ParsableCommand {
             print("  Disk: \(info.diskSizeGB)GB")
             print("  Created: \(formatter.string(from: info.createdAt))")
             print("  Disk Path: \(info.diskPath)")
+
+            if info.rosettaEnabled == true {
+                print("  Rosetta: enabled")
+            }
+            if let dirs = info.sharedDirectories, !dirs.isEmpty {
+                print("  Shared Directories:")
+                for dir in dirs {
+                    let mode = dir.readOnly ? "ro" : "rw"
+                    print("    [\(dir.tag)] \(dir.hostPath) (\(mode))")
+                }
+            }
 
             // Show actual disk usage
             let diskURL = URL(fileURLWithPath: info.diskPath)

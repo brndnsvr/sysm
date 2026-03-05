@@ -36,7 +36,12 @@ struct VMList: ParsableCommand {
 
                 print("VMs (\(vms.count)):\n")
                 for vm in vms {
-                    let state = vm.state == .running ? "[running]" : "[stopped]"
+                    let state: String
+                    switch vm.state {
+                    case .running: state = "[running]"
+                    case .saved: state = "[saved]"
+                    case .stopped: state = "[stopped]"
+                    }
                     print("  \(vm.name) \(state)")
                     print("    OS: \(vm.os.rawValue), CPUs: \(vm.cpus), Memory: \(vm.memoryMB)MB, Disk: \(vm.diskSizeGB)GB")
                     print("    Created: \(formatter.string(from: vm.createdAt))")

@@ -12,6 +12,11 @@ struct VMCommand: ParsableCommand {
             VMStop.self,
             VMInfoCmd.self,
             VMDelete.self,
+            VMResize.self,
+            VMShare.self,
+            VMRosetta.self,
+            VMSave.self,
+            VMRestore.self,
         ]
     )
 }
