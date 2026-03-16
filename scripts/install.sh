@@ -157,6 +157,41 @@ verify_installation() {
     fi
 }
 
+# Install Claude Code skill (optional)
+install_skill() {
+    local skills_dir="${HOME}/.claude/skills"
+    local skill_url="https://github.com/${GITHUB_REPO}/releases/download/v${VERSION}/sysm.skill"
+    local skill_dest="${skills_dir}/sysm"
+
+    if [[ ! -d "$skills_dir" ]]; then
+        return 0  # Claude Code not installed, skip silently
+    fi
+
+    if [[ -d "$skill_dest" ]]; then
+        log "Claude Code skill already installed, updating..."
+    else
+        log "Installing Claude Code skill..."
+    fi
+
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+    trap "rm -rf $tmp_dir" EXIT
+
+    if [[ "$DRY_RUN" != "true" ]]; then
+        if gh release download "v${VERSION}" \
+            --repo "$GITHUB_REPO" \
+            --pattern "sysm.skill" \
+            --dir "$tmp_dir" 2>/dev/null; then
+            run unzip -o "${tmp_dir}/sysm.skill" -d "$skills_dir" > /dev/null
+            log_success "Claude Code skill installed to ${skill_dest}"
+        else
+            log_warn "Could not download Claude Code skill (skipping)"
+        fi
+    else
+        echo "[dry-run] Download sysm.skill and unzip to ${skills_dir}"
+    fi
+}
+
 # Print post-install instructions
 print_post_install() {
     cat <<EOF
@@ -237,6 +272,7 @@ main() {
 
     install_binary "$VERSION"
     verify_installation
+    install_skill
     print_post_install
 }
 

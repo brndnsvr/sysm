@@ -262,14 +262,18 @@ cmd_github() {
         return 1
     fi
 
+    local skill="${PROJECT_ROOT}/skills/${BINARY_NAME}.skill"
+
     log "Creating release ${tag}..."
     if [[ "$DRY_RUN" != "true" ]]; then
-        gh release create "$tag" "$archive" \
+        local assets=("$archive")
+        [[ -f "$skill" ]] && assets+=("$skill")
+        gh release create "$tag" "${assets[@]}" \
             --repo "$GITHUB_REPO" \
             --title "${BINARY_NAME} ${version}" \
             --generate-notes
     else
-        echo "[dry-run] gh release create ${tag} ${archive}"
+        echo "[dry-run] gh release create ${tag} ${archive} ${skill}"
     fi
 
     log_success "Released ${tag} to GitHub"

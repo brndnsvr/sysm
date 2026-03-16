@@ -5,7 +5,7 @@
 class Sysm < Formula
   desc "Unified CLI for Apple ecosystem integration on macOS"
   homepage "https://github.com/brndnsvr/sysm"
-  url "https://github.com/brndnsvr/sysm/archive/v1.12.0.tar.gz"
+  url "https://github.com/brndnsvr/sysm/archive/v1.12.1.tar.gz"
   sha256 "" # Will be filled in during release
   license "MIT"
   head "https://github.com/brndnsvr/sysm.git", branch: "main"
@@ -22,6 +22,9 @@ class Sysm < Formula
 
     # Install binary
     bin.install ".build/release/sysm"
+
+    # Install Claude Code skill
+    share("sysm").install "skills/sysm.skill"
 
     # Generate shell completions
     output = Utils.safe_popen_read(bin/"sysm", "--generate-completion-script", "bash")
@@ -67,6 +70,10 @@ class Sysm < Formula
 
       Documentation: https://brndnsvr.github.io/sysm/documentation/sysmcore
       Troubleshooting: https://github.com/brndnsvr/sysm/blob/main/docs/guides/troubleshooting.md
+
+      Claude Code skill:
+        To give Claude Code knowledge of sysm commands, install the bundled skill:
+          unzip -o #{share}/sysm/sysm.skill -d ~/.claude/skills/
     EOS
   end
 end
