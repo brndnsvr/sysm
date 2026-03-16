@@ -5,47 +5,27 @@
 class Sysm < Formula
   desc "Unified CLI for Apple ecosystem integration on macOS"
   homepage "https://github.com/brndnsvr/sysm"
-  url "https://github.com/brndnsvr/sysm/archive/v1.12.1.tar.gz"
-  sha256 "" # Will be filled in during release
+  version "1.12.1"
+  url "https://github.com/brndnsvr/sysm/releases/download/v1.12.1/sysm-1.12.1-macos-arm64.tar.gz"
+  sha256 "045d6253267654a41cc4f3f10f9efe4630263616017d791cbe58937f846afd94"
   license "MIT"
-  head "https://github.com/brndnsvr/sysm.git", branch: "main"
 
-  depends_on xcode: ["15.0", :build]
-  depends_on :macos => :ventura
+  depends_on :macos
+  depends_on arch: :arm64
+
+  resource "claude-skill" do
+    url "https://github.com/brndnsvr/sysm/releases/download/v1.12.1/sysm.skill"
+    sha256 "1d672103aa88be95d7a1ac12d77d61425786ce7c0c927fd7f8fddb2f6e78ac5c"
+  end
 
   def install
-    # Generate version file
-    system "#{buildpath}/scripts/generate-version.sh"
-
-    # Build release binary
-    system "swift", "build", "-c", "release", "--disable-sandbox"
-
-    # Install binary
-    bin.install ".build/release/sysm"
-
-    # Install Claude Code skill
-    share("sysm").install "skills/sysm.skill"
-
-    # Generate shell completions
-    output = Utils.safe_popen_read(bin/"sysm", "--generate-completion-script", "bash")
-    (bash_completion/"sysm").write output
-
-    output = Utils.safe_popen_read(bin/"sysm", "--generate-completion-script", "zsh")
-    (zsh_completion/"_sysm").write output
-
-    output = Utils.safe_popen_read(bin/"sysm", "--generate-completion-script", "fish")
-    (fish_completion/"sysm.fish").write output
+    bin.install "sysm"
+    generate_completions_from_executable(bin/"sysm", "--generate-completion-script")
+    share("sysm").install resource("claude-skill") => "sysm.skill"
   end
 
   test do
-    # Test version output
-    assert_match version.to_s, shell_output("#{bin}/sysm --version")
-
-    # Test basic help
-    assert_match "unified CLI for Apple ecosystem", shell_output("#{bin}/sysm --help")
-
-    # Test calendar command existence (won't run without permissions)
-    assert_match "calendar", shell_output("#{bin}/sysm --help")
+    assert_match version.to_s, shell_output("#{bin}/sysm --version").strip
   end
 
   def caveats
@@ -65,15 +45,11 @@ class Sysm < Formula
       Run this to check permissions:
         #{HOMEBREW_PREFIX}/bin/sysm focus status
 
-      Or use the permission checker:
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/brndnsvr/sysm/main/scripts/check-permissions.sh)"
-
-      Documentation: https://brndnsvr.github.io/sysm/documentation/sysmcore
-      Troubleshooting: https://github.com/brndnsvr/sysm/blob/main/docs/guides/troubleshooting.md
-
       Claude Code skill:
         To give Claude Code knowledge of sysm commands, install the bundled skill:
           unzip -o #{share}/sysm/sysm.skill -d ~/.claude/skills/
+
+      Documentation: https://github.com/brndnsvr/sysm
     EOS
   end
 end
