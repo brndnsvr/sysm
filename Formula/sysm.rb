@@ -7,7 +7,7 @@ class Sysm < Formula
   homepage "https://github.com/brndnsvr/sysm"
   version "1.12.1"
   url "https://github.com/brndnsvr/sysm/releases/download/v1.12.1/sysm-1.12.1-macos-arm64.tar.gz"
-  sha256 "045d6253267654a41cc4f3f10f9efe4630263616017d791cbe58937f846afd94"
+  sha256 "295b10e0cd49c6fb4140483c826c2bbf606f358b9d114f39b817a27fac57a883"
   license "MIT"
 
   depends_on :macos
@@ -21,7 +21,7 @@ class Sysm < Formula
   def install
     bin.install "sysm"
     generate_completions_from_executable(bin/"sysm", "--generate-completion-script")
-    share("sysm").install resource("claude-skill") => "sysm.skill"
+    resource("claude-skill").stage { (share/"sysm").install "sysm.skill" }
   end
 
   test do
