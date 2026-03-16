@@ -97,6 +97,29 @@ public struct ICSGenerator {
             break
         }
 
+        // Attendees
+        if let attendees = event.attendees {
+            for attendee in attendees {
+                let email = attendee.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
+                let name = attendee.name ?? email
+                let partstat: String
+                switch attendee.participantStatus {
+                case .accepted: partstat = "ACCEPTED"
+                case .declined: partstat = "DECLINED"
+                case .tentative: partstat = "TENTATIVE"
+                default: partstat = "NEEDS-ACTION"
+                }
+                lines.append("ATTENDEE;CN=\(escapeICS(name));CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=\(partstat):mailto:\(email)")
+            }
+        }
+
+        // Organizer
+        if let organizer = event.organizer {
+            let email = organizer.url.absoluteString.replacingOccurrences(of: "mailto:", with: "")
+            let name = organizer.name ?? email
+            lines.append("ORGANIZER;CN=\(escapeICS(name)):mailto:\(email)")
+        }
+
         // Creation/modification dates
         let now = dateFormatter.string(from: Date())
         lines.append("DTSTAMP:\(now)")

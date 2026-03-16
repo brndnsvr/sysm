@@ -8,6 +8,9 @@ public struct ICSEventData {
     public let isAllDay: Bool
     public let location: String?
     public let notes: String?
+    public let uid: String?
+    public let organizer: String?
+    public let attendees: [String]
 }
 
 /// Parses iCalendar (.ics) format.
@@ -45,6 +48,7 @@ public struct ICSParser {
 
         var inEvent = false
         var currentEvent: [String: String] = [:]
+        var currentAttendees: [String] = []
 
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -52,8 +56,9 @@ public struct ICSParser {
             if trimmed == "BEGIN:VEVENT" {
                 inEvent = true
                 currentEvent = [:]
+                currentAttendees = []
             } else if trimmed == "END:VEVENT" {
-                if let event = parseEvent(from: currentEvent) {
+                if let event = parseEvent(from: currentEvent, attendees: currentAttendees) {
                     events.append(event)
                 }
                 inEvent = false
@@ -65,7 +70,13 @@ public struct ICSParser {
 
                     // Handle properties with parameters (e.g., DTSTART;VALUE=DATE:20260101)
                     let propertyName = key.components(separatedBy: ";")[0]
-                    currentEvent[propertyName] = value
+
+                    // ATTENDEE can appear multiple times
+                    if propertyName == "ATTENDEE" {
+                        currentAttendees.append(trimmed)
+                    } else {
+                        currentEvent[propertyName] = value
+                    }
                 }
             }
         }
@@ -73,7 +84,7 @@ public struct ICSParser {
         return events
     }
 
-    private func parseEvent(from data: [String: String]) -> ICSEventData? {
+    private func parseEvent(from data: [String: String], attendees: [String]) -> ICSEventData? {
         guard let summary = data["SUMMARY"],
               let dtstart = data["DTSTART"],
               let dtend = data["DTEND"] else {
@@ -98,7 +109,10 @@ public struct ICSParser {
             endDate: endDate,
             isAllDay: isAllDay,
             location: location,
-            notes: notes
+            notes: notes,
+            uid: data["UID"],
+            organizer: data["ORGANIZER"],
+            attendees: attendees
         )
     }
 

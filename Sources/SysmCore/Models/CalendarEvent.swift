@@ -22,6 +22,7 @@ public struct CalendarEvent: Codable {
     public let alarms: [EventAlarm]?
     public let hasRecurrence: Bool
     public let organizerName: String?
+    public let externalID: String?
 
     /// Creates a CalendarEvent from an EventKit event.
     /// - Parameter ekEvent: The EventKit event to convert.
@@ -63,6 +64,7 @@ public struct CalendarEvent: Codable {
         }
 
         self.organizerName = ekEvent.organizer?.name
+        self.externalID = ekEvent.calendarItemExternalIdentifier
     }
 
     /// Formatted time range string (e.g., "10:00 AM - 11:00 AM" or "All day").

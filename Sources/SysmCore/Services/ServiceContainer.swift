@@ -106,6 +106,7 @@ public final class ServiceContainer: @unchecked Sendable {
     public var audioFactory: () -> any AudioServiceProtocol = { AudioService() }
     public var avFactory: () -> any AVServiceProtocol = { AVService() }
     public var virtualizationFactory: () -> any VirtualizationServiceProtocol = { VirtualizationService() }
+    public var caldavFactory: () -> any CalDAVServiceProtocol = { CalDAVService() }
     public var foundationModelsFactory: () -> any FoundationModelsServiceProtocol = {
         #if canImport(FoundationModels)
         if #available(macOS 26, *) {
@@ -167,6 +168,7 @@ public final class ServiceContainer: @unchecked Sendable {
     private var _audio: (any AudioServiceProtocol)?
     private var _av: (any AVServiceProtocol)?
     private var _virtualization: (any VirtualizationServiceProtocol)?
+    private var _caldav: (any CalDAVServiceProtocol)?
     private var _foundationModels: (any FoundationModelsServiceProtocol)?
 
     // MARK: - Service Accessors
@@ -515,6 +517,13 @@ public final class ServiceContainer: @unchecked Sendable {
         return _virtualization!
     }
 
+    public func caldav() -> any CalDAVServiceProtocol {
+        lock.lock()
+        defer { lock.unlock() }
+        if _caldav == nil { _caldav = caldavFactory() }
+        return _caldav!
+    }
+
     public func foundationModels() -> any FoundationModelsServiceProtocol {
         lock.lock()
         defer { lock.unlock() }
@@ -581,6 +590,7 @@ public final class ServiceContainer: @unchecked Sendable {
         audioFactory = { AudioService() }
         avFactory = { AVService() }
         virtualizationFactory = { VirtualizationService() }
+        caldavFactory = { CalDAVService() }
         foundationModelsFactory = {
             #if canImport(FoundationModels)
             if #available(macOS 26, *) {
@@ -653,6 +663,7 @@ public final class ServiceContainer: @unchecked Sendable {
         _audio = nil
         _av = nil
         _virtualization = nil
+        _caldav = nil
         _foundationModels = nil
     }
 

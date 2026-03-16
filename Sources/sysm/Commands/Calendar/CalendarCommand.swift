@@ -23,6 +23,8 @@ struct CalendarCommand: AsyncParsableCommand {
             CalendarConflicts.self,
             CalendarImport.self,
             CalendarExport.self,
+            CalendarCaldavAuth.self,
+            CalendarInvite.self,
         ]
     )
 }

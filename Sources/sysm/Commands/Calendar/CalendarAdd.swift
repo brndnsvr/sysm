@@ -32,9 +32,7 @@ struct CalendarAdd: AsyncParsableCommand {
     @Option(name: .long, help: "Location radius in meters (default: 100)")
     var radius: Double?
 
-    // Note: EventKit limitation - attendees can only be read, not added programmatically on macOS
-    // This option is kept for future compatibility but currently has no effect
-    @Option(name: .long, parsing: .upToNextOption, help: "Attendee email addresses (note: macOS EventKit limitation - attendees cannot be added programmatically)")
+    @Option(name: .long, parsing: .upToNextOption, help: "Attendee email addresses (sends invitations via CalDAV)")
     var attendee: [String] = []
 
     @Option(name: .long, help: "Event notes")
@@ -71,10 +69,12 @@ struct CalendarAdd: AsyncParsableCommand {
     var json = false
 
     func run() async throws {
-        // Warn if attendees specified (EventKit limitation)
+        // Validate CalDAV is configured if attendees are requested
         if !attendee.isEmpty {
-            print("Warning: macOS EventKit does not support adding attendees programmatically.")
-            print("Attendees can only be added through Calendar.app or calendar invitations.")
+            let caldav = Services.caldav()
+            guard caldav.isConfigured() else {
+                throw CalDAVError.notConfigured
+            }
         }
 
         guard let startDate = Services.dateParser().parse(start) else {
@@ -146,6 +146,41 @@ struct CalendarAdd: AsyncParsableCommand {
             structuredLocation: structuredLocation
         )
 
+        // Add attendees via CalDAV if requested
+        var attendeesAdded = false
+        if !attendee.isEmpty {
+            let caldav = Services.caldav()
+            var externalID = event.externalID
+
+            // If externalID is nil, the event may not have synced to iCloud yet
+            if externalID == nil {
+                try await Task.sleep(nanoseconds: 2_000_000_000) // 2 seconds
+                if let refreshed = try await service.getEvent(id: event.id) {
+                    externalID = refreshed.externalID
+                }
+            }
+
+            if let uid = externalID {
+                do {
+                    try await caldav.addAttendees(
+                        emails: attendee,
+                        toEventUID: uid,
+                        calendarName: calendar,
+                        organizerEmail: nil
+                    )
+                    attendeesAdded = true
+                } catch {
+                    if !json {
+                        print("Warning: Event created but attendee invitations failed: \(error.localizedDescription)")
+                        print("  Try: sysm calendar invite \(event.id) --attendee \(attendee.joined(separator: " --attendee "))")
+                    }
+                }
+            } else if !json {
+                print("Warning: Event created but iCloud sync pending — attendees not added yet.")
+                print("  Try: sysm calendar invite \(event.id) --attendee \(attendee.joined(separator: " --attendee "))")
+            }
+        }
+
         if json {
             try OutputFormatter.printJSON(event)
         } else {
@@ -160,8 +195,8 @@ struct CalendarAdd: AsyncParsableCommand {
                     print("    Coordinates: \(lat), \(lon)")
                 }
             }
-            if let attendeeList = event.attendees, !attendeeList.isEmpty {
-                print("  Attendees: \(attendeeList.map { $0.email ?? $0.name ?? "Unknown" }.joined(separator: ", "))")
+            if attendeesAdded {
+                print("  Attendees invited: \(attendee.joined(separator: ", "))")
             }
             if let rule = event.recurrenceRule {
                 print("  Repeats: \(rule.description)")
