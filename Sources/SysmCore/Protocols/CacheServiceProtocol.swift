@@ -53,23 +53,6 @@ import Foundation
 /// - Permission errors
 ///
 public protocol CacheServiceProtocol: Sendable {
-    // MARK: - Cache File Operations
-
-    /// Loads the cache from disk.
-    ///
-    /// Reads and parses the cache JSON file. Returns empty cache if file doesn't exist.
-    ///
-    /// - Returns: ``SysmCache`` object with all cached data.
-    func loadCache() -> SysmCache
-
-    /// Saves the cache to disk.
-    ///
-    /// Writes the cache object to the JSON file, creating it if necessary.
-    ///
-    /// - Parameter cache: The cache object to save.
-    /// - Throws: File system or JSON encoding errors.
-    func saveCache(_ cache: SysmCache) throws
-
     // MARK: - General-Purpose Cache
 
     /// Gets a cached value if it exists and hasn't expired.

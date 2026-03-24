@@ -18,7 +18,7 @@ public struct MarkdownExporter: MarkdownExporterProtocol {
     public func saveImportedIds(_ ids: Set<String>, outputDir: URL) throws {
         let trackingFile = outputDir.appendingPathComponent(".imported_notes.json")
         let data = try JSONEncoder().encode(Array(ids))
-        try data.write(to: trackingFile)
+        try data.write(to: trackingFile, options: .atomic)
     }
 
     public func exportNote(_ note: Note, outputDir: URL, dryRun: Bool = false) throws -> URL {

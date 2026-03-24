@@ -623,7 +623,7 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(config)
-        try data.write(to: vmDir.appendingPathComponent("config.json"))
+        try data.write(to: vmDir.appendingPathComponent("config.json"), options: .atomic)
     }
 
     private func buildVMConfiguration(config: VMConfig, vmDir: URL, isoPath: String?) throws -> VZVirtualMachineConfiguration {

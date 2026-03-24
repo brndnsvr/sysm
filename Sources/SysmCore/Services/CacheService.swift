@@ -2,33 +2,49 @@ import Foundation
 
 public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     private let cachePath: URL
-    private let maxCacheEntries = 1000 // Prevent unbounded growth
+    private let maxCacheEntries = 1000
     private let lock = NSLock()
+    private var cachedState: SysmCache?
 
-    public init() {
-        self.cachePath = FileManager.default.homeDirectoryForCurrentUser
+    public init(cachePath: URL? = nil) {
+        self.cachePath = cachePath ?? FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".sysm_cache.json")
     }
 
-    public func loadCache() -> SysmCache {
+    // MARK: - Internal State Management
+
+    /// Returns the in-memory cache, loading from disk on first access.
+    private func state() -> SysmCache {
+        if let cached = cachedState {
+            return cached
+        }
+
         guard FileManager.default.fileExists(atPath: cachePath.path) else {
-            return SysmCache()
+            let empty = SysmCache()
+            cachedState = empty
+            return empty
         }
 
         do {
             let data = try Data(contentsOf: cachePath)
-            let decoder = JSONDecoder()
-            return try decoder.decode(SysmCache.self, from: data)
+            let decoded = try JSONDecoder().decode(SysmCache.self, from: data)
+            cachedState = decoded
+            return decoded
         } catch {
-            return SysmCache()
+            fputs("warning: cache file corrupt (\(cachePath.path)): \(error.localizedDescription)\n", stderr)
+            let empty = SysmCache()
+            cachedState = empty
+            return empty
         }
     }
 
-    public func saveCache(_ cache: SysmCache) throws {
+    /// Writes the in-memory cache to disk atomically.
+    private func flush() throws {
+        guard let state = cachedState else { return }
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(cache)
-        try data.write(to: cachePath)
+        let data = try encoder.encode(state)
+        try data.write(to: cachePath, options: .atomic)
     }
 
     // MARK: - General-Purpose Cache
@@ -37,13 +53,10 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        let cache = loadCache()
-
-        // Try to get and decode the entry
+        let cache = state()
         guard let entry: CacheEntry<T> = try? cache.getCacheEntry(key) else {
             return nil
         }
-
         return entry.value
     }
 
@@ -51,123 +64,102 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
 
-        // Create cache entry with TTL
         let entry = CacheEntry(value: value, ttl: ttl)
-
-        // Encode to AnyCodable
         let data = try JSONEncoder().encode(entry)
         let anyCodable = try JSONDecoder().decode(AnyCodable.self, from: data)
 
         cache.cache[key] = anyCodable
 
-        // Cleanup expired entries and enforce size limit
-        try cleanupCacheInternal(&cache)
+        cleanupCacheInternal(&cache)
 
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
     }
 
     public func invalidate(_ key: String) throws {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
         cache.cache.removeValue(forKey: key)
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
     }
 
     public func invalidatePrefix(_ prefix: String) throws {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
         let keysToRemove = cache.cache.keys.filter { $0.hasPrefix(prefix) }
         for key in keysToRemove {
             cache.cache.removeValue(forKey: key)
         }
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
     }
 
     public func clearCache() throws {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
         cache.cache.removeAll()
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
     }
 
     public func cleanupExpired() throws {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
-        try cleanupCacheInternal(&cache)
-        try saveCache(cache)
+        var cache = state()
+        cleanupCacheInternal(&cache)
+        cachedState = cache
+        try flush()
     }
 
-    /// Internal cleanup that removes expired entries and enforces size limit
-    private func cleanupCacheInternal(_ cache: inout SysmCache) throws {
+    /// Metadata-only view of a cache entry for expiration checks.
+    private struct CacheEntryMetadata: Codable {
+        let timestamp: Date
+        let ttl: TimeInterval
+
+        var isExpired: Bool {
+            guard ttl > 0 else { return false }
+            return Date().timeIntervalSince(timestamp) > ttl
+        }
+    }
+
+    /// Removes expired entries and enforces size limit.
+    private func cleanupCacheInternal(_ cache: inout SysmCache) {
+        let encoder = JSONEncoder()
+        let decoder = JSONDecoder()
+
         // Remove expired entries
         var keysToRemove: [String] = []
-
         for (key, value) in cache.cache {
-            // Try to decode as a generic cache entry to check expiration
-            do {
-                let data = try JSONEncoder().encode(value)
-                let decoder = JSONDecoder()
-
-                // Peek at the structure to get timestamp and ttl
-                let container = try decoder.decode([String: AnyCodable].self, from: data)
-
-                if let timestampAny = container["timestamp"],
-                   let ttlAny = container["ttl"],
-                   let timestampData = try? JSONEncoder().encode(timestampAny),
-                   let ttlData = try? JSONEncoder().encode(ttlAny),
-                   let timestamp = try? JSONDecoder().decode(Date.self, from: timestampData),
-                   let ttl = try? JSONDecoder().decode(TimeInterval.self, from: ttlData),
-                   ttl > 0 {
-
-                    let age = Date().timeIntervalSince(timestamp)
-                    if age > ttl {
-                        keysToRemove.append(key)
-                    }
-                }
-            } catch {
-                // If we can't decode, skip this entry
-                continue
+            if let data = try? encoder.encode(value),
+               let metadata = try? decoder.decode(CacheEntryMetadata.self, from: data),
+               metadata.isExpired {
+                keysToRemove.append(key)
             }
         }
-
         for key in keysToRemove {
             cache.cache.removeValue(forKey: key)
         }
 
         // Enforce size limit by removing oldest entries
         if cache.cache.count > maxCacheEntries {
-            // Sort by timestamp (oldest first) and remove excess
             var entries: [(key: String, timestamp: Date)] = []
-
             for (key, value) in cache.cache {
-                do {
-                    let data = try JSONEncoder().encode(value)
-                    let container = try JSONDecoder().decode([String: AnyCodable].self, from: data)
-
-                    if let timestampAny = container["timestamp"],
-                       let timestampData = try? JSONEncoder().encode(timestampAny),
-                       let timestamp = try? JSONDecoder().decode(Date.self, from: timestampData) {
-                        entries.append((key: key, timestamp: timestamp))
-                    }
-                } catch {
-                    continue
+                if let data = try? encoder.encode(value),
+                   let metadata = try? decoder.decode(CacheEntryMetadata.self, from: data) {
+                    entries.append((key: key, timestamp: metadata.timestamp))
                 }
             }
-
-            // Sort by timestamp (oldest first)
             entries.sort { $0.timestamp < $1.timestamp }
-
-            // Remove oldest entries beyond limit
             let toRemove = cache.cache.count - maxCacheEntries
             for i in 0..<toRemove {
                 cache.cache.removeValue(forKey: entries[i].key)
@@ -180,22 +172,23 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
     public func getSeenReminders() -> [String: TrackedReminder] {
         lock.lock()
         defer { lock.unlock() }
-        return loadCache().seenReminders
+        return state().seenReminders
     }
 
     public func saveSeenReminders(_ seen: [String: TrackedReminder]) throws {
         lock.lock()
-        defer { lock.unlock() }
-        var cache = loadCache()
+        defer { lock.unlock()  }
+        var cache = state()
         cache.seenReminders = seen
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
     }
 
     public func trackReminder(name: String, project: String?) throws {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
         let key = TrackedReminder.makeKey(name)
 
         var tracked = cache.seenReminders[key] ?? TrackedReminder(originalName: name)
@@ -207,14 +200,15 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         tracked.status = "pending"
 
         cache.seenReminders[key] = tracked
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
     }
 
     public func dismissReminder(name: String) throws {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
         let key = TrackedReminder.makeKey(name)
 
         var dismissed = cache.seenReminders[key] ?? TrackedReminder(originalName: name)
@@ -224,14 +218,15 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         dismissed.firstSeen = TrackedReminder.todayString()
 
         cache.seenReminders[key] = dismissed
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
     }
 
     public func completeTracked(name: String) throws -> Bool {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
         let key = TrackedReminder.makeKey(name)
 
         guard var tracked = cache.seenReminders[key], tracked.tracked else {
@@ -241,7 +236,8 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         tracked.status = "done"
         tracked.completedDate = TrackedReminder.todayString()
         cache.seenReminders[key] = tracked
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
         return true
     }
 
@@ -249,7 +245,7 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        var cache = loadCache()
+        var cache = state()
         let key = TrackedReminder.makeKey(name)
 
         guard cache.seenReminders[key] != nil else {
@@ -257,7 +253,8 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         }
 
         cache.seenReminders.removeValue(forKey: key)
-        try saveCache(cache)
+        cachedState = cache
+        try flush()
         return true
     }
 
@@ -265,7 +262,7 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        let seen = loadCache().seenReminders
+        let seen = state().seenReminders
         return seen
             .filter { $0.value.tracked }
             .sorted { $0.value.firstSeen > $1.value.firstSeen }
@@ -276,7 +273,7 @@ public final class CacheService: CacheServiceProtocol, @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
 
-        let seen = loadCache().seenReminders
+        let seen = state().seenReminders
         return currentReminders.filter { reminder in
             let key = TrackedReminder.makeKey(reminder.title)
             return seen[key] == nil

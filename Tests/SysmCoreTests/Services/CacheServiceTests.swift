@@ -9,17 +9,13 @@ final class CacheServiceTests: XCTestCase {
     override func setUp() async throws {
         try await super.setUp()
 
-        // Create temporary cache file for testing
         tempCachePath = FileManager.default.temporaryDirectory
             .appendingPathComponent("test_cache_\(UUID().uuidString).json")
 
-        cacheService = CacheService()
-        // Reset to empty state for test isolation
-        try cacheService.saveCache(SysmCache())
+        cacheService = CacheService(cachePath: tempCachePath)
     }
 
     override func tearDown() async throws {
-        // Clean up temp cache file
         if let tempCachePath = tempCachePath,
            FileManager.default.fileExists(atPath: tempCachePath.path) {
             try? FileManager.default.removeItem(at: tempCachePath)
@@ -202,7 +198,7 @@ final class CacheServiceTests: XCTestCase {
         XCTAssertEqual(retrieved?[0], "Event 1")
     }
 
-    // MARK: - Reminder Tracking (Existing Functionality)
+    // MARK: - Reminder Tracking
 
     func testReminderTracking() throws {
         try cacheService.trackReminder(name: "Test Task", project: "Work")
@@ -236,5 +232,75 @@ final class CacheServiceTests: XCTestCase {
         let reminders = cacheService.getSeenReminders()
         let key = TrackedReminder.makeKey("Remove Me")
         XCTAssertNil(reminders[key])
+    }
+
+    // MARK: - Persistence & Corruption
+
+    func testPersistenceAcrossInstances() throws {
+        try cacheService.set("test:persist", value: "hello", ttl: 60)
+        try cacheService.trackReminder(name: "Persist Test", project: "Work")
+
+        // Create a new instance pointing at the same file
+        let cacheService2 = CacheService(cachePath: tempCachePath)
+
+        let retrieved: String? = try cacheService2.get("test:persist", as: String.self)
+        XCTAssertEqual(retrieved, "hello")
+
+        let tracked = cacheService2.getTrackedReminders()
+        XCTAssertEqual(tracked.count, 1)
+        XCTAssertEqual(tracked[0].reminder.originalName, "Persist Test")
+    }
+
+    func testCorruptCacheFileReturnsEmpty() throws {
+        // Write garbage to the cache file
+        try "not valid json {{{".write(to: tempCachePath, atomically: true, encoding: .utf8)
+
+        // New instance should handle corruption gracefully
+        let corruptCache = CacheService(cachePath: tempCachePath)
+
+        // Should return empty results, not crash
+        let reminders = corruptCache.getSeenReminders()
+        XCTAssertTrue(reminders.isEmpty)
+
+        let tracked = corruptCache.getTrackedReminders()
+        XCTAssertTrue(tracked.isEmpty)
+    }
+
+    func testCorruptCacheRecoveryAllowsNewWrites() throws {
+        // Write garbage to the cache file
+        try "not valid json {{{".write(to: tempCachePath, atomically: true, encoding: .utf8)
+
+        let corruptCache = CacheService(cachePath: tempCachePath)
+
+        // Should be able to write new data after corruption
+        try corruptCache.trackReminder(name: "Recovery Test", project: nil)
+
+        let tracked = corruptCache.getTrackedReminders()
+        XCTAssertEqual(tracked.count, 1)
+        XCTAssertEqual(tracked[0].reminder.originalName, "Recovery Test")
+    }
+
+    func testMissingCacheFileStartsEmpty() throws {
+        // tempCachePath doesn't exist yet — no file written
+        let freshCache = CacheService(cachePath: FileManager.default.temporaryDirectory
+            .appendingPathComponent("nonexistent_\(UUID().uuidString).json"))
+
+        let reminders = freshCache.getSeenReminders()
+        XCTAssertTrue(reminders.isEmpty)
+
+        let value: String? = try freshCache.get("anything", as: String.self)
+        XCTAssertNil(value)
+    }
+
+    func testInMemoryCacheAvoidsRepeatedDiskReads() throws {
+        try cacheService.set("test:a", value: "aaa", ttl: 60)
+        try cacheService.set("test:b", value: "bbb", ttl: 60)
+
+        // Multiple reads should use in-memory state
+        let a: String? = try cacheService.get("test:a", as: String.self)
+        let b: String? = try cacheService.get("test:b", as: String.self)
+
+        XCTAssertEqual(a, "aaa")
+        XCTAssertEqual(b, "bbb")
     }
 }
