@@ -282,18 +282,23 @@ cmd_github() {
     if [[ -n "$HOMEBREW_TAP" ]]; then
         log "Triggering Homebrew tap update..."
 
-        # Get SHA256 of the binary tarball (already on disk from cmd_package)
-        local sha256
+        local sha256 skill_sha256
 
         if [[ "$DRY_RUN" != "true" ]]; then
             sha256=$(shasum -a 256 "$archive" | cut -d' ' -f1)
+
+            # Compute skill checksum if the skill was included in the release
+            if [[ -f "$skill" ]]; then
+                skill_sha256=$(shasum -a 256 "$skill" | cut -d' ' -f1)
+            fi
 
             # Trigger repository dispatch event
             gh api repos/"${HOMEBREW_TAP}"/dispatches \
                 --method POST \
                 --field event_type=new-release \
                 --field "client_payload[version]=${version}" \
-                --field "client_payload[sha256]=${sha256}" || \
+                --field "client_payload[sha256]=${sha256}" \
+                --field "client_payload[skill_sha256]=${skill_sha256}" || \
                 log_warn "Failed to trigger tap update (you may need to update manually)"
         else
             echo "[dry-run] Trigger ${HOMEBREW_TAP} update workflow"
