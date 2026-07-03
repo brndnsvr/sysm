@@ -37,22 +37,13 @@ swift test               # Run tests
 
 ## Project Task Tracking
 
-This project uses a markdown-based task system in `.task-tracking/TASKS.md`.
-
-**Quick Reference:**
-- All tasks: `.task-tracking/TASKS.md`
-- Task IDs: T-001, T-002, etc. (never renumber)
-- Next ID: Top of TASKS.md
+Tasks for this repo live in Plane on `plane-goa` (workspace `wzrd`, project
+"bss sysm"). The old local `.task-tracking/` markdown tracker is retired —
+do not recreate it or mint new local `T-XXX` numbers.
 
 **Workflow:**
-- Check Inflight section before starting work
-- Create tasks for non-trivial work (>15 min or worth tracking)
-- Move tasks between sections as work progresses
-- Add log entries for decisions, blockers, or progress worth noting
-- Update the Updated date when modifying a task
-- Reference task IDs in commits: `T-XXX: description`
-- Branch naming: `t-XXX-short-description`
-
-**Labels:** bug, feature, refactor, docs, infra, automation
-
-**Triage Inbox regularly** - move items to proper lanes or delete.
+- Read and update items in Plane (Plane UI or the `wzrd-plane-bridge` skill)
+- Create a Plane item for non-trivial work (>15 min or worth tracking)
+- Reference the Plane task ID in commits: `<PLANE-ID>: description`
+- Branch naming: `<plane-id>-short-description`
+- Legacy `T-XXX` IDs survive only as Plane import provenance — never assign new ones
