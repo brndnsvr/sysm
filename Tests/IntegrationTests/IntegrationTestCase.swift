@@ -25,14 +25,13 @@ import Foundation
 open class IntegrationTestCase: XCTestCase {
     /// Path to the sysm binary
     static var binaryPath: String {
-        // Try release build first, fallback to debug
-        let releasePath = "\(projectRoot)/.build/release/sysm"
+        // `swift test` builds the debug executable under test. Prefer it over
+        // any older release artifact that may be left in the checkout.
         let debugPath = "\(projectRoot)/.build/debug/sysm"
-
-        if FileManager.default.fileExists(atPath: releasePath) {
-            return releasePath
+        if FileManager.default.fileExists(atPath: debugPath) {
+            return debugPath
         }
-        return debugPath
+        return "\(projectRoot)/.build/release/sysm"
     }
 
     /// Project root directory

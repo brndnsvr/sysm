@@ -13,19 +13,22 @@ struct PodcastsNowPlaying: ParsableCommand {
 
     func run() throws {
         let service = Services.podcasts()
-        guard let episode = try service.nowPlaying() else {
+        let episode = try service.nowPlaying()
+
+        if json {
+            try OutputFormatter.printJSON(episode)
+            return
+        }
+
+        guard let episode else {
             print("Nothing is currently playing")
             return
         }
 
-        if json {
-            try OutputFormatter.printJSON(episode)
-        } else {
-            print("Now Playing:")
-            print("  \(episode.title)")
-            if let show = episode.showName {
-                print("  Show: \(show)")
-            }
+        print("Now Playing:")
+        print("  \(episode.title)")
+        if let show = episode.showName {
+            print("  Show: \(show)")
         }
     }
 }

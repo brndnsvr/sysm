@@ -628,7 +628,7 @@ Services shipped across v1.4.0–v1.6.0:
 | `sysm image` | CoreImage + Vision + ImageIO | Done |
 | `sysm disk` | URL resource values + NSWorkspace | Done |
 | `sysm appstore` | mas-cli wrapper | Done |
-| `sysm podcasts` | AppleScript | Done |
+| `sysm podcasts` | Podcasts library + Accessibility | Done |
 | `sysm books` | Spotlight + file system | Done |
 | `sysm outlook` | AppleScript | Done |
 | `sysm slack` | Slack Web API + Keychain | Done |

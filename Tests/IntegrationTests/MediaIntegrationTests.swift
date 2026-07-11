@@ -11,9 +11,9 @@ final class MediaIntegrationTests: IntegrationTestCase {
         } catch IntegrationTestError.commandFailed(_, _, let stderr) {
             if stderr.localizedCaseInsensitiveContains("not running") ||
                stderr.localizedCaseInsensitiveContains("not open") ||
-               stderr.localizedCaseInsensitiveContains("error") ||
                stderr.localizedCaseInsensitiveContains("connection") ||
-               stderr.localizedCaseInsensitiveContains("applescript") {
+               stderr.localizedCaseInsensitiveContains("not authorized") ||
+               stderr.localizedCaseInsensitiveContains("permission denied") {
                 throw XCTSkip(reason)
             }
             throw IntegrationTestError.commandFailed(
@@ -47,12 +47,16 @@ final class MediaIntegrationTests: IntegrationTestCase {
     // MARK: - Podcasts
 
     func testPodcastsShows() throws {
-        let output = try runOrSkipMedia(
-            ["podcasts", "shows", "--json"],
-            reason: "Podcasts app not running"
-        )
+        let output = try runCommand(["podcasts", "shows", "--json"])
         let data = try XCTUnwrap(output.data(using: .utf8))
-        _ = try JSONSerialization.jsonObject(with: data)
+        let value = try JSONSerialization.jsonObject(with: data)
+        XCTAssertTrue(value is [Any])
+    }
+
+    func testPodcastsNowPlayingIsJSON() throws {
+        let output = try runCommand(["podcasts", "now-playing", "--json"])
+        let data = try XCTUnwrap(output.data(using: .utf8))
+        _ = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
     }
 
     // MARK: - Books
