@@ -295,4 +295,54 @@ final class WorkflowEngineTests: XCTestCase {
         XCTAssertTrue(result.steps[1].success)
         XCTAssertNil(result.error) // no lastError because continueOnError
     }
+
+    func testRunQuotesPriorOutputBeforeShellInterpolation() throws {
+        let marker = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-workflow-injection-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: marker) }
+
+        let payload = "$(touch \(marker.path))"
+        let workflow = Workflow(
+            name: "output-injection-test",
+            steps: [
+                WorkflowStep(
+                    name: "untrusted-output",
+                    run: "printf '%s' '\(payload)'",
+                    output: "payload"
+                ),
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "printf '%s' {{ payload }}"
+                ),
+            ]
+        )
+
+        let result = try engine.run(workflow: workflow)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.steps[1].stdout, payload)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+    }
+
+    func testRunPreservesLegitimateOutputAsSingleArgument() throws {
+        let workflow = Workflow(
+            name: "output-argument-test",
+            steps: [
+                WorkflowStep(
+                    name: "produce-output",
+                    run: "printf 'hello world'",
+                    output: "greeting"
+                ),
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "printf '<%s>' {{ greeting }}"
+                ),
+            ]
+        )
+
+        let result = try engine.run(workflow: workflow)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.steps[1].stdout, "<hello world>")
+    }
 }

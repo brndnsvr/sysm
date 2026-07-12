@@ -211,7 +211,6 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
 
     private func executeStep(_ step: WorkflowStep, context: inout ExecutionContext) throws -> WorkflowStepResult {
         let startTime = Date()
-        let expandedCommand = expandTemplates(step.run, context: context)
 
         let shellType: ScriptRunner.ScriptType
         if let shell = step.shell {
@@ -219,6 +218,15 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
         } else {
             shellType = .bash
         }
+
+        let quoteForShell = shellType == .bash
+            || shellType == .zsh
+            || shellType == .fish
+        let expandedCommand = expandTemplates(
+            step.run,
+            context: context,
+            quoteForShell: quoteForShell
+        )
 
         let timeout = TimeInterval(step.timeout ?? 300)
         let maxRetries = step.retries ?? 0
@@ -286,7 +294,11 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
         )
     }
 
-    private func expandTemplates(_ template: String, context: ExecutionContext) -> String {
+    private func expandTemplates(
+        _ template: String,
+        context: ExecutionContext,
+        quoteForShell: Bool = false
+    ) -> String {
         var result = template
 
         // Simple template expansion: {{ variable_name }}
@@ -317,11 +329,19 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
                 replacement = applyFilter(filter, to: replacement, value: context.get(varName))
             }
 
+            if quoteForShell {
+                replacement = shellQuote(replacement)
+            }
+
             let fullRange = Range(match.range, in: result)!
             result.replaceSubrange(fullRange, with: replacement)
         }
 
         return result
+    }
+
+    private func shellQuote(_ value: String) -> String {
+        "'" + value.replacingOccurrences(of: "'", with: "'\"'\"'") + "'"
     }
 
     private func stringValue(_ value: Any) -> String {
