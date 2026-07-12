@@ -3,6 +3,8 @@ import Yams
 
 public struct WorkflowEngine: WorkflowEngineProtocol {
 
+    private static let templatePattern = #"\{\{\s*(\w+)(?:\s*\|\s*(\w+))?\s*\}\}"#
+
     public init() {}
 
     // MARK: - Loading
@@ -75,6 +77,33 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
 
             if step.run.isEmpty {
                 errors.append("Step '\(step.name)' must have a 'run' command")
+            }
+
+            if let shell = step.shell,
+               let scriptType = ScriptRunner.ScriptType(rawValue: shell),
+               isAppleScript(scriptType),
+               containsTemplate(in: step.run) {
+                errors.append(
+                    "Step '\(step.name)' cannot interpolate templates into AppleScript source"
+                )
+            }
+
+            if let shell = step.shell,
+               let scriptType = ScriptRunner.ScriptType(rawValue: shell),
+               isPython(scriptType),
+               containsTemplate(in: step.run) {
+                errors.append(
+                    "Step '\(step.name)' cannot interpolate templates into Python source"
+                )
+            }
+
+            if let shell = step.shell,
+               let scriptType = ScriptRunner.ScriptType(rawValue: shell),
+               isSwift(scriptType),
+               containsTemplate(in: step.run) {
+                errors.append(
+                    "Step '\(step.name)' cannot interpolate templates into Swift source"
+                )
             }
 
             if let timeout = step.timeout, timeout <= 0 {
@@ -219,6 +248,24 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
             shellType = .bash
         }
 
+        if isAppleScript(shellType), containsTemplate(in: step.run) {
+            throw WorkflowError.invalidTemplate(
+                "Step '\(step.name)' cannot interpolate templates into AppleScript source"
+            )
+        }
+
+        if isPython(shellType), containsTemplate(in: step.run) {
+            throw WorkflowError.invalidTemplate(
+                "Step '\(step.name)' cannot interpolate templates into Python source"
+            )
+        }
+
+        if isSwift(shellType), containsTemplate(in: step.run) {
+            throw WorkflowError.invalidTemplate(
+                "Step '\(step.name)' cannot interpolate templates into Swift source"
+            )
+        }
+
         let quoteForShell = shellType == .bash
             || shellType == .zsh
             || shellType == .fish
@@ -302,8 +349,7 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
         var result = template
 
         // Simple template expansion: {{ variable_name }}
-        let pattern = #"\{\{\s*(\w+)(?:\s*\|\s*(\w+))?\s*\}\}"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else {
+        guard let regex = try? NSRegularExpression(pattern: Self.templatePattern) else {
             return result
         }
 
@@ -338,6 +384,22 @@ public struct WorkflowEngine: WorkflowEngineProtocol {
         }
 
         return result
+    }
+
+    private func containsTemplate(in source: String) -> Bool {
+        source.range(of: Self.templatePattern, options: .regularExpression) != nil
+    }
+
+    private func isAppleScript(_ scriptType: ScriptRunner.ScriptType) -> Bool {
+        scriptType == .applescript || scriptType == .osascript
+    }
+
+    private func isPython(_ scriptType: ScriptRunner.ScriptType) -> Bool {
+        scriptType == .python || scriptType == .python3
+    }
+
+    private func isSwift(_ scriptType: ScriptRunner.ScriptType) -> Bool {
+        scriptType == .swift
     }
 
     private func shellQuote(_ value: String) -> String {
