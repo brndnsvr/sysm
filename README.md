@@ -192,6 +192,12 @@ sysm requires macOS permissions for each service it accesses. Grant these in Sys
 
 ## Configuration
 
+### Secret Input
+
+Slack tokens, PDF passwords, Keychain values, and CalDAV app-specific passwords use
+no-echo prompts or explicit stdin/inherited-file-descriptor modes. They are never
+accepted as command-line values. See the [secure secret input guide](docs/guides/secure-secret-input.md).
+
 ### Environment Variables
 
 | Variable | Description | Default |

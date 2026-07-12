@@ -36,8 +36,8 @@ final class KeychainIntegrationTests: IntegrationTestCase {
         _ = try runCommand([
             "keychain", "set",
             testServiceName, testAccount,
-            "--value", testValue,
-        ])
+            "--value-stdin",
+        ], standardInput: Data("\(testValue)\n".utf8))
 
         // Get it back
         let output = try runCommand(["keychain", "get", testServiceName, testAccount])
@@ -52,8 +52,8 @@ final class KeychainIntegrationTests: IntegrationTestCase {
         _ = try runCommand([
             "keychain", "set",
             testServiceName, testAccount,
-            "--value", testValue,
-        ])
+            "--value-stdin",
+        ], standardInput: Data("\(testValue)\n".utf8))
 
         // List with service filter
         let output = try runCommand(["keychain", "list", "--service", testServiceName, "--json"])
@@ -70,8 +70,8 @@ final class KeychainIntegrationTests: IntegrationTestCase {
         _ = try runCommand([
             "keychain", "set",
             testServiceName, testAccount,
-            "--value", testValue,
-        ])
+            "--value-stdin",
+        ], standardInput: Data("\(testValue)\n".utf8))
 
         // Search for it
         let output = try runCommand(["keychain", "search", testServiceName, "--json"])
@@ -88,8 +88,8 @@ final class KeychainIntegrationTests: IntegrationTestCase {
         _ = try runCommand([
             "keychain", "set",
             testServiceName, testAccount,
-            "--value", testValue,
-        ])
+            "--value-stdin",
+        ], standardInput: Data("\(testValue)\n".utf8))
 
         // Delete it
         _ = try runCommand(["keychain", "delete", testServiceName, testAccount])

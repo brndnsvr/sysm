@@ -72,7 +72,11 @@ open class IntegrationTestCase: XCTestCase {
     ///   - timeout: Maximum execution time in seconds
     /// - Returns: Command output (stdout)
     /// - Throws: If command fails or times out
-    func runCommand(_ arguments: [String], timeout: TimeInterval = 30) throws -> String {
+    func runCommand(
+        _ arguments: [String],
+        timeout: TimeInterval = 30,
+        standardInput: Data? = nil
+    ) throws -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: Self.binaryPath)
         process.arguments = arguments
@@ -82,7 +86,15 @@ open class IntegrationTestCase: XCTestCase {
         process.standardOutput = outputPipe
         process.standardError = errorPipe
 
+        let inputPipe = standardInput.map { _ in Pipe() }
+        process.standardInput = inputPipe
+
         try process.run()
+
+        if let standardInput, let inputPipe {
+            inputPipe.fileHandleForWriting.write(standardInput)
+            try inputPipe.fileHandleForWriting.close()
+        }
 
         // Wait with timeout
         let deadline = Date().addingTimeInterval(timeout)
