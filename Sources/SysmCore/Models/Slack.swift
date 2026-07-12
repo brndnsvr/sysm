@@ -55,13 +55,13 @@ public enum SlackError: LocalizedError {
         case .notConfigured:
             return """
             Set up Slack integration:
-              sysm slack auth --token xoxb-your-token
+              sysm slack auth --configure
 
             Create a Slack app at https://api.slack.com/apps
             Required scopes: chat:write, channels:read, users:read
             """
         case .invalidToken:
-            return "Update your token: sysm slack auth --token xoxb-new-token"
+            return "Update your token: sysm slack auth --configure"
         default:
             return nil
         }

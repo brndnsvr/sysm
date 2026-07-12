@@ -69,7 +69,7 @@ public enum CalDAVError: LocalizedError {
 
             1. Generate an app-specific password at https://appleid.apple.com
                (Sign-In and Security > App-Specific Passwords)
-            2. Run: sysm calendar caldav-auth --apple-id your@icloud.com --app-password xxxx-xxxx-xxxx-xxxx
+            2. Run: sysm calendar caldav-auth --apple-id your@icloud.com --configure
             """
         case .authenticationFailed:
             return """
@@ -77,7 +77,7 @@ public enum CalDAVError: LocalizedError {
 
             - Ensure your Apple ID is correct
             - Generate a new app-specific password at https://appleid.apple.com
-            - Update credentials: sysm calendar caldav-auth --apple-id your@icloud.com --app-password xxxx-xxxx-xxxx-xxxx
+            - Update credentials: sysm calendar caldav-auth --apple-id your@icloud.com --configure
             """
         case .networkError:
             return "Check your internet connection and try again."
