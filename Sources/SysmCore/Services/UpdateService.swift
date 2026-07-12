@@ -1,3 +1,5 @@
+import CryptoKit
+import Darwin
 import Foundation
 
 public struct UpdateService: UpdateServiceProtocol {
@@ -21,11 +23,12 @@ public struct UpdateService: UpdateServiceProtocol {
         let name: String
         let browserDownloadUrl: String
         let size: Int
+        let digest: String?
 
         enum CodingKeys: String, CodingKey {
             case name
             case browserDownloadUrl = "browser_download_url"
-            case size
+            case size, digest
         }
     }
 
@@ -48,6 +51,7 @@ public struct UpdateService: UpdateServiceProtocol {
             latestVersion: latestVersion,
             updateAvailable: updateAvailable,
             downloadUrl: asset?.browserDownloadUrl,
+            downloadDigest: asset?.digest,
             releaseNotes: release.body
         )
     }
@@ -61,6 +65,9 @@ public struct UpdateService: UpdateServiceProtocol {
 
         guard let downloadUrl = check.downloadUrl else {
             throw UpdateError.noCompatibleAsset
+        }
+        guard let expectedDigest = check.downloadDigest else {
+            throw UpdateError.verificationFailed("Release asset has no authenticated SHA-256 digest")
         }
 
         let binaryPath = try getCurrentBinaryPath()
@@ -82,6 +89,15 @@ public struct UpdateService: UpdateServiceProtocol {
         defer { try? FileManager.default.removeItem(atPath: tmpDir) }
 
         let tarPath = "\(tmpDir)/sysm.tar.gz"
+        let arch = try detectArchitecture()
+        let assetName = "sysm-\(check.latestVersion)-macos-\(arch).tar.gz"
+        guard isTrustedDownloadURL(
+            downloadUrl,
+            version: check.latestVersion,
+            assetName: assetName
+        ) else {
+            throw UpdateError.verificationFailed("Release asset URL is outside the trusted repository")
+        }
 
         // Download
         do {
@@ -89,6 +105,8 @@ public struct UpdateService: UpdateServiceProtocol {
         } catch {
             throw UpdateError.downloadFailed(error.localizedDescription)
         }
+
+        try verifyArchiveDigest(at: tarPath, expectedDigest: expectedDigest)
 
         // Extract
         do {
@@ -102,18 +120,19 @@ public struct UpdateService: UpdateServiceProtocol {
             throw UpdateError.extractionFailed("Binary not found in archive")
         }
 
-        // Make executable
-        _ = try Shell.run("/bin/chmod", args: ["+x", extractedBinary])
+        let stagedBinary = "\(parentDir)/.sysm-update-\(UUID().uuidString)"
+        try FileManager.default.copyItem(
+            atPath: extractedBinary,
+            toPath: stagedBinary
+        )
+        defer { try? FileManager.default.removeItem(atPath: stagedBinary) }
+        _ = try Shell.run("/bin/chmod", args: ["+x", stagedBinary])
 
-        // Atomic replace
-        _ = try Shell.run("/bin/mv", args: ["-f", extractedBinary, binaryPath])
-
-        // Verify new version
-        let versionOutput = try Shell.run(binaryPath, args: ["--version"])
-        guard versionOutput.contains(check.latestVersion) else {
-            throw UpdateError.verificationFailed(
-                "Expected \(check.latestVersion), got: \(versionOutput)")
-        }
+        try replaceBinary(
+            at: binaryPath,
+            with: stagedBinary,
+            expectedVersion: check.latestVersion
+        )
 
         return UpdateResult(
             previousVersion: currentVersion,
@@ -153,6 +172,98 @@ public struct UpdateService: UpdateServiceProtocol {
         case "arm64": return "arm64"
         case "x86_64": return "x86_64"
         default: return arch
+        }
+    }
+
+    func isTrustedDownloadURL(
+        _ rawURL: String,
+        version: String,
+        assetName: String
+    ) -> Bool {
+        guard let url = URL(string: rawURL),
+              url.scheme == "https",
+              url.host == "github.com",
+              url.query == nil,
+              url.fragment == nil else {
+            return false
+        }
+
+        return url.path == "/brndnsvr/sysm/releases/download/v\(version)/\(assetName)"
+    }
+
+    func verifyArchiveDigest(at path: String, expectedDigest: String) throws {
+        let prefix = "sha256:"
+        guard expectedDigest.hasPrefix(prefix) else {
+            throw UpdateError.verificationFailed("Unsupported release digest format")
+        }
+
+        let expected = String(expectedDigest.dropFirst(prefix.count)).lowercased()
+        guard expected.count == 64,
+              expected.allSatisfy({ $0.isHexDigit }) else {
+            throw UpdateError.verificationFailed("Malformed release SHA-256 digest")
+        }
+
+        let data: Data
+        do {
+            data = try Data(contentsOf: URL(fileURLWithPath: path), options: .mappedIfSafe)
+        } catch {
+            throw UpdateError.verificationFailed(
+                "Could not read downloaded archive: \(error.localizedDescription)"
+            )
+        }
+
+        let actual = SHA256.hash(data: data)
+            .map { String(format: "%02x", $0) }
+            .joined()
+        guard actual == expected else {
+            throw UpdateError.verificationFailed(
+                "Release SHA-256 mismatch: expected \(expected), got \(actual)"
+            )
+        }
+    }
+
+    /// Replaces the binary only after its archive has been authenticated.
+    /// A same-directory rollback copy is retained until the new binary passes
+    /// its version probe, and restoration uses an atomic rename.
+    func replaceBinary(
+        at binaryPath: String,
+        with stagedBinary: String,
+        expectedVersion: String
+    ) throws {
+        let fileManager = FileManager.default
+        let backupPath = "\(binaryPath).backup-\(UUID().uuidString)"
+        try fileManager.copyItem(atPath: binaryPath, toPath: backupPath)
+        var preserveBackup = false
+        defer {
+            if !preserveBackup {
+                try? fileManager.removeItem(atPath: backupPath)
+            }
+        }
+
+        guard rename(stagedBinary, binaryPath) == 0 else {
+            throw UpdateError.verificationFailed(
+                "Atomic replacement failed: \(String(cString: strerror(errno)))"
+            )
+        }
+
+        do {
+            let versionOutput = try Shell.run(binaryPath, args: ["--version"])
+            guard versionOutput.contains(expectedVersion) else {
+                throw UpdateError.verificationFailed(
+                    "Expected \(expectedVersion), got: \(versionOutput)"
+                )
+            }
+        } catch {
+            guard rename(backupPath, binaryPath) == 0 else {
+                preserveBackup = true
+                throw UpdateError.verificationFailed(
+                    "Update failed and rollback failed; backup retained at \(backupPath): "
+                        + String(cString: strerror(errno))
+                )
+            }
+            throw UpdateError.verificationFailed(
+                "Updated binary failed verification and was rolled back: \(error.localizedDescription)"
+            )
         }
     }
 

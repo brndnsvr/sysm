@@ -1,21 +1,16 @@
 import Foundation
 
 public struct AppStoreService: AppStoreServiceProtocol {
-    private let masPath: String
+    private let masPath: String?
 
     public init() {
-        // Check common locations for mas
-        if FileManager.default.fileExists(atPath: "/opt/homebrew/bin/mas") {
-            self.masPath = "/opt/homebrew/bin/mas"
-        } else if FileManager.default.fileExists(atPath: "/usr/local/bin/mas") {
-            self.masPath = "/usr/local/bin/mas"
-        } else {
-            self.masPath = "mas"
-        }
+        self.masPath = Self.resolveMasPath(
+            candidates: ["/opt/homebrew/bin/mas", "/usr/local/bin/mas"]
+        )
     }
 
     public func isAvailable() -> Bool {
-        FileManager.default.fileExists(atPath: masPath)
+        masPath != nil
     }
 
     public func listInstalled() throws -> [AppStoreApp] {
@@ -44,10 +39,31 @@ public struct AppStoreService: AppStoreServiceProtocol {
     // MARK: - Private
 
     private func runMas(_ args: [String]) throws -> String {
-        guard isAvailable() else {
+        guard let masPath else {
             throw AppStoreError.masNotInstalled
         }
         return try Shell.run(masPath, args: args)
+    }
+
+    static func resolveMasPath(
+        candidates: [String],
+        fileManager: FileManager = .default
+    ) -> String? {
+        candidates.first { path in
+            guard path.hasPrefix("/"),
+                  fileManager.fileExists(atPath: path),
+                  fileManager.isExecutableFile(atPath: path) else {
+                return false
+            }
+
+            let resolved = URL(fileURLWithPath: path).resolvingSymlinksInPath()
+            guard let values = try? resolved.resourceValues(
+                forKeys: [.isRegularFileKey]
+            ) else {
+                return false
+            }
+            return values.isRegularFile == true
+        }
     }
 
     private func parseAppList(_ output: String) -> [AppStoreApp] {

@@ -1,3 +1,4 @@
+import Darwin
 import Foundation
 import Yams
 
@@ -93,6 +94,82 @@ public struct PluginManager: PluginManagerProtocol {
               name != ".",
               name != ".." else {
             throw PluginError.pluginNotFound(name)
+        }
+    }
+
+    /// Returns true when the candidate is physically below the supplied root.
+    private func isDescendant(_ candidate: URL, of root: URL) -> Bool {
+        let rootComponents = root.standardizedFileURL.pathComponents
+        let candidateComponents = candidate.standardizedFileURL.pathComponents
+
+        guard candidateComponents.count > rootComponents.count else {
+            return false
+        }
+
+        return candidateComponents
+            .prefix(rootComponents.count)
+            .elementsEqual(rootComponents)
+    }
+
+    /// Opens a command script without following its final path component and
+    /// captures the exact regular-file bytes that will be passed to Bash.
+    private func readScriptForExecution(at url: URL) throws -> String {
+        let descriptor = open(url.path, O_RDONLY | O_NOFOLLOW | O_CLOEXEC)
+        guard descriptor >= 0 else {
+            throw PluginError.executionFailed(
+                "Script could not be opened safely: \(url.path)"
+            )
+        }
+
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        defer { try? handle.close() }
+
+        var fileInfo = stat()
+        guard fstat(descriptor, &fileInfo) == 0,
+              (fileInfo.st_mode & S_IFMT) == S_IFREG else {
+            throw PluginError.executionFailed("Script is not a regular file: \(url.path)")
+        }
+
+        let data: Data
+        do {
+            data = try handle.readToEnd() ?? Data()
+        } catch {
+            throw PluginError.executionFailed(
+                "Failed to read script: \(error.localizedDescription)"
+            )
+        }
+
+        guard let script = String(data: data, encoding: .utf8) else {
+            throw PluginError.executionFailed("Script is not valid UTF-8: \(url.path)")
+        }
+
+        return script
+    }
+
+    /// Installation creates a private snapshot. Linked roots or descendants
+    /// would preserve externally mutable content instead of copying reviewed bytes.
+    private func validatePluginSnapshot(at root: URL) throws {
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
+        let rootValues = try root.resourceValues(forKeys: keys)
+        guard rootValues.isDirectory == true, rootValues.isSymbolicLink != true else {
+            throw PluginError.invalidManifest("Plugin source must be a real directory")
+        }
+
+        guard let enumerator = FileManager.default.enumerator(
+            at: root,
+            includingPropertiesForKeys: Array(keys),
+            options: []
+        ) else {
+            throw PluginError.invalidManifest("Plugin source could not be inspected")
+        }
+
+        for case let itemURL as URL in enumerator {
+            let values = try itemURL.resourceValues(forKeys: keys)
+            if values.isSymbolicLink == true {
+                throw PluginError.invalidManifest(
+                    "Plugin source contains a symbolic link: \(itemURL.lastPathComponent)"
+                )
+            }
         }
     }
 
@@ -226,6 +303,7 @@ echo "Hello, $NAME!"
 
     public func installPlugin(from source: String, force: Bool = false) throws -> Plugin {
         let sourceURL = URL(fileURLWithPath: (source as NSString).expandingTildeInPath)
+        try validatePluginSnapshot(at: sourceURL)
 
         // Read manifest from source
         let manifestPath = sourceURL.appendingPathComponent("plugin.yaml").path
@@ -237,27 +315,52 @@ echo "Hello, $NAME!"
         let decoder = YAMLDecoder()
         let manifest = try decoder.decode(PluginManifest.self, from: content)
 
-        let destPath = "\(pluginsDir)/\(manifest.name)"
+        try validatePluginName(manifest.name)
 
-        if FileManager.default.fileExists(atPath: destPath) {
-            if force {
-                try FileManager.default.removeItem(atPath: destPath)
-            } else {
-                throw PluginError.pluginAlreadyExists(manifest.name)
-            }
+        let pluginsURL = URL(fileURLWithPath: pluginsDir, isDirectory: true)
+            .standardizedFileURL
+        let destURL = pluginsURL
+            .appendingPathComponent(manifest.name, isDirectory: true)
+            .standardizedFileURL
+        guard destURL.deletingLastPathComponent().path == pluginsURL.path else {
+            throw PluginError.pluginNotFound(manifest.name)
+        }
+
+        let destinationExists = FileManager.default.fileExists(atPath: destURL.path)
+        if destinationExists && !force {
+            throw PluginError.pluginAlreadyExists(manifest.name)
         }
 
         // Create plugins directory if needed
         try FileManager.default.createDirectory(
-            atPath: pluginsDir,
+            at: pluginsURL,
             withIntermediateDirectories: true,
             attributes: nil
         )
 
-        // Copy plugin
-        try FileManager.default.copyItem(atPath: sourceURL.path, toPath: destPath)
+        // Copy to a private staging directory and validate the installed snapshot
+        // before replacing an existing plugin.
+        let stagingURL = pluginsURL.appendingPathComponent(
+            ".install-\(UUID().uuidString)",
+            isDirectory: true
+        )
+        defer { try? FileManager.default.removeItem(at: stagingURL) }
 
-        return try loadPlugin(path: destPath)
+        try FileManager.default.copyItem(at: sourceURL, to: stagingURL)
+        try validatePluginSnapshot(at: stagingURL)
+
+        if destinationExists {
+            try FileManager.default.removeItem(at: destURL)
+        }
+        try FileManager.default.moveItem(at: stagingURL, to: destURL)
+        do {
+            try validatePluginSnapshot(at: destURL)
+        } catch {
+            try? FileManager.default.removeItem(at: destURL)
+            throw error
+        }
+
+        return try loadPlugin(path: destURL.path)
     }
 
     // MARK: - Plugin Removal
@@ -316,18 +419,21 @@ echo "Hello, $NAME!"
             throw PluginError.commandNotFound(plugin, command)
         }
 
-        let scriptPath = "\(pluginData.path)/\(cmd.script)"
+        let pluginURL = URL(fileURLWithPath: pluginData.path, isDirectory: true)
+            .standardizedFileURL
+            .resolvingSymlinksInPath()
+        let scriptURL = URL(fileURLWithPath: pluginData.path, isDirectory: true)
+            .appendingPathComponent(cmd.script, isDirectory: false)
+            .standardizedFileURL
+        let resolvedScriptURL = scriptURL.resolvingSymlinksInPath()
 
-        // Validate script path stays within plugin directory (prevent traversal via plugin.yaml)
-        let resolvedScript = URL(fileURLWithPath: scriptPath).standardized.path
-        let resolvedPlugin = URL(fileURLWithPath: pluginData.path).standardized.path
-        guard resolvedScript.hasPrefix(resolvedPlugin + "/") else {
-            throw PluginError.executionFailed("Script path escapes plugin directory: \(cmd.script)")
+        guard isDescendant(resolvedScriptURL, of: pluginURL) else {
+            throw PluginError.executionFailed(
+                "Script resolves outside plugin directory: \(cmd.script)"
+            )
         }
 
-        guard FileManager.default.fileExists(atPath: scriptPath) else {
-            throw PluginError.executionFailed("Script not found: \(scriptPath)")
-        }
+        let script = try readScriptForExecution(at: scriptURL)
 
         // Build environment
         var env = ProcessInfo.processInfo.environment
@@ -357,7 +463,8 @@ echo "Hello, $NAME!"
         do {
             result = try Shell.execute(
                 "/bin/bash",
-                args: [scriptPath],
+                args: ["-s", "--"],
+                stdin: script,
                 timeout: timeout,
                 environment: env,
                 workingDirectory: pluginData.path

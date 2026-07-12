@@ -77,6 +77,93 @@ final class PluginManagerTests: XCTestCase {
         XCTAssertThrowsError(try pluginManager.removePlugin(name: ".."))
     }
 
+    func testInstallPluginRejectsManifestNameTraversalBeforeForceDelete() throws {
+        let outsideTarget = tempDir.appendingPathComponent("outside-target")
+        let sentinel = outsideTarget.appendingPathComponent("sentinel.txt")
+        try FileManager.default.createDirectory(
+            at: outsideTarget,
+            withIntermediateDirectories: true
+        )
+        try "keep me".write(to: sentinel, atomically: true, encoding: .utf8)
+
+        let source = try createInstallSource(name: "../../outside-target")
+
+        XCTAssertThrowsError(
+            try pluginManager.installPlugin(from: source.path, force: true)
+        ) { error in
+            guard case PluginManager.PluginError.pluginNotFound = error else {
+                XCTFail("Expected pluginNotFound, got \(error)")
+                return
+            }
+        }
+        XCTAssertTrue(FileManager.default.fileExists(atPath: sentinel.path))
+    }
+
+    func testInstallPluginForceReplacesDirectChild() throws {
+        try createTestPlugin(name: "installable")
+        let source = try createInstallSource(
+            name: "installable",
+            description: "Replacement plugin"
+        )
+
+        let plugin = try pluginManager.installPlugin(from: source.path, force: true)
+
+        XCTAssertEqual(plugin.name, "installable")
+        XCTAssertEqual(plugin.description, "Replacement plugin")
+        XCTAssertEqual(
+            plugin.path,
+            tempDir.appendingPathComponent(".sysm/plugins/installable").path
+        )
+    }
+
+    func testInstallPluginRejectsSymlinkedSourceRoot() throws {
+        let source = try createInstallSource(name: "linked-root")
+        let linkedSource = tempDir.appendingPathComponent("linked-source")
+        try FileManager.default.createSymbolicLink(
+            at: linkedSource,
+            withDestinationURL: source
+        )
+
+        XCTAssertThrowsError(
+            try pluginManager.installPlugin(from: linkedSource.path)
+        ) { error in
+            guard case PluginManager.PluginError.invalidManifest = error else {
+                XCTFail("Expected invalidManifest, got \(error)")
+                return
+            }
+        }
+        XCTAssertFalse(
+            FileManager.default.fileExists(
+                atPath: tempDir.appendingPathComponent(".sysm/plugins/linked-root").path
+            )
+        )
+    }
+
+    func testInstallPluginRejectsNestedSymlink() throws {
+        let source = try createInstallSource(name: "linked-child")
+        let external = tempDir.appendingPathComponent("external-script.sh")
+        try "#!/bin/bash\necho changed".write(
+            to: external,
+            atomically: true,
+            encoding: .utf8
+        )
+        let sourceScript = source.appendingPathComponent("greet.sh")
+        try FileManager.default.removeItem(at: sourceScript)
+        try FileManager.default.createSymbolicLink(
+            at: sourceScript,
+            withDestinationURL: external
+        )
+
+        XCTAssertThrowsError(
+            try pluginManager.installPlugin(from: source.path)
+        ) { error in
+            guard case PluginManager.PluginError.invalidManifest = error else {
+                XCTFail("Expected invalidManifest, got \(error)")
+                return
+            }
+        }
+    }
+
     // MARK: - Plugin Creation
 
     func testCreatePlugin() throws {
@@ -159,6 +246,56 @@ final class PluginManagerTests: XCTestCase {
         }
     }
 
+    func testRunCommandRejectsScriptSymlinkOutsidePlugin() throws {
+        try createTestPlugin(name: "linked-script")
+
+        let externalScript = tempDir.appendingPathComponent("external.sh")
+        try "#!/bin/bash\necho 'external script executed'".write(
+            to: externalScript,
+            atomically: true,
+            encoding: .utf8
+        )
+
+        let pluginScript = tempDir
+            .appendingPathComponent(".sysm/plugins/linked-script/greet.sh")
+        try FileManager.default.removeItem(at: pluginScript)
+        try FileManager.default.createSymbolicLink(
+            at: pluginScript,
+            withDestinationURL: externalScript
+        )
+
+        XCTAssertThrowsError(
+            try pluginManager.runCommand(plugin: "linked-script", command: "greet")
+        ) { error in
+            guard case PluginManager.PluginError.executionFailed = error else {
+                XCTFail("Expected executionFailed, got \(error)")
+                return
+            }
+        }
+    }
+
+    func testRunCommandRejectsScriptSymlinkInsidePlugin() throws {
+        try createTestPlugin(name: "linked-script")
+
+        let pluginDir = tempDir.appendingPathComponent(".sysm/plugins/linked-script")
+        let pluginScript = pluginDir.appendingPathComponent("greet.sh")
+        let linkedTarget = pluginDir.appendingPathComponent("target.sh")
+        try FileManager.default.moveItem(at: pluginScript, to: linkedTarget)
+        try FileManager.default.createSymbolicLink(
+            at: pluginScript,
+            withDestinationURL: linkedTarget
+        )
+
+        XCTAssertThrowsError(
+            try pluginManager.runCommand(plugin: "linked-script", command: "greet")
+        ) { error in
+            guard case PluginManager.PluginError.executionFailed = error else {
+                XCTFail("Expected executionFailed, got \(error)")
+                return
+            }
+        }
+    }
+
     // MARK: - ExecutionResult Formatting
 
     func testExecutionResultFormattedSuccess() {
@@ -220,5 +357,38 @@ final class PluginManagerTests: XCTestCase {
                 ofItemAtPath: "\(pluginDir)/\(scriptName)"
             )
         }
+    }
+
+    private func createInstallSource(
+        name: String,
+        description: String = "Install test plugin"
+    ) throws -> URL {
+        let source = tempDir.appendingPathComponent("source-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(
+            at: source,
+            withIntermediateDirectories: true
+        )
+
+        let manifest = """
+        name: "\(name)"
+        version: "1.0.0"
+        description: "\(description)"
+        commands:
+          - name: greet
+            description: "Say hello"
+            script: greet.sh
+        """
+        try manifest.write(
+            to: source.appendingPathComponent("plugin.yaml"),
+            atomically: true,
+            encoding: .utf8
+        )
+        try "#!/bin/bash\necho 'hello'".write(
+            to: source.appendingPathComponent("greet.sh"),
+            atomically: true,
+            encoding: .utf8
+        )
+
+        return source
     }
 }

@@ -5,14 +5,16 @@ public struct UpdateCheck: Codable, Sendable {
     public let latestVersion: String
     public let updateAvailable: Bool
     public let downloadUrl: String?
+    public let downloadDigest: String?
     public let releaseNotes: String?
 
     public init(currentVersion: String, latestVersion: String, updateAvailable: Bool,
-                downloadUrl: String?, releaseNotes: String?) {
+                downloadUrl: String?, downloadDigest: String? = nil, releaseNotes: String?) {
         self.currentVersion = currentVersion
         self.latestVersion = latestVersion
         self.updateAvailable = updateAvailable
         self.downloadUrl = downloadUrl
+        self.downloadDigest = downloadDigest
         self.releaseNotes = releaseNotes
     }
 }

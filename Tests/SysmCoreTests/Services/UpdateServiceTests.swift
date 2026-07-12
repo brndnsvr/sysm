@@ -211,6 +211,7 @@ final class UpdateServiceTests: XCTestCase {
             latestVersion: "1.4.0",
             updateAvailable: true,
             downloadUrl: "https://example.com/download",
+            downloadDigest: "sha256:abcdef",
             releaseNotes: "Bug fixes"
         )
 
@@ -221,6 +222,7 @@ final class UpdateServiceTests: XCTestCase {
         XCTAssertEqual(decoded.latestVersion, check.latestVersion)
         XCTAssertEqual(decoded.updateAvailable, check.updateAvailable)
         XCTAssertEqual(decoded.downloadUrl, check.downloadUrl)
+        XCTAssertEqual(decoded.downloadDigest, check.downloadDigest)
         XCTAssertEqual(decoded.releaseNotes, check.releaseNotes)
     }
 
@@ -239,7 +241,107 @@ final class UpdateServiceTests: XCTestCase {
         XCTAssertEqual(decoded.currentVersion, "1.3.1")
         XCTAssertFalse(decoded.updateAvailable)
         XCTAssertNil(decoded.downloadUrl)
+        XCTAssertNil(decoded.downloadDigest)
         XCTAssertNil(decoded.releaseNotes)
+    }
+
+    // MARK: - Update Authenticity and Rollback
+
+    func testTrustedDownloadURLRequiresPinnedRepositoryAndAsset() {
+        let asset = "sysm-1.4.0-macos-arm64.tar.gz"
+        XCTAssertTrue(
+            service.isTrustedDownloadURL(
+                "https://github.com/brndnsvr/sysm/releases/download/v1.4.0/\(asset)",
+                version: "1.4.0",
+                assetName: asset
+            )
+        )
+        XCTAssertFalse(
+            service.isTrustedDownloadURL(
+                "https://example.com/brndnsvr/sysm/releases/download/v1.4.0/\(asset)",
+                version: "1.4.0",
+                assetName: asset
+            )
+        )
+        XCTAssertFalse(
+            service.isTrustedDownloadURL(
+                "http://github.com/brndnsvr/sysm/releases/download/v1.4.0/\(asset)",
+                version: "1.4.0",
+                assetName: asset
+            )
+        )
+    }
+
+    func testVerifyArchiveDigestRejectsMismatch() throws {
+        let archive = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-update-digest-\(UUID().uuidString)")
+        try Data("trusted bytes".utf8).write(to: archive)
+        defer { try? FileManager.default.removeItem(at: archive) }
+
+        XCTAssertThrowsError(
+            try service.verifyArchiveDigest(
+                at: archive.path,
+                expectedDigest: "sha256:" + String(repeating: "0", count: 64)
+            )
+        ) { error in
+            guard case UpdateError.verificationFailed = error else {
+                XCTFail("Expected verificationFailed, got \(error)")
+                return
+            }
+        }
+    }
+
+    func testVerifyArchiveDigestAcceptsMatchingSHA256() throws {
+        let archive = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-update-digest-\(UUID().uuidString)")
+        try Data("trusted bytes".utf8).write(to: archive)
+        defer { try? FileManager.default.removeItem(at: archive) }
+
+        XCTAssertNoThrow(
+            try service.verifyArchiveDigest(
+                at: archive.path,
+                expectedDigest: "sha256:6acd7c3c149b0fdbc542a20bb7ece8164ebf4b78148c3f65c2fddf208cc74e35"
+            )
+        )
+    }
+
+    func testReplaceBinaryRollsBackFailedVersionProbe() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-update-rollback-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let current = tempDir.appendingPathComponent("sysm")
+        let staged = tempDir.appendingPathComponent("staged")
+        try "#!/bin/sh\necho 'sysm 1.0.0'\n".write(
+            to: current,
+            atomically: true,
+            encoding: .utf8
+        )
+        try "#!/bin/sh\necho 'malicious 9.9.9'\n".write(
+            to: staged,
+            atomically: true,
+            encoding: .utf8
+        )
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: current.path
+        )
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: staged.path
+        )
+
+        XCTAssertThrowsError(
+            try service.replaceBinary(
+                at: current.path,
+                with: staged.path,
+                expectedVersion: "2.0.0"
+            )
+        )
+
+        let restored = try String(contentsOf: current, encoding: .utf8)
+        XCTAssertTrue(restored.contains("sysm 1.0.0"))
     }
 
     func testUpdateResultCodableRoundTrip() throws {

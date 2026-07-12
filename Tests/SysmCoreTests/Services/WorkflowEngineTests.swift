@@ -295,4 +295,269 @@ final class WorkflowEngineTests: XCTestCase {
         XCTAssertTrue(result.steps[1].success)
         XCTAssertNil(result.error) // no lastError because continueOnError
     }
+
+    func testRunQuotesPriorOutputBeforeShellInterpolation() throws {
+        let marker = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-workflow-injection-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: marker) }
+
+        let payload = "$(touch \(marker.path))"
+        let workflow = Workflow(
+            name: "output-injection-test",
+            steps: [
+                WorkflowStep(
+                    name: "untrusted-output",
+                    run: "printf '%s' '\(payload)'",
+                    output: "payload"
+                ),
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "printf '%s' {{ payload }}"
+                ),
+            ]
+        )
+
+        let result = try engine.run(workflow: workflow)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.steps[1].stdout, payload)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+    }
+
+    func testRunPreservesLegitimateOutputAsSingleArgument() throws {
+        let workflow = Workflow(
+            name: "output-argument-test",
+            steps: [
+                WorkflowStep(
+                    name: "produce-output",
+                    run: "printf 'hello world'",
+                    output: "greeting"
+                ),
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "printf '<%s>' {{ greeting }}"
+                ),
+            ]
+        )
+
+        let result = try engine.run(workflow: workflow)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.steps[1].stdout, "<hello world>")
+    }
+
+    func testValidateRejectsTemplatesInAppleScriptSource() {
+        for shell in ["applescript", "osascript"] {
+            let workflow = Workflow(
+                name: "unsafe-\(shell)-template",
+                env: ["payload": "untrusted"],
+                steps: [
+                    WorkflowStep(
+                        name: "consume-output",
+                        run: "return {{ payload | trim }}",
+                        shell: shell
+                    ),
+                ]
+            )
+
+            let result = engine.validate(workflow: workflow)
+
+            XCTAssertFalse(result.valid, "Expected \(shell) templates to be rejected")
+            XCTAssertTrue(
+                result.errors.contains { $0.contains("cannot interpolate templates") },
+                "Expected a clear validation error for \(shell)"
+            )
+        }
+    }
+
+    func testRunRejectsCapturedOutputInAppleScriptSource() throws {
+        let payload = #"error "SYSM_APPLESCRIPT_INJECTION_EXECUTED""#
+        let workflow = Workflow(
+            name: "applescript-output-injection-test",
+            steps: [
+                WorkflowStep(
+                    name: "untrusted-output",
+                    run: "printf '%s' '\(payload)'",
+                    output: "payload"
+                ),
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "{{ payload }}",
+                    shell: "applescript"
+                ),
+            ]
+        )
+
+        XCTAssertThrowsError(try engine.run(workflow: workflow)) { error in
+            guard case WorkflowError.invalidTemplate = error else {
+                XCTFail("Expected invalidTemplate, got \(error)")
+                return
+            }
+        }
+    }
+
+    func testRunStaticAppleScriptRemainsSupported() throws {
+        let workflow = Workflow(
+            name: "static-applescript-test",
+            steps: [
+                WorkflowStep(
+                    name: "static-source",
+                    run: #"return "hello from AppleScript""#,
+                    shell: "applescript"
+                ),
+            ]
+        )
+
+        let result = try engine.run(workflow: workflow)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.steps[0].stdout, "hello from AppleScript")
+    }
+
+    func testValidateRejectsTemplatesInPythonSource() {
+        for shell in ["python", "python3"] {
+            let workflow = Workflow(
+                name: "unsafe-\(shell)-template",
+                env: ["payload": "untrusted"],
+                steps: [
+                    WorkflowStep(
+                        name: "consume-output",
+                        run: "print({{ payload | trim }})",
+                        shell: shell
+                    ),
+                ]
+            )
+
+            let result = engine.validate(workflow: workflow)
+
+            XCTAssertFalse(result.valid, "Expected \(shell) templates to be rejected")
+            XCTAssertTrue(
+                result.errors.contains { $0.contains("cannot interpolate templates") },
+                "Expected a clear validation error for \(shell)"
+            )
+        }
+    }
+
+    func testRunRejectsCapturedOutputInPythonSource() throws {
+        let marker = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-python-injection-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: marker) }
+
+        let payload = #"__import__("pathlib").Path("\#(marker.path)").write_text("executed") or "safe""#
+        let workflow = Workflow(
+            name: "python-output-injection-test",
+            steps: [
+                WorkflowStep(
+                    name: "untrusted-output",
+                    run: "printf '%s' '\(payload)'",
+                    output: "payload"
+                ),
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "print({{ payload }})",
+                    shell: "python3"
+                ),
+            ]
+        )
+
+        XCTAssertThrowsError(try engine.run(workflow: workflow)) { error in
+            guard case WorkflowError.invalidTemplate = error else {
+                XCTFail("Expected invalidTemplate, got \(error)")
+                return
+            }
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+    }
+
+    func testRunStaticPythonRemainsSupported() throws {
+        let workflow = Workflow(
+            name: "static-python-test",
+            steps: [
+                WorkflowStep(
+                    name: "static-source",
+                    run: #"print("hello from Python")"#,
+                    shell: "python3"
+                ),
+            ]
+        )
+
+        let result = try engine.run(workflow: workflow)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.steps[0].stdout, "hello from Python")
+    }
+
+    func testValidateRejectsTemplatesInSwiftSource() {
+        let workflow = Workflow(
+            name: "unsafe-swift-template",
+            env: ["payload": "untrusted"],
+            steps: [
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "print({{ payload | trim }})",
+                    shell: "swift"
+                ),
+            ]
+        )
+
+        let result = engine.validate(workflow: workflow)
+
+        XCTAssertFalse(result.valid)
+        XCTAssertTrue(
+            result.errors.contains { $0.contains("cannot interpolate templates") },
+            "Expected a clear validation error for Swift"
+        )
+    }
+
+    func testRunRejectsCapturedOutputInSwiftSource() throws {
+        let marker = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-swift-injection-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: marker) }
+
+        let payload = """
+        import Foundation
+        try "executed".write(toFile: "\(marker.path)", atomically: true, encoding: .utf8)
+        """
+        let workflow = Workflow(
+            name: "swift-output-injection-test",
+            steps: [
+                WorkflowStep(
+                    name: "untrusted-output",
+                    run: "printf '%s' '\(payload)'",
+                    output: "payload"
+                ),
+                WorkflowStep(
+                    name: "consume-output",
+                    run: "{{ payload }}",
+                    shell: "swift"
+                ),
+            ]
+        )
+
+        XCTAssertThrowsError(try engine.run(workflow: workflow)) { error in
+            guard case WorkflowError.invalidTemplate = error else {
+                XCTFail("Expected invalidTemplate, got \(error)")
+                return
+            }
+        }
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+    }
+
+    func testRunStaticSwiftRemainsSupported() throws {
+        let workflow = Workflow(
+            name: "static-swift-test",
+            steps: [
+                WorkflowStep(
+                    name: "static-source",
+                    run: #"print("hello from Swift")"#,
+                    shell: "swift"
+                ),
+            ]
+        )
+
+        let result = try engine.run(workflow: workflow)
+
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.steps[0].stdout, "hello from Swift")
+    }
 }
