@@ -47,6 +47,18 @@ final class UpdateServiceTests: XCTestCase {
         XCTAssertEqual(service.compareVersions("1.3.0", "1.3.1"), .orderedAscending)
     }
 
+    func testCompareReleaseCycleRevision() {
+        XCTAssertEqual(service.compareVersions("1.26.3.0", "1.26.3.1"), .orderedAscending)
+    }
+
+    func testCompareLargeReleaseCycleRevision() {
+        XCTAssertEqual(service.compareVersions("1.26.3.1934", "1.26.4.0"), .orderedAscending)
+    }
+
+    func testReleaseCycleVersionSortsAboveLegacyVersion() {
+        XCTAssertEqual(service.compareVersions("1.13.3", "1.26.3.0"), .orderedAscending)
+    }
+
     // MARK: - GitHub JSON Parsing
 
     func testParseGitHubReleaseValid() throws {

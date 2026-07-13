@@ -27,10 +27,11 @@ jobs:
         id: version
         run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Validate tag matches VERSION
+      - name: Validate release-cycle version and tag
         run: |
           TAG_VERSION="${{ steps.version.outputs.version }}"
           FILE_VERSION=$(tr -d '[:space:]' < VERSION)
+          ./scripts/validate-version.sh "$TAG_VERSION"
           if [ "$TAG_VERSION" != "$FILE_VERSION" ]; then
             echo "Tag version $TAG_VERSION does not match VERSION $FILE_VERSION" >&2
             exit 1
@@ -49,51 +50,73 @@ jobs:
           tar -czf "$ARCHIVE" -C .build/release sysm
           SHA256=$(shasum -a 256 "$ARCHIVE" | cut -d' ' -f1)
           SKILL_SHA256=$(shasum -a 256 skills/sysm.skill | cut -d' ' -f1)
-          echo "archive=$ARCHIVE" >> "$GITHUB_OUTPUT"
-          echo "sha256=$SHA256" >> "$GITHUB_OUTPUT"
-          echo "skill_sha256=$SKILL_SHA256" >> "$GITHUB_OUTPUT"
+          {
+            echo "archive=$ARCHIVE"
+            echo "sha256=$SHA256"
+            echo "skill_sha256=$SKILL_SHA256"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Generate changelog
-        id: changelog
         run: |
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -z "$PREV_TAG" ]; then
-            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --no-merges)
+            git log --pretty=format:"- %s (%h)" --no-merges > CHANGELOG.txt
           else
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            git log "${PREV_TAG}..HEAD" --pretty=format:"- %s (%h)" --no-merges > CHANGELOG.txt
           fi
-          echo "$CHANGELOG" > CHANGELOG.txt
-          echo "changelog<<EOF" >> $GITHUB_OUTPUT
-          cat CHANGELOG.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Compose release metadata
+        id: release
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          REPOSITORY="${{ github.repository }}"
+          REF_NAME="${{ github.ref_name }}"
+          ARCHIVE="${{ steps.tarball.outputs.archive }}"
+          SHA256="${{ steps.tarball.outputs.sha256 }}"
+          NOTES="docs/releases/${VERSION}.md"
+          if [ ! -f "$NOTES" ]; then
+            echo "Release notes not found: $NOTES" >&2
+            exit 1
+          fi
+          RELEASE_NAME=$(sed -n '1s/^# //p' "$NOTES")
+          if [ -z "$RELEASE_NAME" ]; then
+            echo "Release notes must begin with a level-one title" >&2
+            exit 1
+          fi
+          echo "name=$RELEASE_NAME" >> "$GITHUB_OUTPUT"
+          sed '1d' "$NOTES" > RELEASE_BODY.md
+          {
+            echo
+            echo "## Changes since the previous release"
+            echo
+            cat CHANGELOG.txt
+            echo
+            echo "## Installation"
+            echo
+            echo "### Homebrew"
+            echo '```bash'
+            echo "brew tap brndnsvr/tap"
+            echo "brew install sysm"
+            echo '```'
+            echo
+            echo "### Direct Download"
+            echo '```bash'
+            echo "curl -L -o sysm.tar.gz https://github.com/${REPOSITORY}/releases/download/${REF_NAME}/${ARCHIVE}"
+            echo "tar -xzf sysm.tar.gz"
+            echo "sudo mv sysm /usr/local/bin/"
+            echo '```'
+            echo
+            printf '**SHA256:** \140%s\140\n' "$SHA256"
+          } >> RELEASE_BODY.md
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
+          name: ${{ steps.release.outputs.name }}
           files: |
             ${{ steps.tarball.outputs.archive }}
             skills/sysm.skill
-          body: |
-            ## Changes in this release
-
-            ${{ steps.changelog.outputs.changelog }}
-
-            ## Installation
-
-            ### Homebrew
-            ```bash
-            brew tap brndnsvr/tap
-            brew install sysm
-            ```
-
-            ### Direct Download
-            ```bash
-            curl -L -o sysm.tar.gz https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/${{ steps.tarball.outputs.archive }}
-            tar -xzf sysm.tar.gz
-            sudo mv sysm /usr/local/bin/
-            ```
-
-            **SHA256:** `${{ steps.tarball.outputs.sha256 }}`
+          body_path: RELEASE_BODY.md
           draft: false
           prerelease: false
         env:

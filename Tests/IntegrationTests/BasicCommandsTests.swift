@@ -11,11 +11,14 @@ final class BasicCommandsTests: IntegrationTestCase {
     func testVersionCommand() throws {
         let output = try runCommand(["--version"])
 
-        // Version output is just the semver string, e.g. "1.0.0"
+        // Version output uses GENERATION.YY.QUARTER.REVISION.
         let trimmed = output.trimmingCharacters(in: .whitespacesAndNewlines)
         XCTAssertTrue(
-            trimmed.range(of: #"^\d+\.\d+\.\d+"#, options: .regularExpression) != nil,
-            "Version output should be a semver string, got: '\(trimmed)'"
+            trimmed.range(
+                of: #"^[1-9]\d*\.\d{2}\.[1-4]\.(0|[1-9]\d*)$"#,
+                options: .regularExpression
+            ) != nil,
+            "Version output should be a release-cycle version, got: '\(trimmed)'"
         )
     }
 

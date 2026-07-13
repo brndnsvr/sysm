@@ -1,4 +1,4 @@
 // This file is auto-generated from VERSION by scripts/generate-version.sh
 // Do not edit directly - edit VERSION file instead
 
-let appVersion = "1.13.3"
+let appVersion = "1.26.3.0"
