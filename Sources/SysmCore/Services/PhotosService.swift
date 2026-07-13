@@ -308,7 +308,11 @@ public actor PhotosService: PhotosServiceProtocol {
         }
 
         let url = URL(fileURLWithPath: outputPath)
-        try data.write(to: url)
+        do {
+            try NoFollowFileWriter.write(data, to: url)
+        } catch {
+            throw PhotosError.exportFailed(error.localizedDescription)
+        }
     }
 
     // MARK: - Videos
