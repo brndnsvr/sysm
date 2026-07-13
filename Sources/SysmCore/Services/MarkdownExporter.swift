@@ -1,4 +1,19 @@
+import CryptoKit
 import Foundation
+
+public enum MarkdownExporterError: LocalizedError, Equatable {
+    case duplicateNoteId(String)
+    case nonUniqueOutputPath(String)
+
+    public var errorDescription: String? {
+        switch self {
+        case let .duplicateNoteId(id):
+            return "The export batch contains duplicate note ID: \(id)"
+        case let .nonUniqueOutputPath(path):
+            return "The export batch contains a duplicate output path: \(path)"
+        }
+    }
+}
 
 public struct MarkdownExporter: MarkdownExporterProtocol {
 
@@ -22,18 +37,9 @@ public struct MarkdownExporter: MarkdownExporterProtocol {
     }
 
     public func exportNote(_ note: Note, outputDir: URL, dryRun: Bool = false) throws -> URL {
-        let filename = "\(note.sanitizedName).md"
+        let filename = exportFilename(for: note)
         let fileURL = outputDir.appendingPathComponent(filename)
-
-        if !dryRun {
-            // Create output directory if needed
-            try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
-
-            // Write markdown content
-            let content = note.toMarkdown()
-            try content.write(to: fileURL, atomically: true, encoding: .utf8)
-        }
-
+        try write(note, to: fileURL, outputDir: outputDir, dryRun: dryRun)
         return fileURL
     }
 
@@ -47,14 +53,11 @@ public struct MarkdownExporter: MarkdownExporterProtocol {
     public func exportNotes(_ notes: [Note], outputDir: URL, dryRun: Bool = false, deferTracking: Bool = false) throws -> [(note: Note, path: URL)] {
         var results: [(Note, URL)] = []
         var importedIds = loadImportedIds(outputDir: outputDir)
+        let pendingNotes = notes.filter { !importedIds.contains($0.id) }
+        let plan = try makeExportPlan(for: pendingNotes, outputDir: outputDir)
 
-        for note in notes {
-            // Skip already imported notes
-            if importedIds.contains(note.id) {
-                continue
-            }
-
-            let path = try exportNote(note, outputDir: outputDir, dryRun: dryRun)
+        for (note, path) in plan {
+            try write(note, to: path, outputDir: outputDir, dryRun: dryRun)
             results.append((note, path))
 
             if !dryRun && !deferTracking {
@@ -85,5 +88,54 @@ public struct MarkdownExporter: MarkdownExporterProtocol {
     public func checkForNew(_ notes: [Note], outputDir: URL) -> [Note] {
         let importedIds = loadImportedIds(outputDir: outputDir)
         return notes.filter { !importedIds.contains($0.id) }
+    }
+
+    private func exportFilename(for note: Note) -> String {
+        let digest = SHA256.hash(data: Data(note.id.utf8))
+            .prefix(8)
+            .map { String(format: "%02x", $0) }
+            .joined()
+        return "\(note.sanitizedName)--\(digest).md"
+    }
+
+    private func write(
+        _ note: Note,
+        to fileURL: URL,
+        outputDir: URL,
+        dryRun: Bool
+    ) throws {
+        guard !dryRun else { return }
+        try FileManager.default.createDirectory(at: outputDir, withIntermediateDirectories: true)
+        try note.toMarkdown().write(to: fileURL, atomically: true, encoding: .utf8)
+    }
+
+    private func makeExportPlan(
+        for notes: [Note],
+        outputDir: URL
+    ) throws -> [(note: Note, path: URL)] {
+        var sourceIds: Set<String> = []
+        var outputPaths: Set<String> = []
+        var plan: [(note: Note, path: URL)] = []
+
+        for note in notes {
+            guard sourceIds.insert(note.id).inserted else {
+                throw MarkdownExporterError.duplicateNoteId(note.id)
+            }
+
+            let path = outputDir.appendingPathComponent(exportFilename(for: note))
+            let pathKey = canonicalOutputKey(path)
+            guard outputPaths.insert(pathKey).inserted else {
+                throw MarkdownExporterError.nonUniqueOutputPath(path.path)
+            }
+            plan.append((note, path))
+        }
+
+        return plan
+    }
+
+    private func canonicalOutputKey(_ url: URL) -> String {
+        url.standardizedFileURL.path
+            .precomposedStringWithCanonicalMapping
+            .lowercased()
     }
 }

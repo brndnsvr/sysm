@@ -108,7 +108,7 @@ public protocol MarkdownExporterProtocol: Sendable {
     /// Exports a single note to markdown.
     ///
     /// Converts a note's HTML content to markdown and writes it to a file. The filename
-    /// is derived from the note's title (sanitized for filesystem safety).
+    /// combines the sanitized title with a stable digest of the note ID.
     ///
     /// - Parameters:
     ///   - note: The ``Note`` to export.
@@ -132,14 +132,16 @@ public protocol MarkdownExporterProtocol: Sendable {
     /// ## File Naming
     ///
     /// - Note title is sanitized (removing invalid filename characters)
+    /// - A stable note-ID digest preserves uniqueness across title collisions
     /// - Extension is `.md`
-    /// - Duplicate names get numeric suffixes (e.g., `note-1.md`, `note-2.md`)
+    /// - The same note ID always contributes the same stable suffix
     func exportNote(_ note: Note, outputDir: URL, dryRun: Bool) throws -> URL
 
     /// Exports multiple notes to markdown files.
     ///
-    /// Batch exports notes to markdown. Optionally updates the tracking file to record
-    /// the export (unless deferTracking is true).
+    /// Batch exports notes to markdown. The complete one-to-one output plan is validated
+    /// before the first write. Optionally updates the tracking file to record the export
+    /// (unless deferTracking is true).
     ///
     /// - Parameters:
     ///   - notes: Notes to export.
