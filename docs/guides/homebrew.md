@@ -55,7 +55,7 @@ git push origin main
 The formula needs to be updated with the correct version and SHA256:
 
 ```ruby
-url "https://github.com/brndnsvr/sysm/archive/v1.0.0.tar.gz"
+url "https://github.com/brndnsvr/sysm/archive/v1.26.3.0.tar.gz"
 sha256 "..." # Fill in during first release
 ```
 
@@ -68,8 +68,8 @@ When releasing a new version of sysm:
 ```bash
 cd /path/to/sysm
 
-# Update VERSION file
-echo "1.0.0" > VERSION
+# Update VERSION using GENERATION.YY.QUARTER.REVISION
+./scripts/bump-version.sh 1.26.3.0
 
 # Run release script
 ./scripts/release.sh github
@@ -77,17 +77,17 @@ echo "1.0.0" > VERSION
 
 This creates a GitHub release with a tarball at:
 ```
-https://github.com/brndnsvr/sysm/archive/v1.0.0.tar.gz
+https://github.com/brndnsvr/sysm/archive/v1.26.3.0.tar.gz
 ```
 
 ### 2. Get SHA256
 
 ```bash
 # Download the tarball
-curl -L -o sysm-1.0.0.tar.gz https://github.com/brndnsvr/sysm/archive/v1.0.0.tar.gz
+curl -L -o sysm-1.26.3.0.tar.gz https://github.com/brndnsvr/sysm/archive/v1.26.3.0.tar.gz
 
 # Calculate SHA256
-shasum -a 256 sysm-1.0.0.tar.gz
+shasum -a 256 sysm-1.26.3.0.tar.gz
 ```
 
 ### 3. Update Homebrew Formula
@@ -103,7 +103,7 @@ vim Formula/sysm.rb
 
 Example update:
 ```ruby
-url "https://github.com/brndnsvr/sysm/archive/v1.0.1.tar.gz"
+url "https://github.com/brndnsvr/sysm/archive/v1.26.3.1.tar.gz"
 sha256 "abc123def456..." # New SHA from step 2
 ```
 
@@ -126,7 +126,7 @@ brew uninstall sysm
 ```bash
 # Commit and push updated formula
 git add Formula/sysm.rb
-git commit -m "Update sysm to v1.0.1"
+git commit -m "Update sysm to v1.26.3.1"
 git push origin main
 ```
 

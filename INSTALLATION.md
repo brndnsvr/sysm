@@ -56,8 +56,8 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/brndnsvr/sysm/main/scrip
 ### Publishing Releases
 
 ```bash
-# 1. Update version
-echo "1.0.1" > VERSION
+# 1. Start or advance a release cycle
+./scripts/bump-version.sh 1.26.3.0
 
 # 2. Create release (builds, packages, uploads)
 ./scripts/release.sh github

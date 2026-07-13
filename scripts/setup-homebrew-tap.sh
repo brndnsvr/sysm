@@ -179,7 +179,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to update to (e.g., 1.0.1)'
+        description: 'Version to update to (e.g., 1.26.3.0)'
         required: true
       sha256:
         description: 'SHA256 of the release tarball'
@@ -247,7 +247,7 @@ ${BOLD}Manual formula update:${NC}
    ${BLUE}cd ~/.homebrew-tap-setup${NC}
    ${BLUE}# Edit Formula/sysm.rb (update version and sha256)${NC}
    ${BLUE}git add Formula/sysm.rb${NC}
-   ${BLUE}git commit -m "Update sysm to vX.Y.Z"${NC}
+   ${BLUE}git commit -m "Update sysm to vGENERATION.YY.QUARTER.REVISION"${NC}
    ${BLUE}git push${NC}
 
 ${BOLD}Tap repository:${NC} https://github.com/${TAP_FULL}

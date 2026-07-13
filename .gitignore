@@ -20,7 +20,8 @@ Makefile.local
 # OS files
 .DS_Store
 
-# Generated docs (DocC output only - ignore everything except guides/ and performance/)
+# Generated docs (DocC output only - retain authored guides, performance notes, and releases)
 /docs/*
 !/docs/guides/
 !/docs/performance/
+!/docs/releases/

@@ -96,7 +96,10 @@ get_version() {
     if [[ ! -f "$version_file" ]]; then
         die "VERSION file not found: $version_file"
     fi
-    cat "$version_file" | tr -d '[:space:]'
+    local version
+    version=$(tr -d '[:space:]' < "$version_file")
+    "${SCRIPT_DIR}/validate-version.sh" "$version"
+    echo "$version"
 }
 
 check_swift() {

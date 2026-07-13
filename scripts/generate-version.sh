@@ -21,6 +21,8 @@ if [[ -z "$VERSION" ]]; then
     exit 1
 fi
 
+"${SCRIPT_DIR}/validate-version.sh" "$VERSION"
+
 cat > "$OUTPUT_FILE" <<EOF
 // This file is auto-generated from VERSION by scripts/generate-version.sh
 // Do not edit directly - edit VERSION file instead
