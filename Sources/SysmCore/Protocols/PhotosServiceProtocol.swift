@@ -220,6 +220,7 @@ public protocol PhotosServiceProtocol: Sendable {
     /// Exports a photo to a file.
     ///
     /// Exports the photo in its original format (JPEG, PNG, HEIC, etc.) to the specified path.
+    /// Existing regular files are replaced, but links and special files at the final path are rejected.
     ///
     /// - Parameters:
     ///   - assetId: The photo asset's unique identifier.
