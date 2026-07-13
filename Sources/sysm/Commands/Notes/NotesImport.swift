@@ -20,6 +20,14 @@ private struct DeleteFailure: Encodable {
     let errorType: String
 }
 
+private enum NotesImportError: LocalizedError {
+    case nonUniqueExportResults
+
+    var errorDescription: String? {
+        "Notes were not deleted because the export results were not one-to-one"
+    }
+}
+
 // MARK: - Command
 
 struct NotesImport: ParsableCommand {
@@ -68,6 +76,8 @@ struct NotesImport: ParsableCommand {
         var successfullyDeletedIds: [String] = []
 
         if delete && !dryRun && !results.isEmpty {
+            try Self.validateUniqueDeletionResults(results)
+
             for (note, _) in results {
                 do {
                     try service.deleteNote(id: note.id)
@@ -144,6 +154,22 @@ struct NotesImport: ParsableCommand {
         if !deleteFailures.isEmpty {
             // Exit code 2 for partial success: imports OK, some deletes failed
             throw ExitCode(2)
+        }
+    }
+
+    static func validateUniqueDeletionResults(
+        _ results: [(note: Note, path: URL)]
+    ) throws {
+        let sourceIds = Set(results.map { $0.note.id })
+        let outputPaths = Set(results.map {
+            $0.path.standardizedFileURL.path
+                .precomposedStringWithCanonicalMapping
+                .lowercased()
+        })
+
+        guard sourceIds.count == results.count,
+              outputPaths.count == results.count else {
+            throw NotesImportError.nonUniqueExportResults
         }
     }
 }

@@ -90,7 +90,8 @@ final class MarkdownExporterTests: XCTestCase {
         let outputURL = try exporter.exportNote(note, outputDir: tempDir, dryRun: false)
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
-        XCTAssertEqual(outputURL.lastPathComponent, "Test Note.md")
+        XCTAssertTrue(outputURL.lastPathComponent.hasPrefix("Test Note--"))
+        XCTAssertTrue(outputURL.lastPathComponent.hasSuffix(".md"))
 
         let content = try String(contentsOf: outputURL, encoding: .utf8)
         XCTAssertTrue(content.contains("source: apple-notes"))
@@ -103,7 +104,8 @@ final class MarkdownExporterTests: XCTestCase {
         let outputURL = try exporter.exportNote(note, outputDir: tempDir, dryRun: true)
 
         XCTAssertFalse(FileManager.default.fileExists(atPath: outputURL.path))
-        XCTAssertEqual(outputURL.lastPathComponent, "Dry Run Note.md")
+        XCTAssertTrue(outputURL.lastPathComponent.hasPrefix("Dry Run Note--"))
+        XCTAssertTrue(outputURL.lastPathComponent.hasSuffix(".md"))
     }
 
     func testExportNote_SanitizesFilename() throws {
@@ -111,7 +113,8 @@ final class MarkdownExporterTests: XCTestCase {
         let outputURL = try exporter.exportNote(note, outputDir: tempDir, dryRun: false)
 
         XCTAssertTrue(FileManager.default.fileExists(atPath: outputURL.path))
-        XCTAssertEqual(outputURL.lastPathComponent, "Test-Note-With-Special.md")
+        XCTAssertTrue(outputURL.lastPathComponent.hasPrefix("Test-Note-With-Special--"))
+        XCTAssertTrue(outputURL.lastPathComponent.hasSuffix(".md"))
     }
 
     func testExportNote_CreatesDirectory() throws {
@@ -210,6 +213,85 @@ final class MarkdownExporterTests: XCTestCase {
         XCTAssertEqual(ids.count, 2)
         XCTAssertTrue(ids.contains("1"))
         XCTAssertTrue(ids.contains("2"))
+    }
+
+    func testExportNotes_CollidingSanitizedNamesProduceDistinctFiles() throws {
+        let notes = [
+            createTestNote(id: "note-id-1", name: "A/B", body: "FIRST_NOTE_BODY"),
+            createTestNote(id: "note-id-2", name: "A:B", body: "SECOND_NOTE_BODY"),
+        ]
+
+        let results = try exporter.exportNotes(
+            notes,
+            outputDir: tempDir,
+            dryRun: false,
+            deferTracking: true
+        )
+
+        XCTAssertEqual(results.count, 2)
+        XCTAssertEqual(Set(results.map { $0.path.standardizedFileURL.path }).count, 2)
+
+        for (note, path) in results {
+            let content = try String(contentsOf: path, encoding: .utf8)
+            XCTAssertTrue(content.contains(note.body))
+        }
+    }
+
+    func testExportNotes_UntitledCollisionProducesDistinctFiles() throws {
+        let notes = [
+            createTestNote(id: "empty-title", name: "", body: "EMPTY_TITLE_BODY"),
+            createTestNote(id: "literal-title", name: "Untitled", body: "LITERAL_TITLE_BODY"),
+        ]
+
+        let results = try exporter.exportNotes(
+            notes,
+            outputDir: tempDir,
+            dryRun: false,
+            deferTracking: true
+        )
+
+        XCTAssertEqual(Set(results.map { $0.path.standardizedFileURL.path }).count, 2)
+    }
+
+    func testExportNotes_TruncatedTitleCollisionProducesDistinctFiles() throws {
+        let prefix = String(repeating: "a", count: 100)
+        let notes = [
+            createTestNote(id: "long-title-1", name: prefix + "first"),
+            createTestNote(id: "long-title-2", name: prefix + "second"),
+        ]
+
+        let results = try exporter.exportNotes(
+            notes,
+            outputDir: tempDir,
+            dryRun: true,
+            deferTracking: true
+        )
+
+        XCTAssertEqual(Set(results.map { $0.path.standardizedFileURL.path }).count, 2)
+    }
+
+    func testExportNotes_DuplicateSourceIdAbortsBeforeWriting() throws {
+        let notes = [
+            createTestNote(id: "duplicate-id", name: "First"),
+            createTestNote(id: "duplicate-id", name: "Second"),
+        ]
+
+        XCTAssertThrowsError(
+            try exporter.exportNotes(
+                notes,
+                outputDir: tempDir,
+                dryRun: false,
+                deferTracking: true
+            )
+        ) { error in
+            XCTAssertEqual(error as? MarkdownExporterError, .duplicateNoteId("duplicate-id"))
+        }
+
+        let markdownFiles = try FileManager.default.contentsOfDirectory(
+            at: tempDir,
+            includingPropertiesForKeys: nil
+        ).filter { $0.pathExtension == "md" }
+        XCTAssertTrue(markdownFiles.isEmpty)
     }
 
     // MARK: - markAsImported Tests
