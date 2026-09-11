@@ -33,11 +33,13 @@ jobs:
 
       - name: Process Archive for GitHub Pages
         run: |
-          # Find the .doccarchive
-          DOCC_ARCHIVE=$(find /tmp/docbuild -type d -name "*.doccarchive" | head -n 1)
+          # docbuild also produces archives for dependencies (ArgumentParser,
+          # Yams), so select SysmCore's by name rather than whichever find
+          # returns first.
+          DOCC_ARCHIVE=$(find /tmp/docbuild -type d -name "SysmCore.doccarchive" | head -n 1)
 
           if [ -z "$DOCC_ARCHIVE" ]; then
-            echo "Error: Could not find .doccarchive"
+            echo "Error: Could not find SysmCore.doccarchive"
             exit 1
           fi
 
@@ -54,6 +56,23 @@ jobs:
 
           # Create .nojekyll to bypass Jekyll processing
           touch docs/.nojekyll
+
+          # DocC's root index.html is the app shell without the /sysm/ base
+          # path, so the site root renders blank. Redirect it to the module.
+          cat > docs/index.html <<'HTML'
+          <!doctype html>
+          <html lang="en">
+          <head>
+          <meta charset="utf-8">
+          <title>sysm API documentation</title>
+          <meta http-equiv="refresh" content="0; url=documentation/sysmcore/">
+          <link rel="canonical" href="documentation/sysmcore/">
+          </head>
+          <body>
+          <p><a href="documentation/sysmcore/">SysmCore API documentation</a></p>
+          </body>
+          </html>
+          HTML
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
