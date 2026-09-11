@@ -125,17 +125,10 @@ public struct AppleScriptRunner: AppleScriptRunnerProtocol {
         // pipe buffer deadlocks. If a pipe's buffer fills (~64KB), the process
         // blocks until the buffer is drained. Reading after waitUntilExit would
         // deadlock since waitUntilExit can't return while the process is blocked.
-        var outputData = Data()
-        var errorData = Data()
-        let readGroup = DispatchGroup()
-
-        readGroup.enter()
-        DispatchQueue.global().async {
-            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            readGroup.leave()
-        }
-        errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        readGroup.wait()
+        let (outputData, errorData) = Shell.readToEnd(
+            stdout: outputPipe.fileHandleForReading,
+            stderr: errorPipe.fileHandleForReading
+        )
 
         task.waitUntilExit()
 
