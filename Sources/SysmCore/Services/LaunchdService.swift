@@ -43,6 +43,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         case plistCreationFailed(String)
         case launchctlFailed(String)
         case jobAlreadyExists(String)
+        case invalidName(String)
 
         public var errorDescription: String? {
             switch self {
@@ -56,6 +57,9 @@ public struct LaunchdService: LaunchdServiceProtocol {
                 return "launchctl failed: \(reason)"
             case .jobAlreadyExists(let name):
                 return "Job already exists: \(name). Use --force to overwrite"
+            case .invalidName(let name):
+                return "Invalid job name \(name.debugDescription). Use up to 128 letters, digits, "
+                    + "dots, underscores, or hyphens, starting with a letter or digit"
             }
         }
     }
@@ -84,6 +88,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         env: [String: String]? = nil,
         force: Bool = false
     ) throws -> Job {
+        try Self.validateJobName(name)
         let label = "\(jobPrefix)\(name)"
         let plistPath = "\(launchAgentsDir)/\(label).plist"
 
@@ -123,7 +128,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         let stderrPath = "\(logsDir)/\(name).error.log"
 
         // Build plist
-        let plist = buildPlist(
+        let plist = try buildPlist(
             label: label,
             command: command,
             schedule: schedule,
@@ -135,7 +140,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         )
 
         // Write plist
-        try plist.write(toFile: plistPath, atomically: true, encoding: .utf8)
+        try plist.write(to: URL(fileURLWithPath: plistPath), options: .atomic)
 
         // Load into launchd
         try loadJob(plistPath: plistPath)
@@ -157,6 +162,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
     }
 
     public func removeJob(name: String) throws {
+        try Self.validateJobName(name)
         let label = "\(jobPrefix)\(name)"
         let plistPath = "\(launchAgentsDir)/\(label).plist"
 
@@ -172,6 +178,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
     }
 
     public func enableJob(name: String) throws {
+        try Self.validateJobName(name)
         let label = "\(jobPrefix)\(name)"
         let plistPath = "\(launchAgentsDir)/\(label).plist"
 
@@ -183,6 +190,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
     }
 
     public func disableJob(name: String) throws {
+        try Self.validateJobName(name)
         let label = "\(jobPrefix)\(name)"
         let plistPath = "\(launchAgentsDir)/\(label).plist"
 
@@ -194,6 +202,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
     }
 
     public func runJobNow(name: String) throws {
+        try Self.validateJobName(name)
         let label = "\(jobPrefix)\(name)"
         let plistPath = "\(launchAgentsDir)/\(label).plist"
 
@@ -229,6 +238,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
     }
 
     public func getJob(name: String) throws -> Job {
+        try Self.validateJobName(name)
         let label = "\(jobPrefix)\(name)"
         let plistPath = "\(launchAgentsDir)/\(label).plist"
 
@@ -240,6 +250,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
     }
 
     public func getJobLogs(name: String, lines: Int = 50) throws -> (stdout: String, stderr: String) {
+        try Self.validateJobName(name)
         let stdoutPath = "\(logsDir)/\(name).log"
         let stderrPath = "\(logsDir)/\(name).error.log"
 
@@ -251,6 +262,27 @@ public struct LaunchdService: LaunchdServiceProtocol {
         let stderrLines = stderr.components(separatedBy: .newlines).suffix(lines).joined(separator: "\n")
 
         return (stdoutLines, stderrLines)
+    }
+
+    // MARK: - Validation
+
+    /// Job names become part of the launchd label, the plist filename, and the
+    /// log filenames, so they are limited to a filename-safe ASCII set. Every
+    /// public entry point calls this before touching the filesystem or launchctl.
+    static func validateJobName(_ name: String) throws {
+        func isAlphanumeric(_ scalar: Unicode.Scalar) -> Bool {
+            switch scalar.value {
+            case 0x30...0x39, 0x41...0x5A, 0x61...0x7A: return true
+            default: return false
+            }
+        }
+        let scalars = name.unicodeScalars
+        guard let first = scalars.first,
+              isAlphanumeric(first),
+              scalars.count <= 128,
+              scalars.allSatisfy({ isAlphanumeric($0) || $0 == "." || $0 == "_" || $0 == "-" }) else {
+            throw LaunchdError.invalidName(name)
+        }
     }
 
     // MARK: - Private
@@ -276,7 +308,10 @@ public struct LaunchdService: LaunchdServiceProtocol {
         )
     }
 
-    private func buildPlist(
+    /// Serializes the job with PropertyListSerialization so every string value
+    /// (command, working directory, environment keys and values) is escaped by
+    /// Foundation instead of being spliced into XML by hand.
+    func buildPlist(
         label: String,
         command: String,
         schedule: Job.Schedule?,
@@ -285,121 +320,43 @@ public struct LaunchdService: LaunchdServiceProtocol {
         stdoutPath: String,
         stderrPath: String,
         env: [String: String]?
-    ) -> String {
-        var plist = """
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>\(label)</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>/bin/bash</string>
-        <string>-c</string>
-        <string>\(escapeXml(command))</string>
-    </array>
-"""
+    ) throws -> Data {
+        var plist: [String: Any] = [
+            "Label": label,
+            "ProgramArguments": ["/bin/bash", "-c", command],
+            "StandardOutPath": stdoutPath,
+            "StandardErrorPath": stderrPath,
+        ]
 
         if let schedule = schedule {
             if let interval = schedule.interval {
-                plist += """
-    <key>StartInterval</key>
-    <integer>\(interval)</integer>
-"""
+                plist["StartInterval"] = interval
             } else {
-                plist += """
-    <key>StartCalendarInterval</key>
-    <dict>
-"""
-                if let minute = schedule.minute {
-                    plist += """
-        <key>Minute</key>
-        <integer>\(minute)</integer>
-"""
-                }
-                if let hour = schedule.hour {
-                    plist += """
-        <key>Hour</key>
-        <integer>\(hour)</integer>
-"""
-                }
-                if let day = schedule.day {
-                    plist += """
-        <key>Day</key>
-        <integer>\(day)</integer>
-"""
-                }
-                if let weekday = schedule.weekday {
-                    plist += """
-        <key>Weekday</key>
-        <integer>\(weekday)</integer>
-"""
-                }
-                if let month = schedule.month {
-                    plist += """
-        <key>Month</key>
-        <integer>\(month)</integer>
-"""
-                }
-                plist += """
-    </dict>
-"""
+                var calendar: [String: Int] = [:]
+                calendar["Minute"] = schedule.minute
+                calendar["Hour"] = schedule.hour
+                calendar["Day"] = schedule.day
+                calendar["Weekday"] = schedule.weekday
+                calendar["Month"] = schedule.month
+                plist["StartCalendarInterval"] = calendar
             }
         }
 
         if runAtLoad {
-            plist += """
-    <key>RunAtLoad</key>
-    <true/>
-"""
+            plist["RunAtLoad"] = true
+        }
+        if let workingDirectory = workingDirectory {
+            plist["WorkingDirectory"] = workingDirectory
+        }
+        if let env = env, !env.isEmpty {
+            plist["EnvironmentVariables"] = env
         }
 
-        if let workDir = workingDirectory {
-            plist += """
-    <key>WorkingDirectory</key>
-    <string>\(workDir)</string>
-"""
+        do {
+            return try PropertyListSerialization.data(fromPropertyList: plist, format: .xml, options: 0)
+        } catch {
+            throw LaunchdError.plistCreationFailed(error.localizedDescription)
         }
-
-        plist += """
-    <key>StandardOutPath</key>
-    <string>\(stdoutPath)</string>
-    <key>StandardErrorPath</key>
-    <string>\(stderrPath)</string>
-"""
-
-        if let envVars = env, !envVars.isEmpty {
-            plist += """
-    <key>EnvironmentVariables</key>
-    <dict>
-"""
-            for (key, value) in envVars {
-                plist += """
-        <key>\(key)</key>
-        <string>\(escapeXml(value))</string>
-"""
-            }
-            plist += """
-    </dict>
-"""
-        }
-
-        plist += """
-</dict>
-</plist>
-"""
-        return plist
-    }
-
-    private func escapeXml(_ str: String) -> String {
-        var result = str
-        result = result.replacingOccurrences(of: "&", with: "&amp;")
-        result = result.replacingOccurrences(of: "<", with: "&lt;")
-        result = result.replacingOccurrences(of: ">", with: "&gt;")
-        result = result.replacingOccurrences(of: "\"", with: "&quot;")
-        result = result.replacingOccurrences(of: "'", with: "&apos;")
-        return result
     }
 
     private func loadJob(plistPath: String) throws {
