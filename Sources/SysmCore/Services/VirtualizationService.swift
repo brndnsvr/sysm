@@ -116,11 +116,9 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
             }
             restoreImage = try await VZMacOSRestoreImage.image(from: ipswURL)
         } else {
-            restoreImage = try await withCheckedThrowingContinuation { continuation in
-                VZMacOSRestoreImage.fetchLatestSupported { result in
-                    continuation.resume(with: result)
-                }
-            }
+            // The async form returns the image directly instead of handing a
+            // non-Sendable VZMacOSRestoreImage through a continuation.
+            restoreImage = try await VZMacOSRestoreImage.latestSupported
         }
 
         guard let requirements = restoreImage.mostFeaturefulSupportedConfiguration else {
