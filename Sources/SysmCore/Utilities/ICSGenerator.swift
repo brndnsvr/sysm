@@ -93,6 +93,9 @@ public struct ICSGenerator {
             lines.append("TRANSP:OPAQUE")
         case .unavailable:
             lines.append("STATUS:CANCELLED")
+        case .notSupported:
+            // The calendar does not track availability; emit no STATUS or TRANSP.
+            break
         @unknown default:
             break
         }
