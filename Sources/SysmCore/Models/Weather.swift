@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Public Models
 
 /// Current weather conditions for a location.
-public struct CurrentWeather: Codable {
+public struct CurrentWeather: Codable, Sendable {
     public let location: String
     public let latitude: Double
     public let longitude: Double
@@ -36,7 +36,7 @@ public struct CurrentWeather: Codable {
 }
 
 /// Multi-day weather forecast for a location.
-public struct Forecast: Codable {
+public struct Forecast: Codable, Sendable {
     public let location: String
     public let days: [DayForecast]
     public let timezone: String
@@ -55,7 +55,7 @@ public struct Forecast: Codable {
 }
 
 /// Weather forecast for a single day.
-public struct DayForecast: Codable {
+public struct DayForecast: Codable, Sendable {
     public let date: Date
     public let high: Double
     public let low: Double
@@ -66,7 +66,7 @@ public struct DayForecast: Codable {
 }
 
 /// Hourly weather forecast for a location.
-public struct HourlyForecast: Codable {
+public struct HourlyForecast: Codable, Sendable {
     public let location: String
     public let hours: [HourForecast]
     public let timezone: String
@@ -84,7 +84,7 @@ public struct HourlyForecast: Codable {
 }
 
 /// Weather forecast for a single hour.
-public struct HourForecast: Codable {
+public struct HourForecast: Codable, Sendable {
     public let time: Date
     public let temperature: Double
     public let precipitationProbability: Int
@@ -92,7 +92,7 @@ public struct HourForecast: Codable {
 }
 
 /// Weather alert (severe weather warning).
-public struct WeatherAlert: Codable {
+public struct WeatherAlert: Codable, Sendable {
     public let id: String
     public let event: String
     public let severity: AlertSeverity
@@ -144,7 +144,7 @@ public struct WeatherAlert: Codable {
 }
 
 /// Alert severity levels.
-public enum AlertSeverity: String, Codable {
+public enum AlertSeverity: String, Codable, Sendable {
     case extreme
     case severe
     case moderate
@@ -163,7 +163,7 @@ public enum AlertSeverity: String, Codable {
 }
 
 /// Alert urgency levels.
-public enum AlertUrgency: String, Codable {
+public enum AlertUrgency: String, Codable, Sendable {
     case immediate
     case expected
     case future
@@ -172,7 +172,7 @@ public enum AlertUrgency: String, Codable {
 }
 
 /// Detailed weather including UV index and air quality.
-public struct DetailedWeather: Codable {
+public struct DetailedWeather: Codable, Sendable {
     public let location: String
     public let latitude: Double
     public let longitude: Double
@@ -289,7 +289,7 @@ public func uvIndexDescription(_ index: Int) -> String {
 }
 
 /// Geographic coordinates with location metadata.
-public struct Coordinates: Codable {
+public struct Coordinates: Codable, Sendable {
     public let latitude: Double
     public let longitude: Double
     public let name: String
@@ -311,7 +311,7 @@ public struct Coordinates: Codable {
 // MARK: - Weather Condition (WMO Weather Codes)
 
 /// Weather condition based on WMO (World Meteorological Organization) codes.
-public enum WeatherCondition: Int, Codable {
+public enum WeatherCondition: Int, Codable, Sendable {
     case clear = 0
     case mainlyClear = 1
     case partlyCloudy = 2

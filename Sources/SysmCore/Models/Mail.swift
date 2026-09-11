@@ -2,13 +2,13 @@ import Foundation
 
 // MARK: - Models
 
-public struct MailAccount: Codable {
+public struct MailAccount: Codable, Sendable {
     public let id: String
     public let name: String
     public let email: String
 }
 
-public struct MailMessage: Codable {
+public struct MailMessage: Codable, Sendable {
     public let id: String
     public let messageId: String
     public let subject: String
@@ -18,7 +18,7 @@ public struct MailMessage: Codable {
     public let accountName: String
 }
 
-public struct MailMessageDetail: Codable {
+public struct MailMessageDetail: Codable, Sendable {
     public let id: String
     public let messageId: String
     public let subject: String
@@ -37,13 +37,13 @@ public struct MailMessageDetail: Codable {
     public let attachments: [MailAttachment]
 }
 
-public struct MailAttachment: Codable {
+public struct MailAttachment: Codable, Sendable {
     public let name: String
     public let mimeType: String
     public let size: Int
 }
 
-public struct MailMailbox: Codable {
+public struct MailMailbox: Codable, Sendable {
     public let name: String
     public let accountName: String
     public let unreadCount: Int

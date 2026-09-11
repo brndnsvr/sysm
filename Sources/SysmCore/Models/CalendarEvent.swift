@@ -5,7 +5,7 @@ import Foundation
 ///
 /// This model wraps EventKit's `EKEvent` for JSON serialization and
 /// provides convenient formatting methods for CLI output.
-public struct CalendarEvent: Codable {
+public struct CalendarEvent: Codable, Sendable {
     public let id: String
     public let title: String
     public let calendarName: String

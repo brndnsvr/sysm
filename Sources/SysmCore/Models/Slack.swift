@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SlackChannel: Codable {
+public struct SlackChannel: Codable, Sendable {
     public let id: String
     public let name: String
     public let isPrivate: Bool
@@ -16,7 +16,7 @@ public struct SlackChannel: Codable {
     }
 }
 
-public struct SlackMessageResult: Codable {
+public struct SlackMessageResult: Codable, Sendable {
     public let channel: String
     public let timestamp: String
     public let ok: Bool

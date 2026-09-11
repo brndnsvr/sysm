@@ -292,7 +292,7 @@ private struct CurrentWeatherResponse: Codable {
     public let timezone: String
     public let current: CurrentData?
 
-    public struct CurrentData: Codable {
+    public struct CurrentData: Codable, Sendable {
         let time: String
         let temperature_2m: Double
         let relative_humidity_2m: Double
@@ -309,7 +309,7 @@ private struct ForecastResponse: Codable {
     public let timezone: String
     public let daily: DailyData?
 
-    public struct DailyData: Codable {
+    public struct DailyData: Codable, Sendable {
         let time: [String]
         let temperature_2m_max: [Double]
         let temperature_2m_min: [Double]
@@ -326,7 +326,7 @@ private struct HourlyResponse: Codable {
     public let timezone: String
     public let hourly: HourlyData?
 
-    public struct HourlyData: Codable {
+    public struct HourlyData: Codable, Sendable {
         let time: [String]
         let temperature_2m: [Double]
         let precipitation_probability: [Int]
@@ -337,7 +337,7 @@ private struct HourlyResponse: Codable {
 private struct GeocodeResponse: Codable {
     public let results: [GeocodeResult]?
 
-    public struct GeocodeResult: Codable {
+    public struct GeocodeResult: Codable, Sendable {
         let name: String
         let latitude: Double
         let longitude: Double
@@ -358,7 +358,7 @@ private struct DetailedWeatherResponse: Codable {
     public let current: DetailedCurrentData?
     public let hourly: DetailedHourlyData?
 
-    public struct DetailedCurrentData: Codable {
+    public struct DetailedCurrentData: Codable, Sendable {
         let time: String
         let temperature_2m: Double
         let relative_humidity_2m: Double
@@ -372,7 +372,7 @@ private struct DetailedWeatherResponse: Codable {
         let uv_index: Double?
     }
 
-    public struct DetailedHourlyData: Codable {
+    public struct DetailedHourlyData: Codable, Sendable {
         let time: [String]?
         let visibility: [Double]?
         let dew_point_2m: [Double]?

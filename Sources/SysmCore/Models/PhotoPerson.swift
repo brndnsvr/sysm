@@ -1,7 +1,7 @@
 import Foundation
 
 /// Represents a person detected in the Photos library.
-public struct PhotoPerson: Codable {
+public struct PhotoPerson: Codable, Sendable {
     public let id: String
     public let name: String?
     public let photoCount: Int

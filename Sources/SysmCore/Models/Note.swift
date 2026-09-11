@@ -4,7 +4,7 @@ import Foundation
 ///
 /// This model includes the note's content and metadata, along with
 /// methods for converting to Markdown format for export.
-public struct Note: Codable {
+public struct Note: Codable, Sendable {
     // MARK: - Cached Regex Patterns
 
     private static let styleTagRegex: NSRegularExpression? = {

@@ -2,7 +2,7 @@ import EventKit
 import Foundation
 
 /// Represents an event attendee.
-public struct EventAttendee: Codable {
+public struct EventAttendee: Codable, Sendable {
     public let name: String?
     public let email: String?
     public let status: String

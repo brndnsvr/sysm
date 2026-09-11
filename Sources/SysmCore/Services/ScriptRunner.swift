@@ -51,7 +51,7 @@ public struct ScriptRunner: ScriptRunnerProtocol {
         }
     }
 
-    public struct ExecutionResult: Codable {
+    public struct ExecutionResult: Codable, Sendable {
         public let exitCode: Int32
         public let stdout: String
         public let stderr: String

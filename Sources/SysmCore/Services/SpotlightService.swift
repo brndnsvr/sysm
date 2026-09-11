@@ -10,7 +10,7 @@ public struct SpotlightService: SpotlightServiceProtocol {
 
     // MARK: - Search Result Model
 
-    public struct SearchResult: Codable {
+    public struct SearchResult: Codable, Sendable {
         public let path: String
         public let name: String
         public let kind: String?
@@ -31,7 +31,7 @@ public struct SpotlightService: SpotlightServiceProtocol {
 
     // MARK: - Metadata Model
 
-    public struct FileMetadata: Codable {
+    public struct FileMetadata: Codable, Sendable {
         public let path: String
         public let attributes: [String: String]
 

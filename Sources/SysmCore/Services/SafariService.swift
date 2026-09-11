@@ -197,20 +197,20 @@ public struct SafariService: SafariServiceProtocol {
 
 // MARK: - Models
 
-public struct ReadingListItem: Codable {
+public struct ReadingListItem: Codable, Sendable {
     public let title: String
     public let url: String
     public let preview: String?
     public let dateAdded: Date?
 }
 
-public struct Bookmark: Codable {
+public struct Bookmark: Codable, Sendable {
     public let title: String
     public let url: String
     public let folder: String
 }
 
-public struct SafariTab: Codable {
+public struct SafariTab: Codable, Sendable {
     public let windowIndex: Int
     public let tabIndex: Int
     public let url: String

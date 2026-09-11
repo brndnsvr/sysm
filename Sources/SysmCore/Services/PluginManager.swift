@@ -6,7 +6,7 @@ public struct PluginManager: PluginManagerProtocol {
 
     // MARK: - Types
 
-    public struct Plugin: Codable {
+    public struct Plugin: Codable, Sendable {
         public let name: String
         public let version: String
         public let description: String?
@@ -14,13 +14,13 @@ public struct PluginManager: PluginManagerProtocol {
         public let commands: [Command]
         public let path: String
 
-        public struct Command: Codable {
+        public struct Command: Codable, Sendable {
             public let name: String
             public let description: String?
             public let script: String
             public let args: [Argument]?
 
-            public struct Argument: Codable {
+            public struct Argument: Codable, Sendable {
                 public let name: String
                 public let description: String?
                 public let required: Bool?
@@ -35,7 +35,7 @@ public struct PluginManager: PluginManagerProtocol {
         }
     }
 
-    public struct PluginManifest: Codable {
+    public struct PluginManifest: Codable, Sendable {
         let name: String
         let version: String
         let description: String?
@@ -378,7 +378,7 @@ echo "Hello, $NAME!"
 
     // MARK: - Command Execution
 
-    public struct ExecutionResult: Codable {
+    public struct ExecutionResult: Codable, Sendable {
         public let plugin: String
         public let command: String
         public let success: Bool
