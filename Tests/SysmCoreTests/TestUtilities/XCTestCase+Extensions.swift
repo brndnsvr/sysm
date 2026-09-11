@@ -24,7 +24,7 @@ extension XCTestCase {
         _ date2: Date,
         tolerance: TimeInterval = 1.0,
         _ message: String = "",
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         let difference = abs(date1.timeIntervalSince(date2))
@@ -46,7 +46,7 @@ extension XCTestCase {
     func assertDateIsToday(
         _ date: Date,
         _ message: String = "",
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         let calendar = Calendar.current
@@ -71,7 +71,7 @@ extension XCTestCase {
         _ string: String,
         _ substring: String,
         _ message: String = "",
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         XCTAssertTrue(
@@ -93,7 +93,7 @@ extension XCTestCase {
         _ string: String,
         pattern: String,
         _ message: String = "",
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         let regex = try! NSRegularExpression(pattern: pattern)
@@ -117,7 +117,7 @@ extension XCTestCase {
     func assertNotEmpty<T: Collection>(
         _ collection: T,
         _ message: String = "",
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         XCTAssertFalse(
@@ -164,7 +164,7 @@ extension XCTestCase {
         _ expression: @autoclosure () async throws -> T,
         ofType errorType: E.Type,
         _ message: String = "",
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) async {
         do {
