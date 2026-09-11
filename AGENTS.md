@@ -16,7 +16,7 @@ swift build -c release   # Release build
 swift test               # Run tests
 ```
 
-**Platform:** macOS 26+ (swift-tools-version 6.2, Swift 5 language mode). Moving to Swift 6 language mode requires the strict concurrency migration across all actors and models.
+**Platform:** macOS 26+ (swift-tools-version 6.2, Swift 6 language mode). New code must compile without Swift 6 concurrency errors; any `@unchecked Sendable` or `nonisolated(unsafe)` needs a comment stating the invariant that makes it safe.
 
 ## Code Patterns
 

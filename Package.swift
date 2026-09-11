@@ -55,6 +55,5 @@ let package = Package(
             exclude: ["README.md"]
         ),
     ],
-    // Swift 6 language mode needs the strict-concurrency migration first.
-    swiftLanguageModes: [.v5]
+    swiftLanguageModes: [.v6]
 )
