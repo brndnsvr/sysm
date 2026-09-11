@@ -192,17 +192,10 @@ public enum Shell {
 
         // Read stdout and stderr concurrently to avoid pipe buffer deadlocks.
         // If both pipes fill their buffer (~64KB), sequential reads would deadlock.
-        var outputData = Data()
-        var errorData = Data()
-        let readGroup = DispatchGroup()
-
-        readGroup.enter()
-        DispatchQueue.global().async {
-            outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
-            readGroup.leave()
-        }
-        errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
-        readGroup.wait()
+        let (outputData, errorData) = Shell.readToEnd(
+            stdout: outputPipe.fileHandleForReading,
+            stderr: errorPipe.fileHandleForReading
+        )
 
         task.waitUntilExit()
         timeoutWorkItem?.cancel()
@@ -223,3 +216,30 @@ public enum Shell {
         return Result(exitCode: task.terminationStatus, stdout: stdout, stderr: stderr)
     }
 }
+
+// MARK: - Concurrent pipe reading
+
+extension Shell {
+    /// Reads a child process's stdout and stderr to EOF concurrently, so neither
+    /// pipe can fill and block the child while the other one is being drained.
+    static func readToEnd(stdout: FileHandle, stderr: FileHandle) -> (stdout: Data, stderr: Data) {
+        let box = PipeDataBox()
+        let group = DispatchGroup()
+        group.enter()
+        DispatchQueue.global().async {
+            box.data = stdout.readDataToEndOfFile()
+            group.leave()
+        }
+        let errorData = stderr.readDataToEndOfFile()
+        group.wait()
+        return (box.data, errorData)
+    }
+}
+
+/// Holds the stdout bytes read on a background queue. The reader writes `data`
+/// once before `group.leave()`, and the caller reads it only after
+/// `group.wait()`, so the DispatchGroup orders every access.
+private final class PipeDataBox: @unchecked Sendable {
+    var data = Data()
+}
+
