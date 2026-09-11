@@ -13,9 +13,12 @@ import Foundation
 public enum DateFormatters {
     // MARK: - ISO 8601 Formatters
 
+    // ISO8601DateFormatter is not Sendable, but Apple documents it as thread-safe,
+    // and these instances are configured once here and never mutated, so sharing
+    // them across concurrency domains is safe.
     /// Standard ISO 8601 formatter with internet date/time.
     /// Format: "2024-01-15T10:30:00Z"
-    public static let iso8601: ISO8601DateFormatter = {
+    nonisolated(unsafe) public static let iso8601: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
         return formatter
@@ -23,7 +26,7 @@ public enum DateFormatters {
 
     /// ISO 8601 formatter with fractional seconds.
     /// Format: "2024-01-15T10:30:00.123Z"
-    public static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
+    nonisolated(unsafe) public static let iso8601WithFractionalSeconds: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter
@@ -31,7 +34,7 @@ public enum DateFormatters {
 
     /// ISO 8601 date-only formatter.
     /// Format: "2024-01-15"
-    public static let iso8601DateOnly: ISO8601DateFormatter = {
+    nonisolated(unsafe) public static let iso8601DateOnly: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withFullDate]
         return formatter
@@ -171,9 +174,11 @@ public enum DateFormatters {
 
     /// Relative date formatter for human-friendly output.
     /// Example: "today", "yesterday", "in 2 days"
-    public static let relative: RelativeDateTimeFormatter = {
+    /// A new instance per access: RelativeDateTimeFormatter is not Sendable and is not
+    /// documented as thread-safe, and this is only used for occasional human output.
+    public static var relative: RelativeDateTimeFormatter {
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
         return formatter
-    }()
+    }
 }

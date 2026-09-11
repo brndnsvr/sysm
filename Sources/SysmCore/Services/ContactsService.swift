@@ -5,16 +5,19 @@ public actor ContactsService: ContactsServiceProtocol {
     private let store = CNContactStore()
 
     /// Keys required by Contact.init(from:) for non-detailed initialization.
-    private static let contactBasicKeys: [CNKeyDescriptor] = [
-        CNContactIdentifierKey as CNKeyDescriptor,
-        CNContactGivenNameKey as CNKeyDescriptor,
-        CNContactFamilyNameKey as CNKeyDescriptor,
-        CNContactMiddleNameKey as CNKeyDescriptor,
-        CNContactOrganizationNameKey as CNKeyDescriptor,
-        CNContactEmailAddressesKey as CNKeyDescriptor,
-        CNContactPhoneNumbersKey as CNKeyDescriptor,
-        CNContactImageDataAvailableKey as CNKeyDescriptor,
-    ]
+    // Computed so no non-Sendable array is shared across concurrency domains.
+    private static var contactBasicKeys: [CNKeyDescriptor] {
+        [
+            CNContactIdentifierKey as CNKeyDescriptor,
+            CNContactGivenNameKey as CNKeyDescriptor,
+            CNContactFamilyNameKey as CNKeyDescriptor,
+            CNContactMiddleNameKey as CNKeyDescriptor,
+            CNContactOrganizationNameKey as CNKeyDescriptor,
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor,
+            CNContactImageDataAvailableKey as CNKeyDescriptor,
+        ]
+    }
 
     // MARK: - Access
 
