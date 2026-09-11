@@ -37,12 +37,14 @@ swift test               # Run tests
 
 ## Project Task Tracking
 
-Tasks for this repo live in Plane on `plane-goa` (workspace `wzrd`, project
-"bss sysm"). Repo-local markdown task trackers are retired — do not recreate them or mint new local task numbers.
+Tasks for this repo live in Linear (workspace `wzrd-ai`, team `WZ`, project
+"sysm"). Repo-local markdown task trackers are retired — do not recreate them or mint new local task numbers.
 
 **Workflow:**
-- Read and update items in Plane (Plane UI or the `wzrd-plane-bridge` skill)
-- Create a Plane item for non-trivial work (>15 min or worth tracking)
-- Reference the Plane task ID in commits: `<PLANE-ID>: description`
-- Branch naming: `<plane-id>-short-description`
+- Read and update items in Linear (Linear UI or the `linear-task` skill)
+- Create a Linear issue for non-trivial work (>15 min or worth tracking)
+- Reference the Linear issue key in commits: `WZ-<n>: description`
+- Branch naming: `wz-<n>-short-description`
 - Legacy local task IDs survive only in historical git history — never assign new ones
+- Plane is retired (2026-09-05). Old `WZRD-*` / `SYSM-*` keys in git history stay
+  as-is; resolve one to its Linear key with `linear_task.py resolve <key>`
