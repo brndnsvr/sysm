@@ -11,7 +11,7 @@ permissions:
 jobs:
   release:
     name: Create Release
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -21,7 +21,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.2'
+          xcode-version: '26.6'
 
       - name: Extract version
         id: version
@@ -41,6 +41,13 @@ jobs:
         run: |
           ./scripts/generate-version.sh
           swift build -c release
+
+      - name: Verify FoundationModels is linked
+        run: |
+          if ! otool -L .build/release/sysm | grep -q 'FoundationModels.framework'; then
+            echo "Release binary does not link FoundationModels; sysm ai would be unavailable" >&2
+            exit 1
+          fi
 
       - name: Create tarball
         id: tarball

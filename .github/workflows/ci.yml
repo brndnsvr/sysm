@@ -6,10 +6,13 @@ on:
   pull_request:
     branches: [ main, develop ]
 
+env:
+  XCODE_VERSION: '26.6'
+
 jobs:
   lint:
     name: Lint and Format Check
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -17,7 +20,7 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.2'
+          xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Install SwiftLint
         run: brew install swiftlint
@@ -38,7 +41,7 @@ jobs:
 
   build-debug:
     name: Build (Debug)
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,15 +49,15 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.2'
+          xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          key: ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-
 
       - name: Generate version
         run: ./scripts/generate-version.sh
@@ -64,7 +67,7 @@ jobs:
 
   build-release:
     name: Build (Release)
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -72,15 +75,15 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.2'
+          xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          key: ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-
 
       - name: Generate version
         run: ./scripts/generate-version.sh
@@ -88,9 +91,16 @@ jobs:
       - name: Build release
         run: swift build -c release
 
+      - name: Verify FoundationModels is linked
+        run: |
+          if ! otool -L .build/release/sysm | grep -q 'FoundationModels.framework'; then
+            echo "Release binary does not link FoundationModels; sysm ai would be unavailable" >&2
+            exit 1
+          fi
+
   test:
     name: Test with Coverage
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -98,15 +108,15 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.2'
+          xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          key: ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-
 
       - name: Generate version
         run: ./scripts/generate-version.sh
@@ -130,7 +140,7 @@ jobs:
 
   docc:
     name: Validate DocC
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -138,15 +148,15 @@ jobs:
       - name: Setup Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '16.2'
+          xcode-version: ${{ env.XCODE_VERSION }}
 
       - name: Cache Swift packages
         uses: actions/cache@v4
         with:
           path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('**/Package.resolved') }}
+          key: ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-${{ hashFiles('**/Package.resolved') }}
           restore-keys: |
-            ${{ runner.os }}-spm-
+            ${{ runner.os }}-xcode-${{ env.XCODE_VERSION }}-spm-
 
       - name: Build DocC
         run: |
@@ -155,3 +165,21 @@ jobs:
             --output-path ./docs/api \
             --transform-for-static-hosting \
             --hosting-base-path sysm
+
+  build-xcode-27:
+    name: Build and Test (Xcode 27 preview)
+    runs-on: xcode-27
+    continue-on-error: true
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Generate version
+        run: ./scripts/generate-version.sh
+
+      - name: Build debug
+        run: swift build -c debug
+
+      - name: Run tests
+        run: swift test --skip IntegrationTests --skip AppleScriptPerformanceTests --skip OutlookServiceTests
+        timeout-minutes: 15
