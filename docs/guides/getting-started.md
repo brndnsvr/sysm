@@ -78,8 +78,8 @@ make install-notarized
 
 ### Requirements
 
-- **macOS 13.0+** (macOS 15+ recommended)
-- **Xcode 15+** or Swift 5.9+ toolchain
+- **macOS 26+**
+- **Xcode 26+** (Swift 6.2+ toolchain)
 - **Apple Developer Account** (only for WeatherKit features)
 
 ## First Steps
