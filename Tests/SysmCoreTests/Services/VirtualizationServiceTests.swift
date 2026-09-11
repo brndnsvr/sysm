@@ -506,7 +506,7 @@ final class VirtualizationServiceTests: XCTestCase {
             (.ipswLoadFailed("err"), "IPSW load failed: err"),
             (.configurationValidationFailed("err"), "Configuration validation failed: err"),
             (.pidFileError("err"), "PID file error: err"),
-            (.saveRestoreUnavailable, "Save/restore requires macOS 14+"),
+            (.saveRestoreUnavailable, "Save/restore requires macOS 14+ on Apple silicon"),
         ]
 
         for (error, expected) in cases {
