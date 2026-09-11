@@ -5,7 +5,7 @@ set -euo pipefail
 #
 # Usage: ./scripts/generate-docs.sh [output-dir]
 #
-# Requires Xcode 15+ with DocC support
+# Requires Xcode 26+ with DocC support
 
 OUTPUT_DIR="${1:-./docs}"
 

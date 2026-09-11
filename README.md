@@ -34,8 +34,9 @@ make install
 
 ### Requirements
 
-- macOS 13.0+
-- Xcode 15+ or Swift 5.9+ toolchain
+- macOS 26+
+- Xcode 26+ (Swift 6.2+ toolchain)
+- sysm 1.26.3.2 is the last release that runs on macOS 13 through 15.
 
 ## Commands
 
