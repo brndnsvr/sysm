@@ -293,6 +293,7 @@ After bumping the version:
 
 - [Architecture Decision Records](docs/adr/README.md) - Key architectural decisions and rationale
 - [Release-cycle versioning](docs/guides/release-cycle-versioning.md) - Quarterly version policy and examples
+- [Structured Apple Notes](docs/guides/structured-notes.md) - Native headings and checklists from Markdown
 - [ROADMAP.md](ROADMAP.md) - Detailed feature documentation and implementation notes
 
 ## License

@@ -96,6 +96,93 @@ final class NotesServiceTests: XCTestCase {
         XCTAssertTrue(results.isEmpty)
     }
 
+    // MARK: - createStructuredNote()
+
+    func testCreateStructuredNotePreflightsCreatesAndFormatsExactId() throws {
+        let formatter = MockNotesStructuredFormatter()
+        service = NotesService(structuredFormatter: formatter)
+        mock.defaultResponse = "note-structured-1"
+        mock.responses["count of matchingFolders"] = "1"
+
+        let noteId = try service.createStructuredNote(
+            name: "Supplies",
+            markdown: "# Supplies\n\n- [ ] Pencils\n- [x] Paper",
+            folder: "Kids Stuff"
+        )
+
+        XCTAssertEqual(noteId, "note-structured-1")
+        XCTAssertTrue(formatter.didPreflight)
+        XCTAssertEqual(formatter.appliedNoteId, "note-structured-1")
+        XCTAssertEqual(formatter.appliedFolder, "Kids Stuff")
+        XCTAssertEqual(
+            formatter.appliedDocument?.blocks,
+            [
+                .title("Supplies"),
+                .checklistItem(text: "Pencils", isChecked: false),
+                .checklistItem(text: "Paper", isChecked: true),
+            ]
+        )
+
+        let script = try XCTUnwrap(mock.executedScripts.first { $0.script.contains("make new note") }?.script)
+        XCTAssertTrue(script.contains("folder \"Kids Stuff\""))
+        XCTAssertTrue(script.contains("<div>Supplies</div>"))
+        XCTAssertTrue(script.contains("<div>Pencils</div>"))
+        XCTAssertFalse(script.contains("- [ ]"))
+    }
+
+    func testCreateStructuredNotePreflightFailureDoesNotCreateNote() {
+        let formatter = MockNotesStructuredFormatter()
+        formatter.preflightError = NotesStructuredFormattingError.accessibilityPermissionRequired
+        service = NotesService(structuredFormatter: formatter)
+
+        XCTAssertThrowsError(
+            try service.createStructuredNote(name: "Supplies", markdown: "- [ ] Pencils", folder: nil)
+        ) { error in
+            guard case NotesError.structuredFormattingUnavailable = error else {
+                XCTFail("Expected structuredFormattingUnavailable, got \(error)")
+                return
+            }
+        }
+        XCTAssertTrue(mock.executedScripts.isEmpty)
+    }
+
+    func testCreateStructuredNoteReportsPartialNoteIdWhenFormattingFails() {
+        let formatter = MockNotesStructuredFormatter()
+        formatter.applyError = NotesStructuredFormattingError.editorNotFound
+        service = NotesService(structuredFormatter: formatter)
+        mock.defaultResponse = "note-partial-1"
+
+        XCTAssertThrowsError(
+            try service.createStructuredNote(name: "Supplies", markdown: "- [ ] Pencils", folder: nil)
+        ) { error in
+            guard case NotesError.structuredFormattingFailed(let noteId, let reason) = error else {
+                XCTFail("Expected structuredFormattingFailed, got \(error)")
+                return
+            }
+            XCTAssertEqual(noteId, "note-partial-1")
+            XCTAssertTrue(reason.contains("newly created content"))
+        }
+    }
+
+    func testCreateStructuredNoteRejectsAmbiguousFolderBeforeCreation() {
+        let formatter = MockNotesStructuredFormatter()
+        service = NotesService(structuredFormatter: formatter)
+        mock.responses["count of matchingFolders"] = "2"
+
+        XCTAssertThrowsError(
+            try service.createStructuredNote(name: "Supplies", markdown: "- [ ] Pencils", folder: "Notes")
+        ) { error in
+            guard case NotesError.ambiguousFolder(let folder, let count) = error else {
+                XCTFail("Expected ambiguousFolder, got \(error)")
+                return
+            }
+            XCTAssertEqual(folder, "Notes")
+            XCTAssertEqual(count, 2)
+        }
+        XCTAssertFalse(mock.executedScripts.contains { $0.script.contains("make new note") })
+        XCTAssertNil(formatter.appliedNoteId)
+    }
+
     // MARK: - Error mapping
 
     func testAppleScriptErrorMapping() {
@@ -128,5 +215,30 @@ final class NotesServiceTests: XCTestCase {
                 return
             }
         }
+    }
+}
+
+private final class MockNotesStructuredFormatter: NotesStructuredFormatting, @unchecked Sendable {
+    var preflightError: Error?
+    var applyError: Error?
+    var didPreflight = false
+    var appliedDocument: NotesMarkdownDocument?
+    var appliedNoteId: String?
+    var appliedFolder: String?
+
+    func preflight() throws {
+        didPreflight = true
+        if let preflightError { throw preflightError }
+    }
+
+    func apply(
+        document: NotesMarkdownDocument,
+        toNote id: String,
+        expectedFolder: String?
+    ) throws {
+        appliedDocument = document
+        appliedNoteId = id
+        appliedFolder = expectedFolder
+        if let applyError { throw applyError }
     }
 }

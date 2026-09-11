@@ -11,7 +11,11 @@ final class ErrorDescriptionTests: XCTestCase {
             .appleScriptError("test"),
             .noteNotFound("test"),
             .folderNotFound("test"),
+            .ambiguousFolder("test", count: 2),
             .exportFailed("test"),
+            .createFailed("test"),
+            .structuredFormattingUnavailable("test"),
+            .structuredFormattingFailed(noteId: "note-id", reason: "test"),
         ]
         for error in cases {
             XCTAssertNotNil(error.errorDescription, "NotesError.\(error) should have errorDescription")

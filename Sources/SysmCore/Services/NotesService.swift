@@ -3,8 +3,15 @@ import Foundation
 public struct NotesService: NotesServiceProtocol {
 
     private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
+    private let structuredFormatter: any NotesStructuredFormatting
 
-    public init() {}
+    public init() {
+        structuredFormatter = NotesAccessibilityFormatter()
+    }
+
+    init(structuredFormatter: any NotesStructuredFormatting) {
+        self.structuredFormatter = structuredFormatter
+    }
 
     public func listFolders() throws -> [String] {
         let script = """
@@ -170,6 +177,46 @@ public struct NotesService: NotesServiceProtocol {
         """
 
         return try runAppleScript(script).trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    public func createStructuredNote(name: String, markdown: String, folder: String? = nil) throws -> String {
+        let document = try NotesMarkdownParser().parse(markdown)
+
+        do {
+            try structuredFormatter.preflight()
+        } catch {
+            throw NotesError.structuredFormattingUnavailable(error.localizedDescription)
+        }
+        if let folder {
+            try validateUniqueStructuredFolder(named: folder)
+        }
+
+        let body = NotesHTMLRenderer().renderBootstrapHTML(document)
+        let noteId = try createNote(name: name, body: body, folder: folder)
+        guard !noteId.isEmpty else {
+            throw NotesError.createFailed("Notes returned an empty note ID")
+        }
+
+        do {
+            try structuredFormatter.apply(document: document, toNote: noteId, expectedFolder: folder)
+        } catch {
+            throw NotesError.structuredFormattingFailed(noteId: noteId, reason: error.localizedDescription)
+        }
+
+        return noteId
+    }
+
+    private func validateUniqueStructuredFolder(named folder: String) throws {
+        let escapedFolder = appleScript.escape(folder)
+        let script = """
+        tell application "Notes"
+            set matchingFolders to every folder whose name is "\(escapedFolder)"
+            return count of matchingFolders
+        end tell
+        """
+        let count = Int(try runAppleScript(script).trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        guard count > 0 else { throw NotesError.folderNotFound(folder) }
+        guard count == 1 else { throw NotesError.ambiguousFolder(folder, count: count) }
     }
 
     public func updateNote(id: String, name: String?, body: String?) throws {
@@ -398,8 +445,12 @@ public struct NotesService: NotesServiceProtocol {
 public enum NotesError: LocalizedError {
     case appleScriptError(String)
     case folderNotFound(String)
+    case ambiguousFolder(String, count: Int)
     case noteNotFound(String)
     case exportFailed(String)
+    case createFailed(String)
+    case structuredFormattingUnavailable(String)
+    case structuredFormattingFailed(noteId: String, reason: String)
 
     public var errorDescription: String? {
         switch self {
@@ -407,10 +458,18 @@ public enum NotesError: LocalizedError {
             return "AppleScript error: \(message)"
         case .folderNotFound(let name):
             return "Folder '\(name)' not found"
+        case .ambiguousFolder(let name, let count):
+            return "Folder '\(name)' is ambiguous (found \(count) matching folders)"
         case .noteNotFound(let name):
             return "Note '\(name)' not found"
         case .exportFailed(let reason):
             return "Export failed: \(reason)"
+        case .createFailed(let reason):
+            return "Could not create note: \(reason)"
+        case .structuredFormattingUnavailable(let reason):
+            return "Structured Notes formatting is unavailable: \(reason)"
+        case .structuredFormattingFailed(let noteId, let reason):
+            return "Note \(noteId) was created, but native formatting did not complete: \(reason)"
         }
     }
 
@@ -433,6 +492,8 @@ public enum NotesError: LocalizedError {
             - Create folder: sysm notes create-folder "Folder Name"
             - Use default folder (omit --folder flag)
             """
+        case .ambiguousFolder:
+            return "Rename one of the duplicate Notes folders or omit --folder to use the default folder."
         case .noteNotFound:
             return """
             Note not found.
@@ -444,6 +505,12 @@ public enum NotesError: LocalizedError {
             """
         case .exportFailed(let reason):
             return "Export failed: \(reason). Check output directory and permissions."
+        case .createFailed:
+            return "Check the destination folder and Notes Automation permission, then try again."
+        case .structuredFormattingUnavailable:
+            return "Grant Accessibility access to sysm and use an iCloud or On My Mac Notes folder."
+        case .structuredFormattingFailed(let noteId, _):
+            return "The command stopped before targeting another note. Inspect note ID \(noteId) before retrying."
         }
     }
 }

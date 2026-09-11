@@ -310,11 +310,13 @@ sysm notes list --folder "Work"
 # Create notes
 sysm notes create "Meeting Notes" --folder "Work"
 sysm notes create "Ideas" --body "Initial thoughts..." --folder "Personal"
+sysm notes create "Shopping List" --from-markdown shopping.md --folder "Personal"
+generate-content | sysm notes create "Shopping List" --from-markdown -
 
 # View and edit notes
 sysm notes show <id>
-sysm notes update <id> --title "New Title" --body "Updated content"
-sysm notes append <id> --content "Additional notes"
+sysm notes edit <id> --title "New Title" --body "Updated content"
+sysm notes append <id> "Additional notes"
 
 # Search notes
 sysm notes search "project" --folder "Work"
@@ -329,6 +331,9 @@ sysm notes folders
 sysm notes create-folder "Project X"
 sysm notes delete-folder "Old Folder"
 ```
+
+See [Structured Apple Notes](structured-notes.md) for native Title, Heading, Subheading, and checklist creation,
+including permissions and safety checks.
 
 ### Photos & Media
 

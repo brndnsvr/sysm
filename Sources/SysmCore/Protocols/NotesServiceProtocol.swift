@@ -169,6 +169,24 @@ public protocol NotesServiceProtocol: Sendable {
     /// ```
     func createNote(name: String, body: String, folder: String?) throws -> String
 
+    /// Creates a note from the supported structured Markdown subset.
+    ///
+    /// The note is created through Notes AppleScript, then its exact ID is shown and verified before
+    /// Notes-native Title, Heading, Subheading, Body, and Checklist formats are applied through
+    /// Accessibility. Existing notes are never selected by name.
+    ///
+    /// - Parameters:
+    ///   - name: The Notes list title for the new note.
+    ///   - markdown: Markdown containing headings, paragraphs, and checklist items.
+    ///   - folder: Optional destination folder. If nil, uses the default Notes folder.
+    /// - Returns: The unique identifier of the created and verified note.
+    /// - Throws:
+    ///   - ``NotesMarkdownError`` if the structured content is empty or invalid.
+    ///   - ``NotesError/structuredFormattingUnavailable(_:)`` if preflight fails before creation.
+    ///   - ``NotesError/structuredFormattingFailed(noteId:reason:)`` if Notes creates the note but
+    ///     native formatting or read-back verification does not complete.
+    func createStructuredNote(name: String, markdown: String, folder: String?) throws -> String
+
     /// Updates an existing note.
     ///
     /// Modifies the title and/or body of an existing note. Nil parameters leave the current
@@ -296,4 +314,14 @@ public protocol NotesServiceProtocol: Sendable {
     /// )
     /// ```
     func duplicateNote(id: String, newName: String?) throws -> String
+}
+
+public extension NotesServiceProtocol {
+    /// Preserves source compatibility for custom Notes service implementations that do not yet
+    /// provide native structured formatting.
+    func createStructuredNote(name _: String, markdown _: String, folder _: String?) throws -> String {
+        throw NotesError.structuredFormattingUnavailable(
+            "This Notes service implementation does not support native structured formatting"
+        )
+    }
 }
