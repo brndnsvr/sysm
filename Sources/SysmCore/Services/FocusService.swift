@@ -99,11 +99,12 @@ public struct FocusService: FocusServiceProtocol {
 
     public func activateFocus(_ name: String) throws {
         // Try using Shortcuts first (most reliable method)
-        // Shortcuts should be named "Turn On [Focus Name]" (e.g., "Turn On Work")
+        // Shortcuts should be named "Turn On [Focus Name]" (e.g., "Turn On Work").
+        // The name is user input, so it is escaped before it enters the script.
         let shortcutName = "Turn On \(name)"
         let script = """
         tell application "Shortcuts Events"
-            run shortcut "\(shortcutName)"
+            run shortcut "\(appleScript.escape(shortcutName))"
         end tell
         """
 
@@ -114,7 +115,7 @@ public struct FocusService: FocusServiceProtocol {
             let altShortcutName = "Enable \(name)"
             let altScript = """
             tell application "Shortcuts Events"
-                run shortcut "\(altShortcutName)"
+                run shortcut "\(appleScript.escape(altShortcutName))"
             end tell
             """
 
