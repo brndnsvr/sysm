@@ -73,23 +73,27 @@ final class PDFServiceTests: XCTestCase {
             fullText += "\(text) page \(i + 1)"
         }
 
-        let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 612, height: 792))
-        textView.string = fullText
-        textView.font = NSFont.systemFont(ofSize: 14)
+        // XCTest runs synchronous test methods on the main thread. assumeIsolated
+        // makes these main-actor AppKit calls legal and traps if that ever changes.
+        MainActor.assumeIsolated {
+            let textView = NSTextView(frame: NSRect(x: 0, y: 0, width: 612, height: 792))
+            textView.string = fullText
+            textView.font = NSFont.systemFont(ofSize: 14)
 
-        let printInfo = NSPrintInfo()
-        printInfo.paperSize = NSSize(width: 612, height: 792)
-        printInfo.topMargin = 36
-        printInfo.bottomMargin = 36
-        printInfo.leftMargin = 36
-        printInfo.rightMargin = 36
-        printInfo.jobDisposition = .save
-        printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = URL(fileURLWithPath: path)
+            let printInfo = NSPrintInfo()
+            printInfo.paperSize = NSSize(width: 612, height: 792)
+            printInfo.topMargin = 36
+            printInfo.bottomMargin = 36
+            printInfo.leftMargin = 36
+            printInfo.rightMargin = 36
+            printInfo.jobDisposition = .save
+            printInfo.dictionary()[NSPrintInfo.AttributeKey.jobSavingURL] = URL(fileURLWithPath: path)
 
-        let printOp = NSPrintOperation(view: textView, printInfo: printInfo)
-        printOp.showsPrintPanel = false
-        printOp.showsProgressPanel = false
-        printOp.run()
+            let printOp = NSPrintOperation(view: textView, printInfo: printInfo)
+            printOp.showsPrintPanel = false
+            printOp.showsProgressPanel = false
+            printOp.run()
+        }
 
         return path
     }
