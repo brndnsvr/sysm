@@ -24,6 +24,10 @@ let package = Package(
     platforms: [
         .macOS(.v13)
     ],
+    products: [
+        .executable(name: "sysm", targets: ["sysm"]),
+        .library(name: "SysmCore", targets: ["SysmCore"]),
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.3.0"),
         .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.0"),
@@ -55,7 +59,8 @@ let package = Package(
         .testTarget(
             name: "IntegrationTests",
             dependencies: ["SysmCore", "sysm"],
-            path: "Tests/IntegrationTests"
+            path: "Tests/IntegrationTests",
+            exclude: ["README.md"]
         ),
     ]
 )
