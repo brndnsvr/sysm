@@ -83,8 +83,9 @@ public struct UpdateService: UpdateServiceProtocol {
             throw UpdateError.permissionDenied(parentDir)
         }
 
-        // Create temp directory
-        let tmpDir = "/tmp/sysm-update-\(UUID().uuidString)"
+        // Stage the download in the per-user temp directory, not shared /tmp.
+        let tmpDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sysm-update-\(UUID().uuidString)").path
         try FileManager.default.createDirectory(atPath: tmpDir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(atPath: tmpDir) }
 
@@ -99,9 +100,13 @@ public struct UpdateService: UpdateServiceProtocol {
             throw UpdateError.verificationFailed("Release asset URL is outside the trusted repository")
         }
 
-        // Download
+        // Download. The archive digest is verified below; https-only redirects
+        // keep the transport from being downgraded on the way to the CDN.
         do {
-            _ = try Shell.run("/usr/bin/curl", args: ["-fSL", "-o", tarPath, downloadUrl], timeout: 120)
+            _ = try Shell.run("/usr/bin/curl", args: [
+                "-fSL", "--proto", "=https", "--proto-redir", "=https",
+                "-o", tarPath, downloadUrl,
+            ], timeout: 120)
         } catch {
             throw UpdateError.downloadFailed(error.localizedDescription)
         }
@@ -147,7 +152,7 @@ public struct UpdateService: UpdateServiceProtocol {
         let output: String
         do {
             output = try Shell.run("/usr/bin/curl", args: [
-                "-sL",
+                "-fsSL", "--proto", "=https", "--proto-redir", "=https",
                 "-H", "Accept: application/vnd.github+json",
                 "https://api.github.com/repos/brndnsvr/sysm/releases/latest",
             ], timeout: 30)
