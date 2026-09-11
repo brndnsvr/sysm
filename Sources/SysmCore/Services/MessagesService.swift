@@ -118,13 +118,13 @@ public struct MessagesService: MessagesServiceProtocol {
 
 // MARK: - Models
 
-public struct Conversation: Codable {
+public struct Conversation: Codable, Sendable {
     public let id: String
     public let name: String
     public let participants: String
 }
 
-public struct Message: Codable {
+public struct Message: Codable, Sendable {
     public let date: String
     public let sender: String
     public let content: String

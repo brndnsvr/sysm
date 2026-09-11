@@ -3,7 +3,7 @@ import Foundation
 import ArgumentParser
 
 /// Recurrence frequency for repeating events.
-public enum RecurrenceFrequency: String, Codable, CaseIterable, ExpressibleByArgument {
+public enum RecurrenceFrequency: String, Codable, CaseIterable, ExpressibleByArgument, Sendable {
     case daily
     case weekly
     case monthly
@@ -30,7 +30,7 @@ public enum RecurrenceFrequency: String, Codable, CaseIterable, ExpressibleByArg
 }
 
 /// Represents a recurrence rule for repeating events.
-public struct RecurrenceRule: Codable {
+public struct RecurrenceRule: Codable, Sendable {
     public let frequency: RecurrenceFrequency
     public let interval: Int
     public let daysOfWeek: [Int]?

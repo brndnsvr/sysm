@@ -1,6 +1,6 @@
 import Foundation
 
-public struct OutlookMessage: Codable {
+public struct OutlookMessage: Codable, Sendable {
     public let id: String
     public let subject: String
     public let from: String
@@ -18,7 +18,7 @@ public struct OutlookMessage: Codable {
     }
 }
 
-public struct OutlookMessageDetail: Codable {
+public struct OutlookMessageDetail: Codable, Sendable {
     public let id: String
     public let subject: String
     public let from: String
@@ -41,7 +41,7 @@ public struct OutlookMessageDetail: Codable {
     }
 }
 
-public struct OutlookCalendarEvent: Codable {
+public struct OutlookCalendarEvent: Codable, Sendable {
     public let id: String
     public let subject: String
     public let startTime: String
@@ -60,7 +60,7 @@ public struct OutlookCalendarEvent: Codable {
     }
 }
 
-public struct OutlookTask: Codable {
+public struct OutlookTask: Codable, Sendable {
     public let id: String
     public let name: String
     public let dueDate: String?

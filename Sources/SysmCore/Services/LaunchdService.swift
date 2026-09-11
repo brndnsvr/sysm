@@ -4,7 +4,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
 
     // MARK: - Types
 
-    public struct Job: Codable {
+    public struct Job: Codable, Sendable {
         public let name: String
         public let label: String
         public let command: String
@@ -18,7 +18,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         public let enabled: Bool
         public let plistPath: String
 
-        public struct Schedule: Codable {
+        public struct Schedule: Codable, Sendable {
             public let minute: Int?
             public let hour: Int?
             public let day: Int?

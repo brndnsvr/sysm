@@ -2,7 +2,7 @@ import EventKit
 import Foundation
 
 /// Represents an event alarm/reminder.
-public struct EventAlarm: Codable {
+public struct EventAlarm: Codable, Sendable {
     public let triggerMinutes: Int?
     public let type: String
     public let location: StructuredLocation?

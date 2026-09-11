@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Music Models
 
 /// Current playback state and track information.
-public struct NowPlaying: Codable {
+public struct NowPlaying: Codable, Sendable {
     public let name: String
     public let artist: String
     public let album: String
@@ -56,7 +56,7 @@ public struct NowPlaying: Codable {
 }
 
 /// A music playlist with metadata.
-public struct Playlist: Codable {
+public struct Playlist: Codable, Sendable {
     public let name: String
     public let trackCount: Int
     public let duration: Int  // seconds
@@ -77,7 +77,7 @@ public struct Playlist: Codable {
 }
 
 /// A single music track.
-public struct Track: Codable {
+public struct Track: Codable, Sendable {
     public let name: String
     public let artist: String
     public let album: String

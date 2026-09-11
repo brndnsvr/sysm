@@ -252,7 +252,7 @@ public struct FocusService: FocusServiceProtocol {
 
 // MARK: - Models
 
-public struct FocusStatusInfo: Codable {
+public struct FocusStatusInfo: Codable, Sendable {
     public let isActive: Bool
     public let dndEnabled: Bool
     public let activeFocus: String?

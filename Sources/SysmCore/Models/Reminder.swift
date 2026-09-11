@@ -3,7 +3,7 @@ import EventKit
 import ArgumentParser
 
 /// Reminder priority levels.
-public enum ReminderPriority: Int, Codable, CaseIterable, ExpressibleByArgument {
+public enum ReminderPriority: Int, Codable, CaseIterable, ExpressibleByArgument, Sendable {
     case none = 0
     case high = 1
     case medium = 5
@@ -33,7 +33,7 @@ public enum ReminderPriority: Int, Codable, CaseIterable, ExpressibleByArgument 
 ///
 /// This model wraps EventKit's `EKReminder` for JSON serialization and
 /// provides convenient formatting methods for CLI output.
-public struct Reminder: Codable {
+public struct Reminder: Codable, Sendable {
     public let id: String
     public let title: String
     public let listName: String

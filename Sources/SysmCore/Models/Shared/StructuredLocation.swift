@@ -3,7 +3,7 @@ import Foundation
 import CoreLocation
 
 /// Represents a location with optional geocoordinates for geofencing.
-public struct StructuredLocation: Codable {
+public struct StructuredLocation: Codable, Sendable {
     public let title: String
     public let address: String?
     public let latitude: Double?

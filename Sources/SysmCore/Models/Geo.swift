@@ -1,6 +1,6 @@
 import Foundation
 
-public struct GeoLocation: Codable {
+public struct GeoLocation: Codable, Sendable {
     public let latitude: Double
     public let longitude: Double
     public let name: String

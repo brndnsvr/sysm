@@ -10,7 +10,7 @@ public struct TagsService: TagsServiceProtocol {
 
     // MARK: - Tag Model
 
-    public struct FinderTag: Codable, Equatable {
+    public struct FinderTag: Codable, Equatable, Sendable {
         public let name: String
         public let color: Int
 

@@ -4,7 +4,7 @@ import Foundation
 ///
 /// Used by the cache to remember which reminders have been seen, dismissed,
 /// or completed, enabling persistent tracking of daily tasks.
-public struct TrackedReminder: Codable {
+public struct TrackedReminder: Codable, Sendable {
     public var originalName: String
     public var firstSeen: String
     public var tracked: Bool

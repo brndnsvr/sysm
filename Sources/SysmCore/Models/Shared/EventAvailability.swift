@@ -3,7 +3,7 @@ import Foundation
 import ArgumentParser
 
 /// Event availability status.
-public enum EventAvailability: String, Codable, CaseIterable, ExpressibleByArgument {
+public enum EventAvailability: String, Codable, CaseIterable, ExpressibleByArgument, Sendable {
     case busy
     case free
     case tentative

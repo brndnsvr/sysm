@@ -890,7 +890,7 @@ public actor ContactsService: ContactsServiceProtocol {
 // MARK: - Models
 
 /// Represents a postal address for a contact.
-public struct ContactAddress: Codable {
+public struct ContactAddress: Codable, Sendable {
     public let label: String?
     public let street: String?
     public let city: String?
@@ -917,7 +917,7 @@ public struct ContactAddress: Codable {
 }
 
 /// Represents a social media profile for a contact.
-public struct ContactSocialProfile: Codable {
+public struct ContactSocialProfile: Codable, Sendable {
     public let service: String  // "twitter", "facebook", "linkedin", etc.
     public let username: String
     public let url: String?
@@ -930,7 +930,7 @@ public struct ContactSocialProfile: Codable {
 }
 
 /// Represents a relationship to another person.
-public struct ContactRelation: Codable {
+public struct ContactRelation: Codable, Sendable {
     public let label: String  // "spouse", "parent", "child", "friend", etc.
     public let name: String
 
@@ -940,7 +940,7 @@ public struct ContactRelation: Codable {
     }
 }
 
-public struct Contact: Codable {
+public struct Contact: Codable, Sendable {
     public let identifier: String
     public let givenName: String
     public let familyName: String
@@ -1029,7 +1029,7 @@ public struct Contact: Codable {
     }
 }
 
-public struct ContactGroup: Codable {
+public struct ContactGroup: Codable, Sendable {
     public let identifier: String
     public let name: String
 }
