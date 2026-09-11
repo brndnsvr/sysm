@@ -14,19 +14,7 @@ public actor CalendarService: CalendarServiceProtocol {
     }
 
     public func requestAccess() async throws -> Bool {
-        if #available(macOS 14.0, *) {
-            return try await store.requestFullAccessToEvents()
-        } else {
-            return try await withCheckedThrowingContinuation { continuation in
-                store.requestAccess(to: .event) { granted, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: granted)
-                    }
-                }
-            }
-        }
+        return try await store.requestFullAccessToEvents()
     }
 
     public func ensureAccess() async throws {

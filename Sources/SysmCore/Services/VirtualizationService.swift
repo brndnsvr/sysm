@@ -262,23 +262,21 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         // in #if defined(__arm64__)), so an x86_64 build must not reference it.
         #if arch(arm64)
         // Restore saved state if present
-        if #available(macOS 14.0, *) {
-            let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
-            if FileManager.default.fileExists(atPath: statePath.path) {
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    queue.async {
-                        vm.restoreMachineStateFrom(url: statePath) { error in
-                            if let error {
-                                continuation.resume(throwing: error)
-                            } else {
-                                continuation.resume()
-                            }
+        let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
+        if FileManager.default.fileExists(atPath: statePath.path) {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                queue.async {
+                    vm.restoreMachineStateFrom(url: statePath) { error in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume()
                         }
                     }
                 }
-                try? FileManager.default.removeItem(at: statePath)
-                print("VM '\(name)' restored from saved state.")
             }
+            try? FileManager.default.removeItem(at: statePath)
+            print("VM '\(name)' restored from saved state.")
         }
         #endif
 
@@ -297,24 +295,22 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         }
         signalSource.resume()
 
-        // Set up SIGUSR1 handler for save-and-stop (macOS 14+, Apple silicon)
+        // Set up SIGUSR1 handler for save-and-stop (Apple silicon)
         #if arch(arm64)
-        if #available(macOS 14.0, *) {
-            let saveSource = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: queue)
-            signal(SIGUSR1, SIG_IGN)
-            saveSource.setEventHandler { [vmDir] in
-                let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
-                vm.saveMachineStateTo(url: statePath) { error in
-                    if let error {
-                        print("\nFailed to save state: \(error.localizedDescription)")
-                    } else {
-                        print("\nVM state saved.")
-                    }
-                    semaphore.signal()
+        let saveSource = DispatchSource.makeSignalSource(signal: SIGUSR1, queue: queue)
+        signal(SIGUSR1, SIG_IGN)
+        saveSource.setEventHandler { [vmDir] in
+            let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
+            vm.saveMachineStateTo(url: statePath) { error in
+                if let error {
+                    print("\nFailed to save state: \(error.localizedDescription)")
+                } else {
+                    print("\nVM state saved.")
                 }
+                semaphore.signal()
             }
-            saveSource.resume()
         }
+        saveSource.resume()
         #endif
 
         // Wait for either SIGINT or guest stop
@@ -566,15 +562,13 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
             throw VirtualizationError.vmNotRunning(name)
         }
 
-        // startVM installs the SIGUSR1 save handler only on Apple silicon with
-        // macOS 14+. Anywhere else SIGUSR1 would terminate the VM unsaved.
+        // startVM installs the SIGUSR1 save handler only on Apple silicon.
+        // On Intel, SIGUSR1 would terminate the VM unsaved.
         #if arch(arm64)
-        if #available(macOS 14.0, *) {
-            kill(pid, SIGUSR1)
-            return
-        }
-        #endif
+        kill(pid, SIGUSR1)
+        #else
         throw VirtualizationError.saveRestoreUnavailable
+        #endif
     }
 
     public func restoreVM(name: String) async throws {
@@ -585,16 +579,14 @@ public struct VirtualizationService: VirtualizationServiceProtocol {
         }
 
         #if arch(arm64)
-        if #available(macOS 14.0, *) {
-            let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
-            guard FileManager.default.fileExists(atPath: statePath.path) else {
-                throw VirtualizationError.invalidConfiguration("No saved state found for VM '\(name)'")
-            }
-            try await startVM(name: name, isoPath: nil)
-            return
+        let statePath = vmDir.appendingPathComponent("saved_state.vzvmsave")
+        guard FileManager.default.fileExists(atPath: statePath.path) else {
+            throw VirtualizationError.invalidConfiguration("No saved state found for VM '\(name)'")
         }
-        #endif
+        try await startVM(name: name, isoPath: nil)
+        #else
         throw VirtualizationError.saveRestoreUnavailable
+        #endif
     }
 
     // MARK: - Private Helpers
@@ -817,7 +809,7 @@ public enum VirtualizationError: LocalizedError {
         case .pidFileError(let msg):
             return "PID file error: \(msg)"
         case .saveRestoreUnavailable:
-            return "Save/restore requires macOS 14+ on Apple silicon"
+            return "Save/restore requires Apple silicon"
         }
     }
 }
