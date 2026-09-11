@@ -349,18 +349,12 @@ public struct PDFService: PDFServiceProtocol {
 
         try ensureDirectory(for: expandedOutput)
 
-        if #available(macOS 13.4, *) {
-            let options: [PDFDocumentWriteOption: Any] = [
-                .saveImagesAsJPEGOption: true,
-                .optimizeImagesForScreenOption: true,
-            ]
-            guard doc.write(to: URL(fileURLWithPath: expandedOutput), withOptions: options) else {
-                throw PDFError.writeFailed(expandedOutput)
-            }
-        } else {
-            guard doc.write(to: URL(fileURLWithPath: expandedOutput)) else {
-                throw PDFError.writeFailed(expandedOutput)
-            }
+        let options: [PDFDocumentWriteOption: Any] = [
+            .saveImagesAsJPEGOption: true,
+            .optimizeImagesForScreenOption: true,
+        ]
+        guard doc.write(to: URL(fileURLWithPath: expandedOutput), withOptions: options) else {
+            throw PDFError.writeFailed(expandedOutput)
         }
     }
 
@@ -371,17 +365,11 @@ public struct PDFService: PDFServiceProtocol {
 
         try ensureDirectory(for: expandedOutput)
 
-        if #available(macOS 13.4, *) {
-            let options: [PDFDocumentWriteOption: Any] = [
-                .saveTextFromOCROption: true,
-            ]
-            guard doc.write(to: URL(fileURLWithPath: expandedOutput), withOptions: options) else {
-                throw PDFError.writeFailed(expandedOutput)
-            }
-        } else {
-            guard doc.write(to: URL(fileURLWithPath: expandedOutput)) else {
-                throw PDFError.writeFailed(expandedOutput)
-            }
+        let options: [PDFDocumentWriteOption: Any] = [
+            .saveTextFromOCROption: true,
+        ]
+        guard doc.write(to: URL(fileURLWithPath: expandedOutput), withOptions: options) else {
+            throw PDFError.writeFailed(expandedOutput)
         }
     }
 

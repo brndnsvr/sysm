@@ -20,16 +20,12 @@ public actor AVService: AVServiceProtocol {
 
     public func listInputDevices() async throws -> [AVInputDevice] {
         let devices: [AVCaptureDevice]
-        if #available(macOS 14.0, *) {
-            let discoverySession = AVCaptureDevice.DiscoverySession(
-                deviceTypes: [.microphone],
-                mediaType: .audio,
-                position: .unspecified
-            )
-            devices = discoverySession.devices
-        } else {
-            devices = AVCaptureDevice.devices(for: .audio)
-        }
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.microphone],
+            mediaType: .audio,
+            position: .unspecified
+        )
+        devices = discoverySession.devices
 
         let defaultDevice = AVCaptureDevice.default(for: .audio)
 

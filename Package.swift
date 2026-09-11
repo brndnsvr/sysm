@@ -1,28 +1,10 @@
-// swift-tools-version: 5.9
+// swift-tools-version: 6.2
 import PackageDescription
-
-// FoundationModels requires macOS 26+ SDK (Xcode 26 / Swift 6.2+)
-var sysmCoreLinkerSettings: [LinkerSetting] = [
-    .linkedFramework("AVFoundation"),
-    .linkedFramework("CoreAudio"),
-    .linkedFramework("CoreWLAN"),
-    .linkedFramework("IOBluetooth"),
-    .linkedFramework("Photos"),
-    .linkedFramework("Speech"),
-    .linkedFramework("UserNotifications"),
-    .linkedFramework("Virtualization"),
-]
-
-#if compiler(>=6.2)
-sysmCoreLinkerSettings.append(
-    .unsafeFlags(["-Xlinker", "-weak_framework", "-Xlinker", "FoundationModels"])
-)
-#endif
 
 let package = Package(
     name: "sysm",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v26)
     ],
     products: [
         .executable(name: "sysm", targets: ["sysm"]),
@@ -41,7 +23,17 @@ let package = Package(
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ],
             path: "Sources/SysmCore",
-            linkerSettings: sysmCoreLinkerSettings
+            linkerSettings: [
+                .linkedFramework("AVFoundation"),
+                .linkedFramework("CoreAudio"),
+                .linkedFramework("CoreWLAN"),
+                .linkedFramework("FoundationModels"),
+                .linkedFramework("IOBluetooth"),
+                .linkedFramework("Photos"),
+                .linkedFramework("Speech"),
+                .linkedFramework("UserNotifications"),
+                .linkedFramework("Virtualization"),
+            ]
         ),
         .executableTarget(
             name: "sysm",
@@ -62,5 +54,7 @@ let package = Package(
             path: "Tests/IntegrationTests",
             exclude: ["README.md"]
         ),
-    ]
+    ],
+    // Swift 6 language mode needs the strict-concurrency migration first.
+    swiftLanguageModes: [.v5]
 )

@@ -39,7 +39,7 @@ bundle: release
 	@echo '<key>CFBundleName</key><string>sysm</string>' >> .build/sysm.app/Contents/Info.plist
 	@echo '<key>CFBundleVersion</key><string>$(VERSION)</string>' >> .build/sysm.app/Contents/Info.plist
 	@echo '<key>CFBundleShortVersionString</key><string>$(VERSION)</string>' >> .build/sysm.app/Contents/Info.plist
-	@echo '<key>LSMinimumSystemVersion</key><string>13.0</string>' >> .build/sysm.app/Contents/Info.plist
+	@echo '<key>LSMinimumSystemVersion</key><string>26.0</string>' >> .build/sysm.app/Contents/Info.plist
 	@echo '</dict></plist>' >> .build/sysm.app/Contents/Info.plist
 	@echo "App bundle created: .build/sysm.app"
 

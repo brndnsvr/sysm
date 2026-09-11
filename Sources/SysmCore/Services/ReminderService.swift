@@ -5,19 +5,7 @@ public actor ReminderService: ReminderServiceProtocol {
     private let store = EKEventStore()
 
     public func requestAccess() async throws -> Bool {
-        if #available(macOS 14.0, *) {
-            return try await store.requestFullAccessToReminders()
-        } else {
-            return try await withCheckedThrowingContinuation { continuation in
-                store.requestAccess(to: .reminder) { granted, error in
-                    if let error = error {
-                        continuation.resume(throwing: error)
-                    } else {
-                        continuation.resume(returning: granted)
-                    }
-                }
-            }
-        }
+        return try await store.requestFullAccessToReminders()
     }
 
     public func ensureAccess() async throws {

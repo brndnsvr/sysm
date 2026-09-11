@@ -1,9 +1,7 @@
 import Foundation
 
-#if canImport(FoundationModels)
 import FoundationModels
 
-@available(macOS 26, *)
 public struct FoundationModelsService: FoundationModelsServiceProtocol {
     public init() {}
 
@@ -104,32 +102,6 @@ public struct FoundationModelsService: FoundationModelsServiceProtocol {
         return FMSummary(summary: summary, wordCount: wordCount)
     }
 
-}
-#endif
-
-// Fallback for systems without FoundationModels
-public struct FoundationModelsUnavailableService: FoundationModelsServiceProtocol {
-    public init() {}
-
-    public func checkAvailability() -> FMAvailability {
-        FMAvailability(available: false, status: .frameworkUnavailable, message: "FoundationModels framework not available on this system (requires macOS 26+)")
-    }
-
-    public func prompt(text: String, systemPrompt: String?) async throws -> FMResponse {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
-    }
-
-    public func summarize(text: String, chunkSize: Int?) async throws -> FMSummary {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
-    }
-
-    public func extractActionItems(text: String, chunkSize: Int?) async throws -> FMActionItemsResult {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
-    }
-
-    public func analyze(text: String, prompt: String) async throws -> FMAnalysisResult {
-        throw FoundationModelsError.notAvailable("FoundationModels framework requires macOS 26+")
-    }
 }
 
 // MARK: - Text Processing (testable on all platforms)

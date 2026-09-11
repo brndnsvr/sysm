@@ -107,14 +107,7 @@ public final class ServiceContainer: @unchecked Sendable {
     public var avFactory: () -> any AVServiceProtocol = { AVService() }
     public var virtualizationFactory: () -> any VirtualizationServiceProtocol = { VirtualizationService() }
     public var caldavFactory: () -> any CalDAVServiceProtocol = { CalDAVService() }
-    public var foundationModelsFactory: () -> any FoundationModelsServiceProtocol = {
-        #if canImport(FoundationModels)
-        if #available(macOS 26, *) {
-            return FoundationModelsService()
-        }
-        #endif
-        return FoundationModelsUnavailableService()
-    }
+    public var foundationModelsFactory: () -> any FoundationModelsServiceProtocol = { FoundationModelsService() }
 
     // MARK: - Cached Instances
 
@@ -591,14 +584,7 @@ public final class ServiceContainer: @unchecked Sendable {
         avFactory = { AVService() }
         virtualizationFactory = { VirtualizationService() }
         caldavFactory = { CalDAVService() }
-        foundationModelsFactory = {
-            #if canImport(FoundationModels)
-            if #available(macOS 26, *) {
-                return FoundationModelsService()
-            }
-            #endif
-            return FoundationModelsUnavailableService()
-        }
+        foundationModelsFactory = { FoundationModelsService() }
 
         // Clear cached instances
         _clearCacheUnsafe()
