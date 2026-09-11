@@ -2,6 +2,8 @@
 
 Unified CLI for the Apple ecosystem on macOS. Interact with Calendar, Reminders, Notes, Contacts, Mail, Messages, Safari, Music, Photos, Finder, Spotlight, Shortcuts, Focus, Weather, Clipboard, System, Notifications, Screen Capture, Bluetooth, Network, Speech, Images, PDFs, Audio, AV recording, Vision, NLP, Keychain, Virtual Machines, and more from the terminal.
 
+The [SysmCore API documentation](https://brndnsvr.github.io/sysm/documentation/sysmcore/) is published on GitHub Pages.
+
 ## Installation
 
 ### Homebrew (Recommended)
