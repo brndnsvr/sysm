@@ -224,12 +224,7 @@ public actor PhotosService: PhotosServiceProtocol {
             assets = PHAsset.fetchAssets(with: fetchOptions)
         }
 
-        var photos: [PhotoAsset] = []
-        assets.enumerateObjects { asset, _, _ in
-            photos.append(self.assetToPhoto(asset))
-        }
-
-        return photos
+        return (0..<assets.count).map { assetToPhoto(assets.object(at: $0)) }
     }
 
     public func getRecentPhotos(limit: Int = 20) async throws -> [PhotoAsset] {
@@ -242,12 +237,7 @@ public actor PhotosService: PhotosServiceProtocol {
 
         let assets = PHAsset.fetchAssets(with: fetchOptions)
 
-        var photos: [PhotoAsset] = []
-        assets.enumerateObjects { asset, _, _ in
-            photos.append(self.assetToPhoto(asset))
-        }
-
-        return photos
+        return (0..<assets.count).map { assetToPhoto(assets.object(at: $0)) }
     }
 
     public func searchByDate(from: Date, to: Date, limit: Int = 50) async throws -> [PhotoAsset] {
@@ -264,12 +254,7 @@ public actor PhotosService: PhotosServiceProtocol {
 
         let assets = PHAsset.fetchAssets(with: fetchOptions)
 
-        var photos: [PhotoAsset] = []
-        assets.enumerateObjects { asset, _, _ in
-            photos.append(self.assetToPhoto(asset))
-        }
-
-        return photos
+        return (0..<assets.count).map { assetToPhoto(assets.object(at: $0)) }
     }
 
     // MARK: - Export
@@ -337,25 +322,12 @@ public actor PhotosService: PhotosServiceProtocol {
             }
             // Combine predicates for album filtering
             let albumAssets = PHAsset.fetchAssets(in: collection, options: fetchOptions)
-            var videos: [PhotoAsset] = []
-            albumAssets.enumerateObjects { asset, _, stop in
-                if videos.count >= limit {
-                    stop.pointee = true
-                    return
-                }
-                videos.append(self.assetToPhoto(asset))
-            }
-            return videos
+            return (0..<min(albumAssets.count, limit)).map { assetToPhoto(albumAssets.object(at: $0)) }
         } else {
             assets = PHAsset.fetchAssets(with: fetchOptions)
         }
 
-        var videos: [PhotoAsset] = []
-        assets.enumerateObjects { asset, _, _ in
-            videos.append(self.assetToPhoto(asset))
-        }
-
-        return videos
+        return (0..<assets.count).map { assetToPhoto(assets.object(at: $0)) }
     }
 
     public func getRecentVideos(limit: Int = 20) async throws -> [PhotoAsset] {
@@ -368,12 +340,7 @@ public actor PhotosService: PhotosServiceProtocol {
 
         let assets = PHAsset.fetchAssets(with: fetchOptions)
 
-        var videos: [PhotoAsset] = []
-        assets.enumerateObjects { asset, _, _ in
-            videos.append(self.assetToPhoto(asset))
-        }
-
-        return videos
+        return (0..<assets.count).map { assetToPhoto(assets.object(at: $0)) }
     }
 
     // MARK: - Video Export
@@ -572,12 +539,7 @@ public actor PhotosService: PhotosServiceProtocol {
 
         let assets = PHAsset.fetchAssets(in: collection, options: fetchOptions)
 
-        var photos: [PhotoAsset] = []
-        assets.enumerateObjects { asset, _, _ in
-            photos.append(self.assetToPhoto(asset))
-        }
-
-        return photos
+        return (0..<assets.count).map { assetToPhoto(assets.object(at: $0)) }
     }
 
     // MARK: - Metadata & Keywords
