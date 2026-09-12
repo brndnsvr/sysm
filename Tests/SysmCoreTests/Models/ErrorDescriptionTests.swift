@@ -44,6 +44,7 @@ final class ErrorDescriptionTests: XCTestCase {
             .apiError("test"),
             .invalidResponse,
             .networkError("test"),
+            .alertsUnavailable,
         ]
         for error in cases {
             XCTAssertNotNil(error.errorDescription, "WeatherError.\(error) should have errorDescription")

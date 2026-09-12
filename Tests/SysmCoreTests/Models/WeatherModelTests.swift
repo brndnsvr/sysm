@@ -240,5 +240,6 @@ final class WeatherModelTests: XCTestCase {
         XCTAssertNotNil(WeatherError.networkError("timeout").errorDescription)
         XCTAssertNotNil(WeatherError.apiError("rate limit").errorDescription)
         XCTAssertNotNil(WeatherError.invalidResponse.errorDescription)
+        XCTAssertTrue(WeatherError.alertsUnavailable.errorDescription!.contains("weatherkit"))
     }
 }

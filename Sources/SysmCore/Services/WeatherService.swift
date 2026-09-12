@@ -20,6 +20,7 @@ public struct WeatherService: WeatherServiceProtocol {
 
         let data = try await fetch(path: "/forecast", params: params)
         let response = try JSONDecoder().decode(CurrentWeatherResponse.self, from: data)
+        let times = OpenMeteoTimeParser(timezone: response.timezone, utcOffsetSeconds: response.utc_offset_seconds)
 
         guard let current = response.current else {
             throw WeatherError.invalidResponse
@@ -35,7 +36,7 @@ public struct WeatherService: WeatherServiceProtocol {
             windSpeed: current.wind_speed_10m,
             windDirection: Int(current.wind_direction_10m),
             condition: WeatherCondition(rawValue: current.weather_code) ?? .clear,
-            time: parseISO8601(current.time) ?? Date(),
+            time: times.dateTime(current.time) ?? Date(),
             timezone: response.timezone
         )
     }
@@ -55,6 +56,7 @@ public struct WeatherService: WeatherServiceProtocol {
 
         let data = try await fetch(path: "/forecast", params: params)
         let response = try JSONDecoder().decode(ForecastResponse.self, from: data)
+        let times = OpenMeteoTimeParser(timezone: response.timezone, utcOffsetSeconds: response.utc_offset_seconds)
 
         guard let daily = response.daily else {
             throw WeatherError.invalidResponse
@@ -62,15 +64,15 @@ public struct WeatherService: WeatherServiceProtocol {
 
         var forecasts: [DayForecast] = []
         for i in 0..<daily.time.count {
-            guard let date = parseDate(daily.time[i]) else { continue }
+            guard let date = times.date(daily.time[i]) else { continue }
             forecasts.append(DayForecast(
                 date: date,
                 high: daily.temperature_2m_max[i],
                 low: daily.temperature_2m_min[i],
                 condition: WeatherCondition(rawValue: daily.weather_code[i]) ?? .clear,
                 precipitation: daily.precipitation_sum[i],
-                sunrise: parseISO8601(daily.sunrise[i]) ?? date,
-                sunset: parseISO8601(daily.sunset[i]) ?? date
+                sunrise: times.dateTime(daily.sunrise[i]) ?? date,
+                sunset: times.dateTime(daily.sunset[i]) ?? date
             ))
         }
 
@@ -84,20 +86,20 @@ public struct WeatherService: WeatherServiceProtocol {
     public func getHourlyForecast(location: String, hours: Int = 24) async throws -> HourlyForecast {
         let coords = try await resolveLocation(location)
 
-        // Calculate how many days we need to cover the requested hours
-        let daysNeeded = max(1, (hours + 23) / 24)
-
+        // forecast_hours starts the series at the current hour. forecast_days
+        // starts it at local midnight, so the first rows were hours already past.
         let params = [
             "latitude": String(coords.latitude),
             "longitude": String(coords.longitude),
             "hourly": "temperature_2m,precipitation_probability,weather_code",
             "temperature_unit": "fahrenheit",
             "timezone": "auto",
-            "forecast_days": String(min(daysNeeded, 16))
+            "forecast_hours": String(min(max(hours, 1), 16 * 24))
         ]
 
         let data = try await fetch(path: "/forecast", params: params)
         let response = try JSONDecoder().decode(HourlyResponse.self, from: data)
+        let times = OpenMeteoTimeParser(timezone: response.timezone, utcOffsetSeconds: response.utc_offset_seconds)
 
         guard let hourly = response.hourly else {
             throw WeatherError.invalidResponse
@@ -106,7 +108,7 @@ public struct WeatherService: WeatherServiceProtocol {
         var forecasts: [HourForecast] = []
         let count = min(hours, hourly.time.count)
         for i in 0..<count {
-            guard let time = parseISO8601(hourly.time[i]) else { continue }
+            guard let time = times.dateTime(hourly.time[i]) else { continue }
             forecasts.append(HourForecast(
                 time: time,
                 temperature: hourly.temperature_2m[i],
@@ -123,9 +125,9 @@ public struct WeatherService: WeatherServiceProtocol {
     }
 
     public func getAlerts(location: String) async throws -> [WeatherAlert] {
-        // Open-Meteo does not provide weather alerts
-        // Return empty array (alerts are available in WeatherKit backend)
-        return []
+        // Open-Meteo has no alerts endpoint. Returning [] made
+        // `sysm weather alerts` report "No active weather alerts" unchecked.
+        throw WeatherError.alertsUnavailable
     }
 
     public func getDetailedWeather(location: String) async throws -> DetailedWeather {
@@ -144,6 +146,7 @@ public struct WeatherService: WeatherServiceProtocol {
 
         let data = try await fetch(path: "/forecast", params: params)
         let response = try JSONDecoder().decode(DetailedWeatherResponse.self, from: data)
+        let times = OpenMeteoTimeParser(timezone: response.timezone, utcOffsetSeconds: response.utc_offset_seconds)
 
         guard let current = response.current else {
             throw WeatherError.invalidResponse
@@ -175,7 +178,7 @@ public struct WeatherService: WeatherServiceProtocol {
             uvIndexDescription: uvIndexDescription(uvValue),
             cloudCover: Int(current.cloud_cover ?? 0),
             condition: WeatherCondition(rawValue: current.weather_code) ?? .clear,
-            time: parseISO8601(current.time) ?? Date(),
+            time: times.dateTime(current.time) ?? Date(),
             timezone: response.timezone
         )
     }
@@ -258,29 +261,45 @@ public struct WeatherService: WeatherServiceProtocol {
 
         return data
     }
+}
 
-    // MARK: - Date Parsing
+// MARK: - Time Parsing
 
-    private func parseISO8601(_ string: String) -> Date? {
-        // Try full ISO8601 format first (with timezone)
-        let iso8601 = ISO8601DateFormatter()
-        iso8601.formatOptions = [.withFullDate, .withTime, .withDashSeparatorInDate, .withColonSeparatorInTime]
-        if let date = iso8601.date(from: string) {
-            return date
-        }
+/// Reads Open-Meteo's wall-clock strings in the zone the response names.
+///
+/// With `timezone=auto`, Open-Meteo returns local times with no offset
+/// ("2026-09-12T17:00", "2026-09-12"). Reading them as UTC shifts every
+/// time by the location's UTC offset. The IANA name keeps a DST change
+/// inside a 16-day forecast correct; the fixed offset is only a fallback
+/// for a name Foundation does not recognize.
+struct OpenMeteoTimeParser {
+    let timeZone: TimeZone
+    private let dateTimeFormatter: DateFormatter
+    private let dateFormatter: DateFormatter
 
-        // Fall back to simple datetime format (yyyy-MM-ddTHH:mm)
-        let simple = DateFormatter()
-        simple.dateFormat = "yyyy-MM-dd'T'HH:mm"
-        simple.timeZone = TimeZone(identifier: "UTC")
-        return simple.date(from: string)
+    init(timezone identifier: String, utcOffsetSeconds: Int?) {
+        let zone = TimeZone(identifier: identifier)
+            ?? utcOffsetSeconds.flatMap { TimeZone(secondsFromGMT: $0) }
+            ?? .gmt
+        timeZone = zone
+        dateTimeFormatter = Self.formatter("yyyy-MM-dd'T'HH:mm", in: zone)
+        dateFormatter = Self.formatter("yyyy-MM-dd", in: zone)
     }
 
-    private func parseDate(_ string: String) -> Date? {
+    func dateTime(_ string: String) -> Date? {
+        dateTimeFormatter.date(from: string)
+    }
+
+    func date(_ string: String) -> Date? {
+        dateFormatter.date(from: string)
+    }
+
+    private static func formatter(_ format: String, in zone: TimeZone) -> DateFormatter {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter.date(from: string)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = zone
+        formatter.dateFormat = format
+        return formatter
     }
 }
 
@@ -290,6 +309,7 @@ private struct CurrentWeatherResponse: Codable {
     public let latitude: Double
     public let longitude: Double
     public let timezone: String
+    public let utc_offset_seconds: Int?
     public let current: CurrentData?
 
     public struct CurrentData: Codable, Sendable {
@@ -307,6 +327,7 @@ private struct ForecastResponse: Codable {
     public let latitude: Double
     public let longitude: Double
     public let timezone: String
+    public let utc_offset_seconds: Int?
     public let daily: DailyData?
 
     public struct DailyData: Codable, Sendable {
@@ -324,6 +345,7 @@ private struct HourlyResponse: Codable {
     public let latitude: Double
     public let longitude: Double
     public let timezone: String
+    public let utc_offset_seconds: Int?
     public let hourly: HourlyData?
 
     public struct HourlyData: Codable, Sendable {
@@ -355,6 +377,7 @@ private struct DetailedWeatherResponse: Codable {
     public let latitude: Double
     public let longitude: Double
     public let timezone: String
+    public let utc_offset_seconds: Int?
     public let current: DetailedCurrentData?
     public let hourly: DetailedHourlyData?
 
