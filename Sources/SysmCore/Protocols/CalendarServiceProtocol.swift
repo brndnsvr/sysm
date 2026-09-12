@@ -240,14 +240,13 @@ public protocol CalendarServiceProtocol: Sendable {
 
     // MARK: - Advanced Operations
 
-    /// Validates all events and returns those with potential issues.
+    /// Finds events dated outside the supported years (2000-2100).
     ///
-    /// Checks for events with:
-    /// - End time before start time
-    /// - Missing required fields
-    /// - Malformed data
+    /// A recurring event is judged by its first occurrence, so a series that
+    /// legitimately continues past 2100 is not reported. Birthday calendars
+    /// are skipped.
     ///
-    /// - Returns: Array of ``CalendarEvent`` objects that may have issues.
+    /// - Returns: Events whose start year is out of range.
     /// - Throws: ``CalendarError/accessDenied`` if calendar access not granted.
     func validateEvents() async throws -> [CalendarEvent]
 

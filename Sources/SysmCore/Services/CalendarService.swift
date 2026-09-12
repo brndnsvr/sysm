@@ -258,21 +258,55 @@ public actor CalendarService: CalendarServiceProtocol {
     public func validateEvents() async throws -> [CalendarEvent] {
         try await ensureAccess()
 
-        let cal = Foundation.Calendar.current
-        let startDate = cal.date(byAdding: .year, value: -10, to: Date())!
-        let endDate = cal.date(byAdding: .year, value: 100, to: Date())!
+        // Birthdays come from Contacts and legitimately start before 2000.
+        let calendars = store.calendars(for: .event).filter { $0.type != .birthday }
+        var checked = Set<String>()
+        var invalid: [CalendarEvent] = []
 
-        let calendars = store.calendars(for: .event)
-        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: calendars)
-        let ekEvents = store.events(matching: predicate)
+        for window in Self.validationWindows() {
+            let predicate = store.predicateForEvents(withStart: window.start, end: window.end, calendars: calendars)
+            for event in store.events(matching: predicate) {
+                let key = event.eventIdentifier ?? UUID().uuidString
+                guard checked.insert(key).inserted else { continue }
 
-        return ekEvents.compactMap { event -> CalendarEvent? in
-            let year = Foundation.Calendar.current.component(.year, from: event.startDate)
-            guard Self.validYearRange.contains(year) else {
-                return CalendarEvent(from: event)
+                // A series is judged by its first occurrence: a yearly event
+                // begun in 2024 legitimately recurs past 2100.
+                let first = event.hasRecurrenceRules ? store.event(withIdentifier: key) ?? event : event
+                let year = Self.gregorian.component(.year, from: first.startDate)
+                if !Self.validYearRange.contains(year) {
+                    invalid.append(CalendarEvent(from: first))
+                }
             }
-            return nil
         }
+        return invalid
+    }
+
+    static let gregorian = Foundation.Calendar(identifier: .gregorian)
+
+    /// Windows covering the years outside `validYearRange`.
+    ///
+    /// EventKit shortens an event predicate longer than four years to its
+    /// first four (EKEventStore.h), so the old single -10y..+100y predicate
+    /// only ever scanned its oldest four years. Only out-of-range years can
+    /// hold an invalid event, so the valid span is skipped. Three-year
+    /// windows stay under the limit whatever the leap days.
+    static func validationWindows(calendar: Foundation.Calendar = gregorian) -> [DateInterval] {
+        let spans = [
+            (1, validYearRange.lowerBound),
+            (validYearRange.upperBound + 1, validYearRange.upperBound + 101),
+        ]
+        var windows: [DateInterval] = []
+        for (firstYear, endYear) in spans {
+            var year = firstYear
+            while year < endYear {
+                let next = min(year + 3, endYear)
+                let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1))!
+                let end = calendar.date(from: DateComponents(year: next, month: 1, day: 1))!
+                windows.append(DateInterval(start: start, end: end))
+                year = next
+            }
+        }
+        return windows
     }
 
     public func listAttendees(eventId: String) async throws -> [EventAttendee] {
