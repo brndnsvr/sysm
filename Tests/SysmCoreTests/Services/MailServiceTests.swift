@@ -201,4 +201,24 @@ final class MailServiceTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - reply()
+
+    func testReplyAllUsesTheMailDictionaryForm() throws {
+        mock.defaultResponse = "67890"
+        _ = try service.reply(messageId: "12345", body: "Thanks", replyAll: true, send: false)
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains("reply msg with opening window and reply to all"), script)
+        XCTAssertFalse(script.contains("reply all msg"), script)
+    }
+
+    func testReplyToSenderOmitsReplyToAll() throws {
+        mock.defaultResponse = "67890"
+        _ = try service.reply(messageId: "12345", body: "Thanks", replyAll: false, send: false)
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains("reply msg with opening window"), script)
+        XCTAssertFalse(script.contains("reply to all"), script)
+    }
 }
