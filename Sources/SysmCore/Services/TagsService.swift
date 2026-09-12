@@ -19,17 +19,29 @@ public struct TagsService: TagsServiceProtocol {
             self.color = color
         }
 
+        /// Finder's label colors, indexed by the number a tag stores.
+        ///
+        /// The same order as `NSWorkspace.fileLabels`. sysm used to name 1
+        /// through 7 Red to Grey, so "--color 1" wrote a gray tag while
+        /// printing "Red".
+        public static let colorNames = ["None", "Gray", "Green", "Purple", "Blue", "Yellow", "Red", "Orange"]
+
         public var colorName: String {
-            switch color {
-            case 1: return "Red"
-            case 2: return "Orange"
-            case 3: return "Yellow"
-            case 4: return "Green"
-            case 5: return "Blue"
-            case 6: return "Purple"
-            case 7: return "Grey"
-            default: return "None"
+            Self.colorNames.indices.contains(color) ? Self.colorNames[color] : "None"
+        }
+
+        /// Finder's color number for a name ("red", "grey") or a number ("6").
+        ///
+        /// - Returns: The color number, or nil if the input names no Finder color.
+        public static func colorCode(from input: String) -> Int? {
+            let text = input.trimmingCharacters(in: .whitespaces).lowercased()
+            if let number = Int(text) {
+                return colorNames.indices.contains(number) ? number : nil
             }
+            if text == "grey" {
+                return 1
+            }
+            return colorNames.firstIndex { $0.lowercased() == text }
         }
 
         public func formatted() -> String {
@@ -158,7 +170,7 @@ public enum TagsError: LocalizedError {
     case writeFailed(String, String)
     case mdfindNotFound
     case searchFailed(String)
-    case invalidColor(Int)
+    case invalidColor(String)
 
     public var errorDescription: String? {
         switch self {
@@ -171,7 +183,7 @@ public enum TagsError: LocalizedError {
         case .searchFailed(let message):
             return "Search failed: \(message)"
         case .invalidColor(let color):
-            return "Invalid color code: \(color). Use 0-7 (0=none, 1=red, 2=orange, 3=yellow, 4=green, 5=blue, 6=purple, 7=grey)"
+            return "Invalid color '\(color)'. Use a name or number: none (0), gray (1), green (2), purple (3), blue (4), yellow (5), red (6), orange (7)"
         }
     }
 }

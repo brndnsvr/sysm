@@ -11,7 +11,7 @@ struct TagsSet: ParsableCommand {
     @Argument(help: "Path to file or folder")
     var path: String
 
-    @Option(name: .shortAndLong, help: "Comma-separated tags (e.g., 'work,important' or 'work:1,important:4' with colors)")
+    @Option(name: .shortAndLong, help: "Comma-separated tags, each with an optional color name or number (e.g., 'work,important' or 'work:blue,important:6')")
     var tags: String
 
     func run() throws {
@@ -39,8 +39,8 @@ struct TagsSet: ParsableCommand {
             if trimmed.contains(":") {
                 let components = trimmed.components(separatedBy: ":")
                 let name = components[0]
-                guard let color = Int(components[1]), color >= 0, color <= 7 else {
-                    throw TagsError.invalidColor(Int(components[1]) ?? -1)
+                guard let color = TagsService.FinderTag.colorCode(from: components[1]) else {
+                    throw TagsError.invalidColor(components[1])
                 }
                 return TagsService.FinderTag(name: name, color: color)
             } else {
