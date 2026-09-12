@@ -69,6 +69,40 @@ final class ReminderModelTests: XCTestCase {
         return try! JSONDecoder().decode(Reminder.self, from: data)
     }
 
+    private func makeReminder(dueDate: Date, hasDueTime: Bool?) -> Reminder {
+        var dict: [String: Any] = [
+            "id": "test-id",
+            "title": "Pay rent",
+            "listName": "Home",
+            "isCompleted": false,
+            "priority": 0,
+            "priorityLevel": 0,
+            "hasRecurrence": false,
+            "hasAlarms": false,
+            "dueDate": dueDate.timeIntervalSinceReferenceDate,
+        ]
+        if let hasDueTime = hasDueTime { dict["hasDueTime"] = hasDueTime }
+        let data = try! JSONSerialization.data(withJSONObject: dict)
+        return try! JSONDecoder().decode(Reminder.self, from: data)
+    }
+
+    func testAllDayDueDateShowsNoTime() {
+        let due = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let reminder = makeReminder(dueDate: due, hasDueTime: false)
+
+        XCTAssertEqual(reminder.dueDateString, DateFormatters.fullDate.string(from: due))
+    }
+
+    func testTimedDueDateShowsTheTime() {
+        let due = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+        XCTAssertEqual(makeReminder(dueDate: due, hasDueTime: true).dueDateString,
+                       DateFormatters.fullDateTime.string(from: due))
+        // JSON from before hasDueTime existed keeps the old rendering.
+        XCTAssertEqual(makeReminder(dueDate: due, hasDueTime: nil).dueDateString,
+                       DateFormatters.fullDateTime.string(from: due))
+    }
+
     func testFormattedIncomplete() {
         let reminder = makeReminder(isCompleted: false)
         let output = reminder.formatted()

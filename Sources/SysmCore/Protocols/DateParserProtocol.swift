@@ -85,6 +85,13 @@ public protocol DateParserProtocol: Sendable {
     /// - Relative dates use the current date/time as reference
     func parse(_ input: String) -> Date?
 
+    /// Whether the input names a time of day as well as a date.
+    ///
+    /// - Parameter input: The same text passed to ``parse(_:)``.
+    /// - Returns: `true` for "tomorrow 9am" or "2026-01-15 14:30"; `false` for
+    ///   "tomorrow", "friday", or "2026-01-15".
+    func includesTime(_ input: String) -> Bool
+
     // MARK: - Time Parsing
 
     /// Extracts and parses a time component from text.

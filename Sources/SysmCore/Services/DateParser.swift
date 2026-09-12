@@ -115,6 +115,17 @@ public struct DateParser: DateParserProtocol {
         return parseTime(from: text, baseDate: now)
     }
 
+    /// Whether the input names a time of day as well as a date.
+    ///
+    /// "tomorrow", "friday", and "2026-01-15" name only a day; "tomorrow 9am"
+    /// and "2026-01-15 14:30" include a time. ``parse(_:)`` returns a date
+    /// either way, so callers that treat date-only input differently, such as
+    /// all-day reminders, ask here.
+    public func includesTime(_ input: String) -> Bool {
+        let text = input.lowercased().trimmingCharacters(in: .whitespaces)
+        return parseTime(from: text, baseDate: Date()) != nil
+    }
+
     /// Extracts and parses a time component from text.
     /// - Parameters:
     ///   - text: Text potentially containing a time specification.
