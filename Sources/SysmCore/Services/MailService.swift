@@ -156,6 +156,9 @@ public struct MailService: MailServiceProtocol {
                 end try
                 set msgSubject to subject of msg
                 set msgFrom to sender of msg
+                -- Join recipient lists with ", "; the default empty delimiter ran
+                -- addresses together (alice@example.combob@example.com).
+                set AppleScript's text item delimiters to ", "
                 set msgTo to (address of to recipients of msg) as string
                 set msgDate to (date received of msg) as string
                 set msgContent to content of msg
@@ -170,6 +173,7 @@ public struct MailService: MailServiceProtocol {
                         set msgCc to ccList as string
                     end if
                 end try
+                set AppleScript's text item delimiters to ""
 
                 -- Get reply-to
                 set msgReplyTo to ""
