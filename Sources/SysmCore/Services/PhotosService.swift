@@ -485,26 +485,19 @@ public actor PhotosService: PhotosServiceProtocol {
     public func listPeople() async throws -> [PhotoPerson] {
         try await ensureAccess()
 
+        // People are not user albums. This used to list every top-level album
+        // whose title lacked "People", so "Vacation 2024" came back as a person.
+        // The Faces smart folder is the only people container PhotoKit exposes.
         var people: [PhotoPerson] = []
+        let faceFolders = PHCollectionList.fetchCollectionLists(with: .smartFolder, subtype: .smartFolderFaces, options: nil)
 
-        // Fetch people using person type
-        let personOptions = PHFetchOptions()
-        let personCollections = PHCollection.fetchTopLevelUserCollections(with: personOptions)
-
-        personCollections.enumerateObjects { collection, _, _ in
-            if let personCollection = collection as? PHAssetCollection,
-               personCollection.assetCollectionType == .album,
-               personCollection.localizedTitle?.contains("People") == false {
-
-                // This is a workaround - Photos doesn't expose person collections directly via PhotoKit on macOS
-                // We can only access them indirectly
-                let assetCount = PHAsset.fetchAssets(in: personCollection, options: nil).count
-                if assetCount > 0 {
-                    people.append(PhotoPerson(
-                        id: personCollection.localIdentifier,
-                        name: personCollection.localizedTitle,
-                        photoCount: assetCount
-                    ))
+        for folderIndex in 0..<faceFolders.count {
+            let faces = PHCollection.fetchCollections(in: faceFolders.object(at: folderIndex), options: nil)
+            for faceIndex in 0..<faces.count {
+                guard let face = faces.object(at: faceIndex) as? PHAssetCollection else { continue }
+                let photoCount = PHAsset.fetchAssets(in: face, options: nil).count
+                if photoCount > 0 {
+                    people.append(PhotoPerson(id: face.localIdentifier, name: face.localizedTitle, photoCount: photoCount))
                 }
             }
         }
