@@ -50,7 +50,7 @@ struct RemindersAdd: AsyncParsableCommand {
     @Option(name: .long, help: "Number of occurrences for recurring reminders")
     var repeatCount: Int?
 
-    @Option(name: .long, parsing: .remaining, help: "Alarm offset in minutes (e.g., 15 for 15 minutes before, can be repeated for multiple alarms)")
+    @Option(name: .long, help: "Alarm offset in minutes (e.g., 15 for 15 minutes before); repeat the option for multiple alarms")
     var alarm: [Int] = []
 
     @Option(name: .long, help: "Location name for location-based alarm")
