@@ -3,6 +3,50 @@ import XCTest
 
 final class CalendarServiceTests: XCTestCase {
 
+    private struct Occurrence: Equatable {
+        let start: Date
+        let end: Date
+    }
+
+    private let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+
+    private func occurrence(startingIn hours: Double, lasting duration: Double = 1) -> Occurrence {
+        let start = now.addingTimeInterval(hours * 3600)
+        return Occurrence(start: start, end: start.addingTimeInterval(duration * 3600))
+    }
+
+    private func preferred(_ occurrences: [Occurrence]) -> Occurrence? {
+        CalendarService.preferredOccurrence(of: occurrences, now: now, start: \.start, end: \.end)
+    }
+
+    // MARK: - preferredOccurrence
+
+    func testPicksTheNextOccurrenceWhateverTheInputOrder() {
+        let past = occurrence(startingIn: -48)
+        let next = occurrence(startingIn: 20)
+        let later = occurrence(startingIn: 44)
+
+        XCTAssertEqual(preferred([later, past, next]), next)
+        XCTAssertEqual(preferred([next, later, past]), next)
+    }
+
+    func testAnOccurrenceInProgressCountsAsNext() {
+        let current = occurrence(startingIn: -0.5)
+
+        XCTAssertEqual(preferred([occurrence(startingIn: 24), current]), current)
+    }
+
+    func testFallsBackToTheLatestPastOccurrence() {
+        let older = occurrence(startingIn: -72)
+        let newer = occurrence(startingIn: -24)
+
+        XCTAssertEqual(preferred([newer, older]), newer)
+    }
+
+    func testNoOccurrencesGiveNil() {
+        XCTAssertNil(preferred([]))
+    }
+
     // MARK: - validationWindows
 
     private func year(_ date: Date) -> Int {
