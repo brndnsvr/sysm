@@ -9,16 +9,16 @@ public struct FocusService: FocusServiceProtocol {
     // MARK: - Status
 
     public func getStatus() throws -> FocusStatusInfo {
-        // Check if DND is enabled via defaults
-        let dndEnabled = isDNDEnabled()
-
-        // Try to get active focus mode name
-        let activeFocus = getActiveFocusMode()
+        // The focus that is on comes from Assertions.json and its name from
+        // ModeConfigurations.json. Do Not Disturb is one of those modes, so its
+        // state comes from the same record.
+        let identifier = activeFocusIdentifier()
+        let names = (try? modeNamesByIdentifier()) ?? [:]
 
         return FocusStatusInfo(
-            isActive: dndEnabled || activeFocus != nil,
-            dndEnabled: dndEnabled,
-            activeFocus: activeFocus
+            isActive: identifier != nil,
+            dndEnabled: identifier == Self.doNotDisturbIdentifier,
+            activeFocus: identifier.map { names[$0] ?? $0 }
         )
     }
 
@@ -60,39 +60,7 @@ public struct FocusService: FocusServiceProtocol {
     // MARK: - Focus Modes List
 
     public func listFocusModes() throws -> [String] {
-        // Focus modes are stored in user defaults
-        // Also check ModeConfigurations.json for custom focus modes
-        let modesPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/DoNotDisturb/DB/ModeConfigurations.json")
-
-        var modes = ["Do Not Disturb"]  // Always available
-
-        // Try to read custom focus modes
-        if FileManager.default.fileExists(atPath: modesPath.path) {
-            do {
-                let data = try Data(contentsOf: modesPath)
-                if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-                   let modeList = json["data"] as? [[String: Any]] {
-                    for mode in modeList {
-                        if let name = mode["name"] as? String {
-                            modes.append(name)
-                        }
-                    }
-                }
-            } catch {
-                // Ignore parsing errors, just return default modes
-            }
-        }
-
-        // Add common system focus modes that might be available
-        let systemModes = ["Sleep", "Personal", "Work", "Driving", "Fitness", "Gaming", "Mindfulness", "Reading"]
-        for mode in systemModes {
-            if !modes.contains(mode) {
-                modes.append(mode)
-            }
-        }
-
-        return modes.sorted()
+        Array(try modeNamesByIdentifier().values).sorted()
     }
 
     // MARK: - Focus Mode Activation
@@ -155,65 +123,68 @@ public struct FocusService: FocusServiceProtocol {
 
     // MARK: - Private Helpers
 
-    private func isDNDEnabled() -> Bool {
+    static let doNotDisturbIdentifier = "com.apple.donotdisturb.mode.default"
+
+    private static var databaseURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/DoNotDisturb/DB")
+    }
+
+    /// Focus names keyed by mode identifier, from ModeConfigurations.json.
+    private func modeNamesByIdentifier() throws -> [String: String] {
+        let url = Self.databaseURL.appendingPathComponent("ModeConfigurations.json")
         do {
-            let result = try Shell.execute(
-                "/usr/bin/defaults",
-                args: ["-currentHost", "read", "com.apple.notificationcenterui", "doNotDisturb"]
-            )
-            return result.stdout == "1"
+            return try Self.modeNamesByIdentifier(fromModeConfigurations: Data(contentsOf: url))
         } catch {
-            return false
+            throw FocusError.notSupported("Could not read Focus modes from \(url.path): \(error.localizedDescription)")
         }
     }
 
-    private func getActiveFocusMode() -> String? {
-        // Try to read current focus mode from assertions
-        let assertionsPath = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/DoNotDisturb/DB/Assertions.json")
+    /// Parses ModeConfigurations.json.
+    ///
+    /// Modes live under data[].modeConfigurations, a dictionary keyed by mode
+    /// identifier whose values hold mode.name and mode.modeIdentifier. The old
+    /// reader looked for data[].name, which the file does not have, so the
+    /// list was only hardcoded names; the hardcoded identifiers for Sleep and
+    /// Driving were wrong too.
+    static func modeNamesByIdentifier(fromModeConfigurations data: Data) throws -> [String: String] {
+        guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let stores = json["data"] as? [[String: Any]] else {
+            throw FocusError.notSupported("ModeConfigurations.json has no data array")
+        }
 
-        guard FileManager.default.fileExists(atPath: assertionsPath.path) else {
+        var names: [String: String] = [:]
+        for store in stores {
+            guard let configurations = store["modeConfigurations"] as? [String: Any] else { continue }
+            for (key, value) in configurations {
+                guard let mode = (value as? [String: Any])?["mode"] as? [String: Any],
+                      let name = mode["name"] as? String else { continue }
+                names[mode["modeIdentifier"] as? String ?? key] = name
+            }
+        }
+        return names
+    }
+
+    /// The identifier of the focus that is on, from Assertions.json, or nil.
+    private func activeFocusIdentifier() -> String? {
+        let url = Self.databaseURL.appendingPathComponent("Assertions.json")
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return Self.activeFocusIdentifier(fromAssertions: data)
+    }
+
+    static func activeFocusIdentifier(fromAssertions data: Data) -> String? {
+        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let stores = json["data"] as? [[String: Any]] else {
             return nil
         }
-
-        do {
-            let data = try Data(contentsOf: assertionsPath)
-            if let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let storeData = json["data"] as? [[String: Any]] {
-                for assertion in storeData {
-                    if let storeAssertionRecords = assertion["storeAssertionRecords"] as? [[String: Any]] {
-                        for record in storeAssertionRecords {
-                            if let assertionDetails = record["assertionDetails"] as? [String: Any],
-                               let assertionDetailsModeIdentifier = assertionDetails["assertionDetailsModeIdentifier"] as? String {
-                                // Convert identifier to friendly name
-                                return friendlyFocusName(from: assertionDetailsModeIdentifier)
-                            }
-                        }
-                    }
+        for store in stores {
+            for record in store["storeAssertionRecords"] as? [[String: Any]] ?? [] {
+                if let details = record["assertionDetails"] as? [String: Any],
+                   let identifier = details["assertionDetailsModeIdentifier"] as? String {
+                    return identifier
                 }
             }
-        } catch {
-            // Ignore errors
         }
-
         return nil
-    }
-
-    private func friendlyFocusName(from identifier: String) -> String {
-        // Map system identifiers to friendly names
-        let mapping: [String: String] = [
-            "com.apple.donotdisturb.mode.default": "Do Not Disturb",
-            "com.apple.focus.sleep": "Sleep",
-            "com.apple.focus.personal-time": "Personal",
-            "com.apple.focus.work": "Work",
-            "com.apple.focus.driving": "Driving",
-            "com.apple.focus.fitness": "Fitness",
-            "com.apple.focus.gaming": "Gaming",
-            "com.apple.focus.mindfulness": "Mindfulness",
-            "com.apple.focus.reading": "Reading",
-        ]
-
-        return mapping[identifier] ?? identifier
     }
 
     private func toggleDNDViaControlCenter(enable: Bool) throws {
