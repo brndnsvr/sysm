@@ -43,12 +43,9 @@ public struct ICSGenerator {
 
         lines.append("BEGIN:VEVENT")
 
-        // UID
-        if let uid = event.eventIdentifier {
-            lines.append("UID:\(uid)")
-        } else {
-            lines.append("UID:\(UUID().uuidString)")
-        }
+        // UID: the external identifier is the calendar item's iCalendar UID,
+        // the one other calendars and a later import can match on.
+        lines.append("UID:\(event.calendarItemExternalIdentifier ?? event.eventIdentifier ?? UUID().uuidString)")
 
         // Dates
         if event.isAllDay {

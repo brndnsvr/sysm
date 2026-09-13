@@ -308,17 +308,18 @@ public protocol CalendarServiceProtocol: Sendable {
     /// Imports events from an iCalendar (ICS) file.
     ///
     /// Parses iCalendar format and creates events in the specified calendar.
-    /// Skips events that already exist (based on UID).
+    /// Skips events the calendar already has: one whose external identifier is
+    /// the file's UID, or one with the same title, start, and end.
     ///
     /// - Parameters:
     ///   - icsContent: iCalendar formatted content (RFC 5545).
     ///   - calendarName: Calendar to import events into.
-    /// - Returns: Number of events successfully imported.
+    /// - Returns: How many events were imported and how many were skipped.
     /// - Throws:
     ///   - ``CalendarError/accessDenied`` if calendar access not granted.
     ///   - ``CalendarError/calendarNotFound(_:)`` if specified calendar doesn't exist.
     ///   - ``CalendarError/invalidDateFormat(_:)`` if ICS contains invalid dates.
-    func importFromICS(icsContent: String, calendarName: String) async throws -> Int
+    func importFromICS(icsContent: String, calendarName: String) async throws -> ICSImportSummary
 }
 
 // MARK: - Default Implementations

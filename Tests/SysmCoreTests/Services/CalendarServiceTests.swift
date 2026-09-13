@@ -80,4 +80,16 @@ final class CalendarServiceTests: XCTestCase {
         XCTAssertEqual(gaps.first.map { year($0.0.end) }, CalendarService.validYearRange.lowerBound)
         XCTAssertEqual(gaps.first.map { year($0.1.start) }, CalendarService.validYearRange.upperBound + 1)
     }
+
+    // MARK: - ICS import duplicates
+
+    func testImportRecognizesAnEventAlreadyInTheCalendar() {
+        let start = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let event = ICSEventData(title: "Standup", startDate: start, endDate: start.addingTimeInterval(900),
+                                 isAllDay: false, location: nil, notes: nil, uid: "abc", organizer: nil, attendees: [])
+
+        XCTAssertTrue(CalendarService.matchesExisting(event, [(title: "Standup", start: start, end: start.addingTimeInterval(900))]))
+        XCTAssertFalse(CalendarService.matchesExisting(event, [(title: "Standup", start: start, end: start.addingTimeInterval(1800))]))
+        XCTAssertFalse(CalendarService.matchesExisting(event, [(title: "Retro", start: start, end: start.addingTimeInterval(900))]))
+    }
 }
