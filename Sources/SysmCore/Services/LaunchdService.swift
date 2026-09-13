@@ -142,11 +142,23 @@ public struct LaunchdService: LaunchdServiceProtocol {
             env: env
         )
 
+        // Replacing a loaded job: unload it first, or launchd keeps running the
+        // old definition and ignores the new plist until the next login.
+        if force {
+            try unloadJob(label: label)
+        }
+
         // Write plist
         try plist.write(to: URL(fileURLWithPath: plistPath), options: .atomic)
 
-        // Load into launchd
-        try loadJob(plistPath: plistPath)
+        // Load into launchd. A plist launchd rejects must not stay behind to
+        // load at the next login.
+        do {
+            try loadJob(plistPath: plistPath, label: label)
+        } catch {
+            try? FileManager.default.removeItem(atPath: plistPath)
+            throw error
+        }
 
         return Job(
             name: name,
@@ -174,7 +186,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         }
 
         // Unload from launchd
-        try unloadJob(plistPath: plistPath)
+        try unloadJob(label: label)
 
         // Remove plist
         try FileManager.default.removeItem(atPath: plistPath)
@@ -189,7 +201,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
             throw LaunchdError.jobNotFound(name)
         }
 
-        try loadJob(plistPath: plistPath)
+        try loadJob(plistPath: plistPath, label: label)
     }
 
     public func disableJob(name: String) throws {
@@ -201,7 +213,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
             throw LaunchdError.jobNotFound(name)
         }
 
-        try unloadJob(plistPath: plistPath)
+        try unloadJob(label: label)
     }
 
     public func runJobNow(name: String) throws {
@@ -377,14 +389,28 @@ public struct LaunchdService: LaunchdServiceProtocol {
         }
     }
 
-    private func loadJob(plistPath: String) throws {
-        // launchctl load returns 0 even if already loaded, so we ignore exit code
-        _ = try? Shell.execute("/bin/launchctl", args: ["load", plistPath])
+    private var guiDomain: String { "gui/\(getuid())" }
+
+    private func loadJob(plistPath: String, label: String) throws {
+        // bootstrap fails with EIO for a job that is already loaded.
+        guard !isJobLoaded(label: label) else { return }
+        try launchctl(["bootstrap", guiDomain, plistPath])
     }
 
-    private func unloadJob(plistPath: String) throws {
-        // launchctl unload may fail if not loaded, that's ok
-        _ = try? Shell.execute("/bin/launchctl", args: ["unload", plistPath])
+    private func unloadJob(label: String) throws {
+        guard isJobLoaded(label: label) else { return }
+        try launchctl(["bootout", "\(guiDomain)/\(label)"])
+    }
+
+    /// Runs launchctl and throws its stderr on a non-zero exit. The legacy
+    /// load and unload subcommands exit 0 even when launchd rejects a job
+    /// ("Load failed: 5: Input/output error"), which hid every failure.
+    private func launchctl(_ arguments: [String]) throws {
+        do {
+            _ = try Shell.run("/bin/launchctl", args: arguments)
+        } catch Shell.Error.executionFailed(_, let stderr) {
+            throw LaunchdError.launchctlFailed(stderr.trimmingCharacters(in: .whitespacesAndNewlines))
+        }
     }
 
     private func parseJob(plistPath: String) throws -> Job {
@@ -461,7 +487,8 @@ public struct LaunchdService: LaunchdServiceProtocol {
     }
 
     private func isJobLoaded(label: String) -> Bool {
-        guard let result = try? Shell.execute("/bin/launchctl", args: ["list", label]) else {
+        // print exits 0 for a loaded job and 113 for an unknown label.
+        guard let result = try? Shell.execute("/bin/launchctl", args: ["print", "\(guiDomain)/\(label)"]) else {
             return false
         }
         return result.exitCode == 0
