@@ -129,18 +129,25 @@ public struct NetworkService: NetworkServiceProtocol {
 
     public func getDNS() throws -> [String] {
         let output = try Shell.run("/usr/sbin/scutil", args: ["--dns"])
+        return Self.dnsServers(fromScutil: output)
+    }
+
+    /// Nameserver addresses from `scutil --dns` output, in order, without duplicates.
+    ///
+    /// Lines look like "nameserver[0] : fe80::1%en0". Splitting on every
+    /// colon cut an IPv6 address down to its first group, so only the first
+    /// colon, which ends the key, separates it from the address.
+    static func dnsServers(fromScutil output: String) -> [String] {
         var servers: [String] = []
 
         for line in output.split(separator: "\n") {
-            let trimmed = String(line).trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("nameserver[") {
-                let parts = trimmed.split(separator: ":")
-                if parts.count >= 2 {
-                    let server = String(parts[1]).trimmingCharacters(in: .whitespaces)
-                    if !servers.contains(server) {
-                        servers.append(server)
-                    }
-                }
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("nameserver["), let separator = trimmed.firstIndex(of: ":") else {
+                continue
+            }
+            let server = trimmed[trimmed.index(after: separator)...].trimmingCharacters(in: .whitespaces)
+            if !server.isEmpty && !servers.contains(server) {
+                servers.append(server)
             }
         }
 
