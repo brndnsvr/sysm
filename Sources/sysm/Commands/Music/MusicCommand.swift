@@ -17,7 +17,6 @@ struct MusicCommand: ParsableCommand {
             MusicPlaylists.self,
             MusicPlayPlaylist.self,
             MusicPlayTrack.self,
-            MusicPlayNext.self,
             MusicSearch.self,
         ]
     )

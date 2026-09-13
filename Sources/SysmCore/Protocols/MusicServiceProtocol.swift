@@ -249,20 +249,4 @@ public protocol MusicServiceProtocol: Sendable {
     ///   - ``MusicError/musicNotRunning`` if Music.app is not running.
     ///   - ``MusicError/trackNotFound(_:)`` if no matching track found.
     func playTrack(_ query: String) throws
-
-    /// Adds a track to play next in the queue.
-    ///
-    /// Searches for a track and adds it to play immediately after the current track.
-    ///
-    /// - Parameter query: Search query to find the track.
-    /// - Throws:
-    ///   - ``MusicError/musicNotRunning`` if Music.app is not running.
-    ///   - ``MusicError/trackNotFound(_:)`` if no matching track found.
-    ///
-    /// ## Example
-    ///
-    /// ```swift
-    /// try service.playNext("Bohemian Rhapsody")
-    /// ```
-    func playNext(_ query: String) throws
 }
