@@ -11,9 +11,12 @@ struct NetworkStatus_: ParsableCommand {
     @Flag(name: .long, help: "Output as JSON")
     var json = false
 
+    @Flag(name: .long, help: "Also look up the public IP address (sends a request to ifconfig.me)")
+    var externalIP = false
+
     func run() throws {
         let service = Services.network()
-        let status = try service.getStatus()
+        let status = try service.getStatus(includeExternalIP: externalIP)
 
         if json {
             try OutputFormatter.printJSON(status)

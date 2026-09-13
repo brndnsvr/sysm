@@ -4,7 +4,7 @@ import Foundation
 public struct NetworkService: NetworkServiceProtocol {
     public init() {}
 
-    public func getStatus() throws -> NetworkStatus {
+    public func getStatus(includeExternalIP: Bool = false) throws -> NetworkStatus {
         let ifList = try Shell.run("/sbin/ifconfig", args: ["-l"])
         let allInterfaces = ifList.split(separator: " ").map(String.init)
 
@@ -33,9 +33,10 @@ public struct NetworkService: NetworkServiceProtocol {
 
         let connected = !activeInterfaces.isEmpty
 
-        // Get external IP
+        // The public address comes from ifconfig.me, a third-party service, so
+        // it is looked up only when asked for.
         var externalIP: String?
-        if let ip = try? Shell.run("/usr/bin/curl", args: ["-s", "--max-time", "3", "ifconfig.me"]) {
+        if includeExternalIP, let ip = try? Shell.run("/usr/bin/curl", args: ["-s", "--max-time", "3", "ifconfig.me"]) {
             let trimmed = ip.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty {
                 externalIP = trimmed
