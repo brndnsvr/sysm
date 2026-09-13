@@ -44,6 +44,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         case launchctlFailed(String)
         case jobAlreadyExists(String)
         case invalidName(String)
+        case unsupportedCron(String, String)
 
         public var errorDescription: String? {
             switch self {
@@ -60,6 +61,8 @@ public struct LaunchdService: LaunchdServiceProtocol {
             case .invalidName(let name):
                 return "Invalid job name \(name.debugDescription). Use up to 128 letters, digits, "
                     + "dots, underscores, or hyphens, starting with a letter or digit"
+            case .unsupportedCron(let expr, let reason):
+                return "Unsupported cron expression '\(expr)': \(reason)"
             }
         }
     }
@@ -100,7 +103,7 @@ public struct LaunchdService: LaunchdServiceProtocol {
         // Parse cron if provided
         var schedule: Job.Schedule?
         if let cronExpr = cron {
-            schedule = try parseCron(cronExpr)
+            schedule = try Self.parseCron(cronExpr)
         } else if let intervalSecs = interval {
             schedule = Job.Schedule(
                 minute: nil,
@@ -287,23 +290,38 @@ public struct LaunchdService: LaunchdServiceProtocol {
 
     // MARK: - Private
 
-    private func parseCron(_ expr: String) throws -> Job.Schedule {
+    /// Parses a five-field cron expression into a launchd calendar schedule.
+    ///
+    /// A sysm job writes one StartCalendarInterval dictionary, which holds a
+    /// single value per field, so only plain numbers and * are accepted.
+    /// Steps, ranges, lists, and names used to fall through to *, so
+    /// "*/5 * * * *" quietly ran every minute; they are now refused with the
+    /// reason, as are numbers outside a field's range.
+    static func parseCron(_ expr: String) throws -> Job.Schedule {
         let parts = expr.split(separator: " ").map(String.init)
         guard parts.count == 5 else {
             throw LaunchdError.invalidCron(expr)
         }
 
-        func parseField(_ field: String) -> Int? {
+        func parseField(_ index: Int, _ name: String, _ range: ClosedRange<Int>) throws -> Int? {
+            let field = parts[index]
             if field == "*" { return nil }
-            return Int(field)
+            guard let value = Int(field) else {
+                let hint = field.contains("/") ? "; for a repeating interval use --every <seconds>" : ""
+                throw LaunchdError.unsupportedCron(expr, "\(name) '\(field)' is not a single number or *\(hint)")
+            }
+            guard range.contains(value) else {
+                throw LaunchdError.unsupportedCron(expr, "\(name) \(value) is outside \(range.lowerBound)-\(range.upperBound)")
+            }
+            return value
         }
 
         return Job.Schedule(
-            minute: parseField(parts[0]),
-            hour: parseField(parts[1]),
-            day: parseField(parts[2]),
-            weekday: parseField(parts[4]),
-            month: parseField(parts[3]),
+            minute: try parseField(0, "minute", 0...59),
+            hour: try parseField(1, "hour", 0...23),
+            day: try parseField(2, "day of month", 1...31),
+            weekday: try parseField(4, "weekday", 0...7),
+            month: try parseField(3, "month", 1...12),
             interval: nil
         )
     }

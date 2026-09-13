@@ -18,7 +18,7 @@ struct ScheduleAdd: ParsableCommand {
     @Option(name: .long, help: "Command to execute")
     var cmd: String
 
-    @Option(name: .long, help: "Cron schedule (M H D Mo W)")
+    @Option(name: .long, help: "Cron schedule (M H D Mo W); each field is a number or *. Use --every for intervals")
     var cron: String?
 
     @Option(name: .long, help: "Run every N seconds")
