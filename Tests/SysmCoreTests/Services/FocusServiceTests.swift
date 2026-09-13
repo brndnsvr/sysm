@@ -86,4 +86,26 @@ final class FocusServiceTests: XCTestCase {
         let idle = #"{"data": [{"storeInvalidationRecords": [], "storeInvalidationRequestRecords": []}]}"#
         XCTAssertNil(FocusService.activeFocusIdentifier(fromAssertions: Data(idle.utf8)))
     }
+
+    // MARK: - Do Not Disturb
+
+    func testEnableDNDRunsTheShortcutOnly() throws {
+        try service.enableDND()
+
+        XCTAssertEqual(mock.executedScripts.count, 1)
+        XCTAssertTrue(mock.executedScripts[0].script.contains(#"run shortcut "Turn On Do Not Disturb""#))
+    }
+
+    func testMissingDNDShortcutFailsWithoutGUIScripting() {
+        mock.errorToThrow = AppleScriptError.executionFailed("shortcut not found")
+
+        XCTAssertThrowsError(try service.disableDND()) { error in
+            guard case FocusError.toggleFailed(let message) = error else {
+                return XCTFail("expected toggleFailed, got \(error)")
+            }
+            XCTAssertTrue(message.contains("Turn Off Do Not Disturb"), message)
+        }
+        // The removed fallback scripted Control Center through System Events.
+        XCTAssertFalse(mock.executedScripts.contains { $0.script.contains("System Events") })
+    }
 }

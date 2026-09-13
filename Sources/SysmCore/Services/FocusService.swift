@@ -25,35 +25,27 @@ public struct FocusService: FocusServiceProtocol {
     // MARK: - DND Control
 
     public func enableDND() throws {
-        // Use shortcuts to enable DND (most reliable method on modern macOS)
-        let script = """
-        tell application "Shortcuts Events"
-            run shortcut "Turn On Do Not Disturb"
-        end tell
-        """
-
-        // Try shortcuts first
-        do {
-            _ = try runAppleScript(script)
-            return
-        } catch {
-            // Fall back to Control Center approach
-            try toggleDNDViaControlCenter(enable: true)
-        }
+        try runDNDShortcut("Turn On Do Not Disturb")
     }
 
     public func disableDND() throws {
+        try runDNDShortcut("Turn Off Do Not Disturb")
+    }
+
+    /// Runs one of the Do Not Disturb shortcuts. There is no fallback: the old
+    /// one GUI-scripted the macOS 13 Control Center.
+    private func runDNDShortcut(_ name: String) throws {
         let script = """
         tell application "Shortcuts Events"
-            run shortcut "Turn Off Do Not Disturb"
+            run shortcut "\(name)"
         end tell
         """
-
         do {
             _ = try runAppleScript(script)
-            return
         } catch {
-            try toggleDNDViaControlCenter(enable: false)
+            throw FocusError.toggleFailed(
+                "Could not run the '\(name)' shortcut. Create a Shortcut with that name that sets Do Not Disturb."
+            )
         }
     }
 
@@ -185,31 +177,6 @@ public struct FocusService: FocusServiceProtocol {
             }
         }
         return nil
-    }
-
-    private func toggleDNDViaControlCenter(enable: Bool) throws {
-        // Use System Events to click Control Center and toggle DND
-        // This is fragile but works as a fallback
-        let action = enable ? "turn on" : "turn off"
-        let script = """
-        tell application "System Events"
-            tell application process "ControlCenter"
-                -- Click the Focus menu item in Control Center
-                click menu bar item "Focus" of menu bar 1
-                delay 0.5
-                -- Look for Do Not Disturb and click it
-                try
-                    click checkbox "Do Not Disturb" of group 1 of window "Control Center"
-                end try
-            end tell
-        end tell
-        """
-
-        do {
-            _ = try runAppleScript(script)
-        } catch {
-            throw FocusError.toggleFailed("Could not \(action) Do Not Disturb. Try using a Shortcut instead.")
-        }
     }
 
     private func runAppleScript(_ script: String) throws -> String {
