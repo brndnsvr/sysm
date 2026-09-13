@@ -240,4 +240,38 @@ final class MailServiceTests: XCTestCase {
         XCTAssertLessThan(setComma.lowerBound, toList.lowerBound)
         XCTAssertLessThan(ccJoin.lowerBound, reset.lowerBound)
     }
+
+    // MARK: - Recipient lists (sending)
+
+    func testRecipientAddressesSplitOnCommasAndSemicolons() {
+        XCTAssertEqual(MailService.recipientAddresses(" a@x.com, b@y.com;c@z.com ,, "), ["a@x.com", "b@y.com", "c@z.com"])
+    }
+
+    func testSendMessageAddsOneRecipientPerAddress() throws {
+        mock.defaultResponse = "ok"
+        try service.sendMessage(to: "a@x.com, b@y.com", cc: "c@z.com", subject: "Hi", body: "Body")
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains(#"make new to recipient at end of to recipients with properties {address:"a@x.com"}"#), script)
+        XCTAssertTrue(script.contains(#"make new to recipient at end of to recipients with properties {address:"b@y.com"}"#), script)
+        XCTAssertTrue(script.contains(#"make new cc recipient at end of cc recipients with properties {address:"c@z.com"}"#), script)
+        XCTAssertFalse(script.contains("a@x.com, b@y.com"), script)
+    }
+
+    func testSendMessageWithOnlySeparatorsHasNoRecipients() {
+        XCTAssertThrowsError(try service.sendMessage(to: " , ", subject: "Hi", body: "Body")) { error in
+            guard case MailError.noRecipientsSpecified = error else {
+                return XCTFail("Expected noRecipientsSpecified, got \(error)")
+            }
+        }
+    }
+
+    func testForwardAddsOneRecipientPerAddress() throws {
+        mock.defaultResponse = "67890"
+        _ = try service.forward(messageId: "12345", to: "a@x.com; b@y.com", body: "FYI", send: false)
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains(#"to recipients of theForward with properties {address:"a@x.com"}"#), script)
+        XCTAssertTrue(script.contains(#"to recipients of theForward with properties {address:"b@y.com"}"#), script)
+    }
 }

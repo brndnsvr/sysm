@@ -8,7 +8,7 @@ struct MailSend: ParsableCommand {
         abstract: "Send an email message"
     )
 
-    @Option(name: .long, help: "Recipient email address")
+    @Option(name: .long, help: "Recipient email addresses, separated by commas")
     var to: String
 
     @Option(name: .long, help: "Email subject")
@@ -23,10 +23,10 @@ struct MailSend: ParsableCommand {
     @Option(name: .long, help: "Path to HTML file for body")
     var htmlFile: String?
 
-    @Option(name: .long, help: "CC recipient email address")
+    @Option(name: .long, help: "CC recipient email addresses, separated by commas")
     var cc: String?
 
-    @Option(name: .long, help: "BCC recipient email address")
+    @Option(name: .long, help: "BCC recipient email addresses, separated by commas")
     var bcc: String?
 
     @Option(name: .long, help: "Send from account name")
