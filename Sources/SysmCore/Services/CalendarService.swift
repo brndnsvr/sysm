@@ -409,9 +409,23 @@ public actor CalendarService: CalendarServiceProtocol {
         }
 
         let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: [calendar])
-        let ekEvents = store.events(matching: predicate)
 
-        return ICSGenerator.generate(events: ekEvents, calendarName: calendarName)
+        // events(matching:) returns every occurrence in the range. A repeating
+        // series is exported once, from its first occurrence, with its rule;
+        // an occurrence edited on its own stays as an exception.
+        var seriesSeen = Set<String>()
+        var exported: [EKEvent] = []
+        for event in store.events(matching: predicate).sorted(by: { $0.startDate < $1.startDate }) {
+            guard event.hasRecurrenceRules, !event.isDetached, let id = event.eventIdentifier else {
+                exported.append(event)
+                continue
+            }
+            if seriesSeen.insert(id).inserted {
+                exported.append(store.event(withIdentifier: id) ?? event)
+            }
+        }
+
+        return ICSGenerator.generate(events: exported, calendarName: calendarName)
     }
 
     public func importFromICS(icsContent: String, calendarName: String) async throws -> Int {
