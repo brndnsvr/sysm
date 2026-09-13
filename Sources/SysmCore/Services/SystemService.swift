@@ -123,7 +123,7 @@ public struct SystemService: SystemServiceProtocol {
             throw SystemError.commandFailed("vm_stat")
         }
 
-        let pageSize = 16384 // Apple Silicon default
+        let pageSize = Self.vmStatPageSize(vmOutput) ?? Int(getpagesize())
         var active: Int = 0
         var inactive: Int = 0
         var wired: Int = 0
@@ -156,6 +156,18 @@ public struct SystemService: SystemServiceProtocol {
             inactiveGB: Double(inactiveMB) / 1024.0,
             wiredGB: Double(wiredMB) / 1024.0
         )
+    }
+
+    /// The page size vm_stat counts in, from its header line:
+    /// "Mach Virtual Memory Statistics: (page size of 16384 bytes)".
+    ///
+    /// This was hardcoded to Apple silicon's 16 KiB, which made every figure
+    /// four times too large on Intel Macs, whose pages are 4 KiB.
+    static func vmStatPageSize(_ output: String) -> Int? {
+        guard let range = output.range(of: #"page size of (\d+) bytes"#, options: .regularExpression) else {
+            return nil
+        }
+        return Int(output[range].filter(\.isNumber))
     }
 
     // MARK: - Disk
