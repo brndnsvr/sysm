@@ -357,32 +357,44 @@ public actor PhotosService: PhotosServiceProtocol {
             throw PhotosError.exportFailed("Asset is not a video")
         }
 
-        let options = PHVideoRequestOptions()
-        options.version = .current
-        options.deliveryMode = .highQualityFormat
+        let resources = PHAssetResource.assetResources(for: asset)
+        guard let type = Self.preferredVideoResourceType(among: resources.map(\.type)),
+              let resource = resources.first(where: { $0.type == type }) else {
+            throw PhotosError.exportFailed("No video resource available")
+        }
+
+        // Staged beside the destination so rename(2) stays on one volume.
+        let destination = URL(fileURLWithPath: outputPath).standardizedFileURL
+        let staging = destination.deletingLastPathComponent()
+            .appendingPathComponent(".sysm-export-\(UUID().uuidString)")
+        let options = PHAssetResourceRequestOptions()
         options.isNetworkAccessAllowed = true
 
-        return try await withCheckedThrowingContinuation { continuation in
-            PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, info in
-                if let error = info?[PHImageErrorKey] as? Error {
-                    continuation.resume(throwing: PhotosError.exportFailed(error.localizedDescription))
-                    return
-                }
-
-                guard let urlAsset = avAsset as? AVURLAsset else {
-                    continuation.resume(throwing: PhotosError.exportFailed("Unable to access video data"))
-                    return
-                }
-
-                do {
-                    let outputURL = URL(fileURLWithPath: outputPath)
-                    try FileManager.default.copyItem(at: urlAsset.url, to: outputURL)
-                    continuation.resume(returning: ())
-                } catch {
-                    continuation.resume(throwing: PhotosError.exportFailed(error.localizedDescription))
-                }
-            }
+        do {
+            try await PHAssetResourceManager.default().writeData(for: resource, toFile: staging, options: options)
+        } catch {
+            try? FileManager.default.removeItem(at: staging)
+            throw PhotosError.exportFailed(error.localizedDescription)
         }
+
+        // rename(2) replaces whatever is at the destination, a symlink
+        // included, rather than following it, like photo export's writer.
+        guard Darwin.rename(staging.path, destination.path) == 0 else {
+            let code = errno
+            try? FileManager.default.removeItem(at: staging)
+            throw PhotosError.exportFailed(String(cString: strerror(code)))
+        }
+    }
+
+    /// The resource to export for a video: the edited rendition when there is
+    /// one, else the original.
+    ///
+    /// Requesting an AVAsset and requiring an AVURLAsset failed for slo-mo and
+    /// edited videos, which Photos hands back as compositions.
+    static func preferredVideoResourceType(among types: [PHAssetResourceType]) -> PHAssetResourceType? {
+        if types.contains(.fullSizeVideo) { return .fullSizeVideo }
+        if types.contains(.video) { return .video }
+        return nil
     }
 
     // MARK: - Metadata
