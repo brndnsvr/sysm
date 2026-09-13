@@ -33,23 +33,16 @@ final class MusicServiceTests: XCTestCase {
     }
 
     func testGetStatusStopped() throws {
-        // The actual AppleScript returns "stopped|||||||0|||0" for stopped state,
-        // which splits to < 6 parts, so getStatus() returns nil
-        mock.defaultResponse = "stopped|||||||0|||0"
-        let status = try service.getStatus()
-        XCTAssertNil(status, "Stopped response from actual AppleScript returns nil due to parsing")
-    }
+        // The stopped reply must come from the script itself; the old one had
+        // four fields and parsed as "no track information".
+        let stoppedReply = "|||||||||0|||0|||stopped"
+        mock.defaultResponse = stoppedReply
+        let status = try XCTUnwrap(service.getStatus())
 
-    func testGetStatusStoppedWithSixParts() throws {
-        // If the response had 6 fields (matching normal format), it would parse
-        mock.defaultResponse = "||||||||||0|||0|||stopped"
-        let status = try service.getStatus()
-        // Empty name + parts[5]=="stopped" triggers the stopped branch
-        if let s = status {
-            XCTAssertEqual(s.state, "stopped")
-            XCTAssertEqual(s.name, "")
-        }
-        // May still be nil if parts don't align; either way is acceptable
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains("return \"\(stoppedReply)\""), script)
+        XCTAssertEqual(status.state, "stopped")
+        XCTAssertEqual(status.name, "")
     }
 
     func testGetStatusMalformed() throws {

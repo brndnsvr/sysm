@@ -62,7 +62,9 @@ public struct MusicService: MusicServiceProtocol {
         let script = """
         tell application "Music"
             if player state is stopped then
-                return "stopped|||||||0|||0"
+                -- The same six fields as the playing case below, so the parser
+                -- sees an empty track in state "stopped".
+                return "|||||||||0|||0|||stopped"
             end if
             set trackName to name of current track
             set trackArtist to artist of current track
