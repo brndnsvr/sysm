@@ -56,7 +56,11 @@ public struct NetworkService: NetworkServiceProtocol {
             return nil
         }
 
-        guard let ssid = client.ssid() else {
+        // CoreWLAN withholds the SSID and BSSID unless the calling app has
+        // Location Services authorization (CWInterface.h). An interface that
+        // still reports a signal is connected with its name hidden, not offline.
+        let ssid = client.ssid()
+        guard ssid != nil || client.rssiValue() != 0 else {
             return nil
         }
 

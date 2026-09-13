@@ -22,7 +22,7 @@ struct NetworkWiFi: ParsableCommand {
             try OutputFormatter.printJSON(info)
         } else {
             print("WiFi Connection:")
-            print("  SSID: \(info.ssid)")
+            print("  SSID: \(info.ssid ?? "unavailable (macOS withholds it without Location Services permission)")")
             if let bssid = info.bssid {
                 print("  BSSID: \(bssid)")
             }

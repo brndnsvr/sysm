@@ -15,14 +15,16 @@ public struct NetworkStatus: Codable, Sendable {
 }
 
 public struct WiFiInfo: Codable, Sendable {
-    public let ssid: String
+    /// The network name, or nil when macOS withholds it because the app
+    /// running sysm lacks Location Services authorization.
+    public let ssid: String?
     public let bssid: String?
     public let channel: Int?
     public let rssi: Int?
     public let noise: Int?
     public let security: String?
 
-    public init(ssid: String, bssid: String?, channel: Int?, rssi: Int?, noise: Int?, security: String?) {
+    public init(ssid: String?, bssid: String?, channel: Int?, rssi: Int?, noise: Int?, security: String?) {
         self.ssid = ssid
         self.bssid = bssid
         self.channel = channel
