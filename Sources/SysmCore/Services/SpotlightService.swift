@@ -49,16 +49,22 @@ public struct SpotlightService: SpotlightServiceProtocol {
     // MARK: - Search Operations
 
     public func search(query: String, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {
-        var args: [String] = []
+        let paths = try runMdfind(Self.queryArguments(query: query, scope: scope), limit: limit)
+        return paths.map { SearchResult(path: $0) }
+    }
 
+    /// mdfind arguments for a free-text query.
+    ///
+    /// mdfind reads any argument starting with "-" as an option and rejects
+    /// "--", so a query like "-draft" printed "Unknown option" and found
+    /// nothing. A leading space keeps it a query.
+    static func queryArguments(query: String, scope: String?) -> [String] {
+        var args: [String] = []
         if let scope = scope {
             args.append(contentsOf: ["-onlyin", scope])
         }
-
-        args.append(query)
-
-        let paths = try runMdfind(args, limit: limit)
-        return paths.map { SearchResult(path: $0) }
+        args.append(query.hasPrefix("-") ? " " + query : query)
+        return args
     }
 
     public func searchByKind(kind: String, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {

@@ -44,5 +44,11 @@ final class SpotlightServiceTests: XCTestCase {
         XCTAssertNil(attributes["kMDItemAuthors"])
     }
 
+    // MARK: - queryArguments(query:scope:)
 
+    func testQueriesStartingWithADashStayQueries() {
+        // mdfind reads "-draft" as an option ("Unknown option") and rejects "--".
+        XCTAssertEqual(SpotlightService.queryArguments(query: "-draft", scope: nil), [" -draft"])
+        XCTAssertEqual(SpotlightService.queryArguments(query: "report", scope: "/tmp"), ["-onlyin", "/tmp", "report"])
+    }
 }
