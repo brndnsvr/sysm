@@ -14,6 +14,9 @@ struct NotesAppend: ParsableCommand {
     @Argument(help: "Content to append")
     var content: String
 
+    @Flag(name: .long, help: "Treat the content as HTML instead of plain text")
+    var html = false
+
     func run() throws {
         let service = Services.notes()
 
@@ -22,7 +25,7 @@ struct NotesAppend: ParsableCommand {
             throw NotesError.noteNotFound(noteId)
         }
 
-        try service.appendToNote(id: noteId, content: content)
+        try service.appendToNote(id: noteId, content: html ? content : NotesPlainText.html(content))
         print("Appended content to '\(note.name)'")
     }
 }
