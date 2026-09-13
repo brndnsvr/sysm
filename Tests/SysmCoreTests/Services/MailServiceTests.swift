@@ -274,4 +274,32 @@ final class MailServiceTests: XCTestCase {
         XCTAssertTrue(script.contains(#"to recipients of theForward with properties {address:"a@x.com"}"#), script)
         XCTAssertTrue(script.contains(#"to recipients of theForward with properties {address:"b@y.com"}"#), script)
     }
+
+    // MARK: - Search dates
+
+    func testSearchDatesAreBuiltFromNumbers() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let date = calendar.date(from: DateComponents(year: 2026, month: 1, day: 31, hour: 13, minute: 5, second: 9))!
+
+        XCTAssertEqual(MailService.appleScriptDateAssignment("afterDate", date, calendar: calendar), """
+        set afterDate to current date
+        set day of afterDate to 1
+        set year of afterDate to 2026
+        set month of afterDate to 1
+        set day of afterDate to 31
+        set time of afterDate to 47109
+        """)
+    }
+
+    func testSearchScriptHasNoLocaleDependentDateLiterals() throws {
+        mock.defaultResponse = ""
+        _ = try service.searchMessages(afterDate: Date(timeIntervalSince1970: 1_700_000_000),
+                                       beforeDate: Date(timeIntervalSince1970: 1_800_000_000))
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertFalse(script.contains("date \""), script)
+        XCTAssertTrue(script.contains("set year of afterDate to"), script)
+        XCTAssertTrue(script.contains("set year of beforeDate to"), script)
+    }
 }
