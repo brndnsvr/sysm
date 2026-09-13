@@ -8,18 +8,35 @@ struct RemindersComplete: AsyncParsableCommand {
         abstract: "Mark a reminder as complete"
     )
 
-    @Argument(help: "Reminder name")
-    var name: String
+    @Argument(help: "Exact title of an incomplete reminder")
+    var name: String?
+
+    @Option(name: .long, help: "Reminder ID (from --json output) instead of a title")
+    var id: String?
+
+    func validate() throws {
+        _ = try ReminderSelector(title: name, id: id)
+    }
 
     func run() async throws {
         let service = Services.reminders()
-        let completed = try await service.completeReminder(name: name)
+        let reminder = try await service.completeReminder(try ReminderSelector(title: name, id: id))
+        print("Completed: \(reminder.title) [\(reminder.listName)]")
+    }
+}
 
-        if completed {
-            print("Completed: \(name)")
-        } else {
-            fputs("Not found: \(name)\n", stderr)
-            throw ExitCode.failure
+extension ReminderSelector {
+    /// Builds the selector for a command that takes a title argument or `--id`.
+    init(title: String?, id: String?) throws {
+        switch (title, id) {
+        case (let title?, nil):
+            self = .title(title)
+        case (nil, let id?):
+            self = .id(id)
+        case (nil, nil):
+            throw ValidationError("Specify a reminder title or --id")
+        case (.some, .some):
+            throw ValidationError("Specify a reminder title or --id, not both")
         }
     }
 }

@@ -40,7 +40,7 @@ import Foundation
 /// )
 ///
 /// // Complete a reminder
-/// try await service.completeReminder(name: "Review pull requests")
+/// try await service.completeReminder(.title("Review pull requests"))
 /// ```
 ///
 /// ## Thread Safety
@@ -187,14 +187,14 @@ public protocol ReminderServiceProtocol: Sendable {
 
     /// Marks a reminder as completed.
     ///
-    /// Finds the first incomplete reminder with the specified title and marks it complete.
-    ///
-    /// - Parameter name: Title of the reminder to complete (exact match).
-    /// - Returns: `true` if the reminder was completed.
+    /// - Parameter selector: The reminder's identifier, or the exact title of an
+    ///   incomplete reminder.
+    /// - Returns: The completed reminder.
     /// - Throws:
     ///   - ``ReminderError/accessDenied`` if reminders access not granted.
-    ///   - ``ReminderError/reminderNotFound(_:)`` if no incomplete reminder with that title exists.
-    func completeReminder(name: String) async throws -> Bool
+    ///   - ``ReminderError/reminderNotFound(_:)`` if nothing matches.
+    ///   - ``ReminderError/ambiguousReminder(_:_:)`` if several incomplete reminders share the title.
+    func completeReminder(_ selector: ReminderSelector) async throws -> Reminder
 
     /// Deletes a reminder permanently.
     ///

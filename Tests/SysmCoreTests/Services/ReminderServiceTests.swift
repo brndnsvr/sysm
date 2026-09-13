@@ -57,4 +57,15 @@ final class ReminderServiceTests: XCTestCase {
             XCTAssertEqual(year, 1999)
         }
     }
+
+    // MARK: - ambiguousReminder
+
+    func testAmbiguousReminderErrorListsTheCandidates() {
+        let error = ReminderError.ambiguousReminder("Pay rent", ["id-1  (Home)", "id-2  (Work)"])
+        let message = error.errorDescription ?? ""
+
+        XCTAssertTrue(message.contains("2 incomplete reminders are titled 'Pay rent'"), message)
+        XCTAssertTrue(message.contains("id-1  (Home)") && message.contains("id-2  (Work)"), message)
+        XCTAssertTrue(message.contains("--id"), message)
+    }
 }

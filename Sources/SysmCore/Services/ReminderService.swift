@@ -269,37 +269,52 @@ public actor ReminderService: ReminderServiceProtocol {
         return true
     }
 
-    public func completeReminder(name: String) async throws -> Bool {
+    public func completeReminder(_ selector: ReminderSelector) async throws -> Reminder {
         try await ensureAccess()
 
-        let calendars = store.calendars(for: .reminder)
-        let predicate = store.predicateForReminders(in: calendars)
-        let eventStore = store
+        let reminder = try await resolveReminder(selector)
+        reminder.isCompleted = true
+        try store.save(reminder, commit: true)
+        return Reminder(from: reminder)
+    }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            eventStore.fetchReminders(matching: predicate) { ekReminders in
-                guard let ekReminders = ekReminders else {
-                    continuation.resume(throwing: ReminderError.fetchFailed)
-                    return
-                }
-
-                guard let reminder = ekReminders.first(where: {
-                    $0.title == name && !$0.isCompleted
-                }) else {
-                    continuation.resume(returning: false)
-                    return
-                }
-
-                reminder.isCompleted = true
-
-                do {
-                    try eventStore.save(reminder, commit: true)
-                    continuation.resume(returning: true)
-                } catch {
-                    continuation.resume(throwing: error)
+    /// Finds the one reminder a selector names.
+    ///
+    /// Completion used to take the first incomplete reminder with the title in
+    /// any list, and marked and saved it inside EventKit's fetch callback, off
+    /// this actor. The callback now only reports identifiers, a title shared by
+    /// several incomplete reminders is refused, and the change happens here.
+    private func resolveReminder(_ selector: ReminderSelector) async throws -> EKReminder {
+        let identifier: String
+        switch selector {
+        case .id(let id):
+            identifier = id
+        case .title(let title):
+            let predicate = store.predicateForIncompleteReminders(withDueDateStarting: nil, ending: nil, calendars: nil)
+            let matches: [(id: String, list: String)] = try await withCheckedThrowingContinuation { continuation in
+                store.fetchReminders(matching: predicate) { ekReminders in
+                    guard let ekReminders else {
+                        continuation.resume(throwing: ReminderError.fetchFailed)
+                        return
+                    }
+                    continuation.resume(returning: ekReminders
+                        .filter { $0.title == title }
+                        .map { (id: $0.calendarItemIdentifier, list: $0.calendar?.title ?? "Unknown") })
                 }
             }
+            guard let first = matches.first else {
+                throw ReminderError.reminderNotFound(title)
+            }
+            guard matches.count == 1 else {
+                throw ReminderError.ambiguousReminder(title, matches.map { "\($0.id)  (\($0.list))" })
+            }
+            identifier = first.id
         }
+
+        guard let reminder = store.calendarItem(withIdentifier: identifier) as? EKReminder else {
+            throw ReminderError.reminderNotFound(selector.description)
+        }
+        return reminder
     }
 
     public func validateReminders() async throws -> [Reminder] {
@@ -332,6 +347,21 @@ public actor ReminderService: ReminderServiceProtocol {
     }
 }
 
+/// Picks the reminder an operation acts on.
+public enum ReminderSelector: Sendable, CustomStringConvertible {
+    /// A reminder's calendar item identifier, as shown in `--json` output.
+    case id(String)
+    /// The exact title of an incomplete reminder.
+    case title(String)
+
+    public var description: String {
+        switch self {
+        case .id(let id): return id
+        case .title(let title): return title
+        }
+    }
+}
+
 public enum ReminderError: LocalizedError {
     case accessDenied
     case listNotFound(String)
@@ -341,6 +371,7 @@ public enum ReminderError: LocalizedError {
     case invalidYear(Int)
     case reminderNotFound(String)
     case fetchFailed
+    case ambiguousReminder(String, [String])
 
     public var errorDescription: String? {
         switch self {
@@ -360,11 +391,16 @@ public enum ReminderError: LocalizedError {
             return "Reminder '\(name)' not found"
         case .fetchFailed:
             return "Failed to fetch reminders"
+        case .ambiguousReminder(let title, let candidates):
+            return "\(candidates.count) incomplete reminders are titled '\(title)'; choose one with --id:\n  "
+                + candidates.joined(separator: "\n  ")
         }
     }
 
     public var recoverySuggestion: String? {
         switch self {
+        case .ambiguousReminder:
+            return "Pass the reminder's ID with --id instead of its title."
         case .accessDenied:
             return """
             Grant reminders access in System Settings:
