@@ -60,14 +60,16 @@ public struct TagsService: TagsServiceProtocol {
             throw TagsError.fileNotFound(path)
         }
 
-        let size = getxattr(url.path, tagAttribute, nil, 0, 0, 0)
+        // XATTR_NOFOLLOW: a symlink's tags belong to the link, as in Finder.
+        // Following it read and wrote tags on whatever the link pointed at.
+        let size = getxattr(url.path, tagAttribute, nil, 0, 0, XATTR_NOFOLLOW)
         if size < 0 {
             // No tags attribute - return empty
             return []
         }
 
         var data = [UInt8](repeating: 0, count: size)
-        let result = getxattr(url.path, tagAttribute, &data, size, 0, 0)
+        let result = getxattr(url.path, tagAttribute, &data, size, 0, XATTR_NOFOLLOW)
         if result < 0 {
             return []
         }
@@ -102,7 +104,7 @@ public struct TagsService: TagsServiceProtocol {
         )
 
         let result = plistData.withUnsafeBytes { bytes in
-            setxattr(url.path, tagAttribute, bytes.baseAddress, plistData.count, 0, 0)
+            setxattr(url.path, tagAttribute, bytes.baseAddress, plistData.count, 0, XATTR_NOFOLLOW)
         }
 
         if result < 0 {
