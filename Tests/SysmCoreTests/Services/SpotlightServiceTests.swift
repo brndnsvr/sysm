@@ -23,5 +23,26 @@ final class SpotlightServiceTests: XCTestCase {
         XCTAssertNil(SpotlightService.contentType(forKind: "notatype"))
     }
 
+    // MARK: - metadataAttributes(fromMdls:)
+
+    func testMultiLineArraysAreJoined() {
+        let output = """
+        kMDItemContentTypeTree = (
+            "com.adobe.pdf",
+            "public.data",
+            "public.item"
+        )
+        kMDItemDisplayName     = "report.pdf"
+        kMDItemTitle           = "a = b"
+        kMDItemAuthors         = (null)
+        """
+        let attributes = SpotlightService.metadataAttributes(fromMdls: output)
+
+        XCTAssertEqual(attributes["kMDItemContentTypeTree"], "com.adobe.pdf, public.data, public.item")
+        XCTAssertEqual(attributes["kMDItemDisplayName"], "report.pdf")
+        XCTAssertEqual(attributes["kMDItemTitle"], "a = b")
+        XCTAssertNil(attributes["kMDItemAuthors"])
+    }
+
 
 }

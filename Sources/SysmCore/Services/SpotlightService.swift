@@ -178,29 +178,53 @@ public struct SpotlightService: SpotlightServiceProtocol {
     }
 
     private func parseMetadata(_ output: String) -> [String: String] {
+        Self.metadataAttributes(fromMdls: output)
+    }
+
+    /// Attribute values from mdls output, with arrays joined by ", ".
+    ///
+    /// mdls prints an array over several lines, one quoted item per line
+    /// between "(" and ")". Reading line by line kept only "(" for every
+    /// array attribute. Values can also contain " = ", so only the first one
+    /// separates key from value.
+    static func metadataAttributes(fromMdls output: String) -> [String: String] {
         var attributes: [String: String] = [:]
+        var arrayKey: String?
+        var items: [String] = []
+
+        func unquoted(_ text: String) -> String {
+            if text.count >= 2 && text.hasPrefix("\"") && text.hasSuffix("\"") {
+                return String(text.dropFirst().dropLast())
+            }
+            return text
+        }
 
         for line in output.components(separatedBy: "\n") {
-            let parts = line.components(separatedBy: " = ")
-            if parts.count == 2 {
-                let key = parts[0].trimmingCharacters(in: .whitespaces)
-                var value = parts[1].trimmingCharacters(in: .whitespaces)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-                // Skip null values
-                if value == "(null)" { continue }
-
-                // Clean up quoted strings
-                if value.hasPrefix("\"") && value.hasSuffix("\"") {
-                    value = String(value.dropFirst().dropLast())
+            if let key = arrayKey {
+                if trimmed == ")" {
+                    attributes[key] = items.joined(separator: ", ")
+                    arrayKey = nil
+                    items = []
+                } else if !trimmed.isEmpty {
+                    items.append(unquoted(trimmed.hasSuffix(",") ? String(trimmed.dropLast()) : trimmed))
                 }
+                continue
+            }
 
-                // Clean up parenthesized values
-                if value.hasPrefix("(") && value.hasSuffix(")") {
-                    value = String(value.dropFirst().dropLast())
-                        .trimmingCharacters(in: .whitespaces)
-                }
+            guard let separator = line.range(of: " = ") else { continue }
+            let key = line[..<separator.lowerBound].trimmingCharacters(in: .whitespaces)
+            let value = line[separator.upperBound...].trimmingCharacters(in: .whitespaces)
 
-                attributes[key] = value
+            if value == "(" {
+                arrayKey = key
+            } else if value == "(null)" {
+                continue
+            } else if value.hasPrefix("(") && value.hasSuffix(")") {
+                attributes[key] = value.dropFirst().dropLast().trimmingCharacters(in: .whitespaces)
+            } else {
+                attributes[key] = unquoted(value)
             }
         }
 
