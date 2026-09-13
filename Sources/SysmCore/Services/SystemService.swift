@@ -87,13 +87,7 @@ public struct SystemService: SystemServiceProtocol {
         if let brandOutput = try? sysctlString("machdep.cpu.brand_string") {
             cpu = brandOutput
         }
-        if let spOutput = try? Shell.run("/usr/sbin/system_profiler", args: ["SPHardwareDataType", "-detailLevel", "mini"]) {
-            if let range = spOutput.range(of: #"Serial Number \(system\): (.+)"#, options: .regularExpression) {
-                serialNumber = String(spOutput[range])
-                    .replacingOccurrences(of: "Serial Number (system): ", with: "")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-        }
+        serialNumber = Self.platformSerialNumber()
 
         return SystemInfo(
             hostname: hostname,
@@ -105,6 +99,18 @@ public struct SystemService: SystemServiceProtocol {
             memoryGB: memoryGB,
             serialNumber: serialNumber
         )
+    }
+
+    /// The Mac's serial number from the IOPlatformExpertDevice registry entry.
+    ///
+    /// system_profiler's mini detail level omits personal information, the
+    /// serial included, so parsing its output never found one.
+    private static func platformSerialNumber() -> String? {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        guard service != 0 else { return nil }
+        defer { IOObjectRelease(service) }
+        let property = IORegistryEntryCreateCFProperty(service, kIOPlatformSerialNumberKey as CFString, kCFAllocatorDefault, 0)
+        return property?.takeRetainedValue() as? String
     }
 
     // MARK: - Memory
