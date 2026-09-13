@@ -399,6 +399,22 @@ public actor PhotosService: PhotosServiceProtocol {
 
     // MARK: - Metadata
 
+    /// The resource that holds the asset itself, the original photo or video,
+    /// rather than adjustment data or a Live Photo's paired video, whichever
+    /// Photos happened to list first.
+    static func primaryResourceType(among types: [PHAssetResourceType]) -> PHAssetResourceType? {
+        types.first { $0 == .photo || $0 == .video }
+    }
+
+    /// A resource's size in bytes from PHAssetResource's private fileSize
+    /// property, the only source Photos has. value(forKey:) on a key the class
+    /// no longer has raises an Objective-C exception that ends the process, so
+    /// the property is checked for first.
+    private static func fileSize(of resource: PHAssetResource) -> Int64? {
+        guard resource.responds(to: NSSelectorFromString("fileSize")) else { return nil }
+        return (resource.value(forKey: "fileSize") as? NSNumber)?.int64Value
+    }
+
     public func getMetadata(assetId: String) async throws -> AssetMetadata {
         try await ensureAccess()
 
@@ -408,8 +424,11 @@ public actor PhotosService: PhotosServiceProtocol {
         }
 
         let resources = PHAssetResource.assetResources(for: asset)
-        let filename = resources.first?.originalFilename ?? "Unknown"
-        let fileSize = resources.first?.value(forKey: "fileSize") as? Int64
+        let primary = Self.primaryResourceType(among: resources.map(\.type)).flatMap { type in
+            resources.first { $0.type == type }
+        } ?? resources.first
+        let filename = primary?.originalFilename ?? "Unknown"
+        let fileSize = primary.flatMap(Self.fileSize(of:))
 
         let mediaType: String
         switch asset.mediaType {

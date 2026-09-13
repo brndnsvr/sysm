@@ -17,5 +17,12 @@ final class PhotosServiceTests: XCTestCase {
         XCTAssertNil(PhotosService.preferredVideoResourceType(among: [.photo]))
     }
 
+    // MARK: - Metadata
 
+    func testMetadataUsesTheOriginalResource() {
+        // Adjustment data or a Live Photo's paired video can be listed first.
+        XCTAssertEqual(PhotosService.primaryResourceType(among: [.adjustmentData, .photo, .pairedVideo]), .photo)
+        XCTAssertEqual(PhotosService.primaryResourceType(among: [.fullSizeVideo, .video]), .video)
+        XCTAssertNil(PhotosService.primaryResourceType(among: [.adjustmentData]))
+    }
 }
