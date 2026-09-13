@@ -104,7 +104,9 @@ public protocol SpotlightServiceProtocol: Sendable {
     ///   - scope: Optional directory to limit search scope.
     ///   - limit: Optional maximum number of results.
     /// - Returns: Array of ``SpotlightService/SearchResult`` objects.
-    /// - Throws: ``SpotlightError/searchFailed(_:)`` if search failed.
+    /// - Throws:
+    ///   - ``SpotlightError/unknownKind(_:)`` if the kind names no content type.
+    ///   - ``SpotlightError/searchFailed(_:)`` if search failed.
     ///
     /// ## Example
     ///
@@ -126,7 +128,10 @@ public protocol SpotlightServiceProtocol: Sendable {
     ///
     /// ## Supported Kinds
     ///
-    /// Common kinds include: pdf, image, video, audio, document, presentation, spreadsheet
+    /// Kind names (pdf, image, video, audio, document, text, folder, application,
+    /// archive, presentation, spreadsheet, email, contact, calendar), content type
+    /// identifiers such as public.heic, and filename extensions such as docx. The
+    /// search matches `kMDItemContentTypeTree`, so it does not depend on language.
     func searchByKind(kind: String, scope: String?, limit: Int?) throws -> [SpotlightService.SearchResult]
 
     /// Searches for files modified within a time range.

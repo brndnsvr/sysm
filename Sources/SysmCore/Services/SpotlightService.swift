@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 public struct SpotlightService: SpotlightServiceProtocol {
     private let mdfindPath = "/usr/bin/mdfind"
@@ -61,23 +62,9 @@ public struct SpotlightService: SpotlightServiceProtocol {
     }
 
     public func searchByKind(kind: String, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {
-        let kindMap: [String: String] = [
-            "pdf": "PDF Document",
-            "image": "Image",
-            "video": "Video",
-            "audio": "Audio",
-            "document": "Document",
-            "folder": "Folder",
-            "application": "Application",
-            "archive": "Archive",
-            "presentation": "Presentation",
-            "spreadsheet": "Spreadsheet",
-            "email": "Email Message",
-            "contact": "Contact",
-            "calendar": "Calendar Event",
-        ]
-
-        let kindValue = kindMap[kind.lowercased()] ?? kind
+        guard let contentType = Self.contentType(forKind: kind) else {
+            throw SpotlightError.unknownKind(kind)
+        }
 
         var args: [String] = []
 
@@ -85,11 +72,52 @@ public struct SpotlightService: SpotlightServiceProtocol {
             args.append(contentsOf: ["-onlyin", scope])
         }
 
-        let escapedKind = appleScript.escapeMdfind(kindValue)
-        args.append("kMDItemKind == '\(escapedKind)'")
+        // kMDItemContentTypeTree lists a file's type and every type it conforms
+        // to, so public.image matches JPEG, PNG, and HEIC alike, in any language.
+        let escapedType = appleScript.escapeMdfind(contentType)
+        args.append("kMDItemContentTypeTree == '\(escapedType)'")
 
+        let label = UTType(contentType)?.localizedDescription ?? contentType
         let paths = try runMdfind(args, limit: limit)
-        return paths.map { SearchResult(path: $0, kind: kindValue) }
+        return paths.map { SearchResult(path: $0, kind: label) }
+    }
+
+    /// Kind names sysm understands, mapped to the content types they search for.
+    static let contentTypesByKind: [String: String] = [
+        "pdf": UTType.pdf.identifier,
+        "image": UTType.image.identifier,
+        "video": UTType.movie.identifier,
+        "audio": UTType.audio.identifier,
+        "document": UTType.compositeContent.identifier,
+        "text": UTType.text.identifier,
+        "folder": UTType.folder.identifier,
+        "application": UTType.application.identifier,
+        "archive": UTType.archive.identifier,
+        "presentation": UTType.presentation.identifier,
+        "spreadsheet": UTType.spreadsheet.identifier,
+        "email": UTType.emailMessage.identifier,
+        "contact": UTType.contact.identifier,
+        "calendar": UTType.calendarEvent.identifier,
+    ]
+
+    /// The content type to search for: a kind name from ``contentTypesByKind``,
+    /// a type identifier ("public.heic"), or a filename extension ("docx").
+    ///
+    /// Kinds used to match kMDItemKind, the kind text Finder shows, which
+    /// changes with the system language and did not even match English
+    /// systems ("PDF Document" found no PDFs).
+    static func contentType(forKind kind: String) -> String? {
+        let key = kind.lowercased()
+        if let mapped = contentTypesByKind[key] {
+            return mapped
+        }
+        if let type = UTType(kind), type.isDeclared {
+            return type.identifier
+        }
+        if let type = UTType(filenameExtension: key), type.isDeclared {
+            return type.identifier
+        }
+        return nil
     }
 
     public func searchModified(days: Int, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {
@@ -186,6 +214,7 @@ public enum SpotlightError: LocalizedError {
     case fileNotFound(String)
     case searchFailed(String)
     case metadataFailed(String)
+    case unknownKind(String)
 
     public var errorDescription: String? {
         switch self {
@@ -199,6 +228,9 @@ public enum SpotlightError: LocalizedError {
             return "Search failed: \(message)"
         case .metadataFailed(let message):
             return "Metadata retrieval failed: \(message)"
+        case .unknownKind(let kind):
+            let names = SpotlightService.contentTypesByKind.keys.sorted().joined(separator: ", ")
+            return "Unknown kind '\(kind)'. Use one of \(names), a content type such as public.heic, or a file extension such as docx"
         }
     }
 }
