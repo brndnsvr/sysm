@@ -188,7 +188,7 @@ public struct NotesService: NotesServiceProtocol {
             throw NotesError.structuredFormattingUnavailable(error.localizedDescription)
         }
         if let folder {
-            try validateUniqueStructuredFolder(named: folder)
+            try validateUniqueFolder(named: folder)
         }
 
         let body = NotesHTMLRenderer().renderBootstrapHTML(document)
@@ -206,7 +206,9 @@ public struct NotesService: NotesServiceProtocol {
         return noteId
     }
 
-    private func validateUniqueStructuredFolder(named folder: String) throws {
+    /// Notes lets folders in different accounts share a name, and a script that
+    /// names folder "X" acts on whichever match Notes finds first.
+    private func validateUniqueFolder(named folder: String) throws {
         let escapedFolder = appleScript.escape(folder)
         let script = """
         tell application "Notes"
@@ -267,6 +269,8 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func deleteFolder(name: String) throws {
+        // Deleting the wrong account's folder takes its notes with it.
+        try validateUniqueFolder(named: name)
         let escapedName = appleScript.escape(name)
 
         let script = """
@@ -346,6 +350,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func moveNote(id: String, toFolder: String) throws {
+        try validateUniqueFolder(named: toFolder)
         let escapedId = appleScript.escape(id)
         let escapedFolder = appleScript.escape(toFolder)
 
