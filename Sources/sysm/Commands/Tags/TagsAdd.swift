@@ -14,11 +14,11 @@ struct TagsAdd: ParsableCommand {
     @Option(name: .shortAndLong, help: "Tag name to add")
     var tag: String
 
-    @Option(name: .shortAndLong, help: "Color code (0=none, 1=red, 2=orange, 3=yellow, 4=green, 5=blue, 6=purple, 7=grey)")
-    var color: Int = 0
+    @Option(name: .shortAndLong, help: "Color name or number: none (0), gray (1), green (2), purple (3), blue (4), yellow (5), red (6), orange (7)")
+    var color: String = "none"
 
     func validate() throws {
-        guard color >= 0 && color <= 7 else {
+        guard TagsService.FinderTag.colorCode(from: color) != nil else {
             throw TagsError.invalidColor(color)
         }
     }
@@ -26,7 +26,9 @@ struct TagsAdd: ParsableCommand {
     func run() throws {
         let service = Services.tags()
         let expandedPath = NSString(string: path).expandingTildeInPath
-        try service.addTag(path: expandedPath, name: tag, color: color)
-        print("Added tag '\(tag)' to \(path)")
+        let code = TagsService.FinderTag.colorCode(from: color) ?? 0
+        try service.addTag(path: expandedPath, name: tag, color: code)
+        let colorNote = code == 0 ? "" : " (\(TagsService.FinderTag.colorNames[code]))"
+        print("Added tag '\(tag)'\(colorNote) to \(path)")
     }
 }

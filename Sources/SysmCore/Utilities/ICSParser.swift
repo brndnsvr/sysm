@@ -16,23 +16,24 @@ public struct ICSEventData {
 /// Parses iCalendar (.ics) format.
 public struct ICSParser {
     private let content: String
+    private let allDay: ICSAllDayDates
 
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
         formatter.timeZone = TimeZone(identifier: "UTC")
         return formatter
     }()
 
-    private static let dateOnlyFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter
-    }()
-
-    public init(content: String) {
+    /// - Parameters:
+    ///   - content: The iCalendar text.
+    ///   - timeZone: The zone all-day dates are read in. They are floating
+    ///     dates that belong at local midnight; read in UTC, they landed on
+    ///     the previous day anywhere west of Greenwich.
+    public init(content: String, timeZone: TimeZone = .current) {
         self.content = content
+        self.allDay = ICSAllDayDates(timeZone: timeZone)
     }
 
     public func parse() throws -> [ICSEventData] {
@@ -96,9 +97,13 @@ public struct ICSParser {
 
         // Parse dates
         guard let startDate = parseDate(dtstart, isAllDay: isAllDay),
-              let endDate = parseDate(dtend, isAllDay: isAllDay) else {
+              let rawEndDate = parseDate(dtend, isAllDay: isAllDay) else {
             return nil
         }
+
+        // A date-valued DTEND is exclusive; EventKit ends an all-day event
+        // within its last day.
+        let endDate = isAllDay ? allDay.inclusiveEnd(start: startDate, exclusiveEnd: rawEndDate) : rawEndDate
 
         let location = data["LOCATION"].map { unescapeICS($0) }
         let notes = data["DESCRIPTION"].map { unescapeICS($0) }
@@ -118,7 +123,7 @@ public struct ICSParser {
 
     private func parseDate(_ dateString: String, isAllDay: Bool) -> Date? {
         if isAllDay {
-            return Self.dateOnlyFormatter.date(from: dateString)
+            return allDay.date(from: dateString)
         } else {
             return Self.dateFormatter.date(from: dateString)
         }

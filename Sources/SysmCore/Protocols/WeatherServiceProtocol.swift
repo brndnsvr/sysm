@@ -143,6 +143,7 @@ public protocol WeatherServiceProtocol: Sendable {
     /// - Throws:
     ///   - ``WeatherError/invalidLocation(_:)`` if location cannot be resolved.
     ///   - ``WeatherError/apiError(_:)`` if alert data fetch failed.
+    ///   - ``WeatherError/alertsUnavailable`` if the backend has no alert data (Open-Meteo).
     ///
     /// ## Example
     ///

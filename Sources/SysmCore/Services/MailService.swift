@@ -156,6 +156,9 @@ public struct MailService: MailServiceProtocol {
                 end try
                 set msgSubject to subject of msg
                 set msgFrom to sender of msg
+                -- Join recipient lists with ", "; the default empty delimiter ran
+                -- addresses together (alice@example.combob@example.com).
+                set AppleScript's text item delimiters to ", "
                 set msgTo to (address of to recipients of msg) as string
                 set msgDate to (date received of msg) as string
                 set msgContent to content of msg
@@ -170,6 +173,7 @@ public struct MailService: MailServiceProtocol {
                         set msgCc to ccList as string
                     end if
                 end try
+                set AppleScript's text item delimiters to ""
 
                 -- Get reply-to
                 set msgReplyTo to ""
@@ -637,7 +641,9 @@ public struct MailService: MailServiceProtocol {
 
     public func reply(messageId: String, body: String, replyAll: Bool, send: Bool) throws -> String {
         let safeId = try sanitizedId(messageId)
-        let replyType = replyAll ? "reply all" : "reply"
+        // Mail.sdef: reply to all is a boolean parameter of reply. "reply all msg"
+        // is not a command, so the whole script failed to compile.
+        let replyAllClause = replyAll ? " and reply to all" : ""
         let sendAction = send ? "send theReply" : ""
 
         let findMessage = messageByIdExpression(safeId)
@@ -645,7 +651,7 @@ public struct MailService: MailServiceProtocol {
         tell application "Mail"
             try
         \(findMessage)
-                set theReply to \(replyType) msg with opening window
+                set theReply to reply msg with opening window\(replyAllClause)
                 set content of theReply to "\(escapeForAppleScript(body))"
                 \(sendAction)
                 return (id of theReply) as string

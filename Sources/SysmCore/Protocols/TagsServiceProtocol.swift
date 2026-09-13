@@ -50,7 +50,7 @@ import Foundation
 /// Methods can throw ``TagsError`` variants:
 /// - ``TagsError/fileNotFound(_:)`` - File doesn't exist
 /// - ``TagsError/permissionDenied(_:)`` - Cannot access or modify file
-/// - ``TagsError/invalidColor(_:)`` - Color code outside valid range (0-7)
+/// - ``TagsError/invalidColor(_:)`` - Input names no Finder color (a name, or a code 0-7)
 /// - ``TagsError/operationFailed(_:)`` - Extended attribute operation failed
 ///
 public protocol TagsServiceProtocol: Sendable {

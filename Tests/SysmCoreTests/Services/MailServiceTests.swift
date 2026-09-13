@@ -201,4 +201,43 @@ final class MailServiceTests: XCTestCase {
             }
         }
     }
+
+    // MARK: - reply()
+
+    func testReplyAllUsesTheMailDictionaryForm() throws {
+        mock.defaultResponse = "67890"
+        _ = try service.reply(messageId: "12345", body: "Thanks", replyAll: true, send: false)
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains("reply msg with opening window and reply to all"), script)
+        XCTAssertFalse(script.contains("reply all msg"), script)
+    }
+
+    func testReplyToSenderOmitsReplyToAll() throws {
+        mock.defaultResponse = "67890"
+        _ = try service.reply(messageId: "12345", body: "Thanks", replyAll: false, send: false)
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains("reply msg with opening window"), script)
+        XCTAssertFalse(script.contains("reply to all"), script)
+    }
+
+    // MARK: - Recipient lists
+
+    func testGetMessageJoinsRecipientListsWithCommas() throws {
+        let fields = [
+            "Subject", "alice@test.com", "bob@test.com", "Jan 15", "Body", "true", "false",
+            "", "", "", "Inbox", "Work", "", "msg-1",
+        ]
+        mock.defaultResponse = fields.joined(separator: "|||FIELD|||")
+        _ = try service.getMessage(id: "12345")
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        let setComma = try XCTUnwrap(script.range(of: "set AppleScript's text item delimiters to \", \""))
+        let toList = try XCTUnwrap(script.range(of: "address of to recipients of msg"))
+        let ccJoin = try XCTUnwrap(script.range(of: "set msgCc to ccList as string"))
+        let reset = try XCTUnwrap(script.range(of: "set AppleScript's text item delimiters to \"\""))
+        XCTAssertLessThan(setComma.lowerBound, toList.lowerBound)
+        XCTAssertLessThan(ccJoin.lowerBound, reset.lowerBound)
+    }
 }

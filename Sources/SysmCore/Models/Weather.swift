@@ -397,6 +397,7 @@ public enum WeatherError: LocalizedError {
     case networkError(String)
     case apiError(String)
     case invalidResponse
+    case alertsUnavailable
 
     public var errorDescription: String? {
         switch self {
@@ -408,6 +409,8 @@ public enum WeatherError: LocalizedError {
             return "Weather service error: \(message)"
         case .invalidResponse:
             return "Invalid response from weather service"
+        case .alertsUnavailable:
+            return "Open-Meteo does not provide weather alerts; use --backend weatherkit"
         }
     }
 }

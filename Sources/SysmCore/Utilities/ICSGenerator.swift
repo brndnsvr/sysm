@@ -5,19 +5,18 @@ import Foundation
 public struct ICSGenerator {
     private static let dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyyMMdd'T'HHmmss'Z'"
         formatter.timeZone = TimeZone(identifier: "UTC")
         return formatter
     }()
 
-    private static let dateOnlyFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMdd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        return formatter
-    }()
-
-    public static func generate(events: [EKEvent], calendarName: String) -> String {
+    /// - Parameter timeZone: The zone all-day dates are written in. EventKit
+    ///   returns floating all-day events at local midnight in the default
+    ///   zone, so that is the default. Written in UTC, every all-day event
+    ///   came out a day early anywhere east of Greenwich.
+    public static func generate(events: [EKEvent], calendarName: String, timeZone: TimeZone = .current) -> String {
+        let allDay = ICSAllDayDates(timeZone: timeZone)
         var ics = [String]()
 
         // Header
@@ -30,7 +29,7 @@ public struct ICSGenerator {
 
         // Events
         for event in events {
-            ics.append(contentsOf: generateEvent(event))
+            ics.append(contentsOf: generateEvent(event, allDay: allDay))
         }
 
         // Footer
@@ -39,7 +38,7 @@ public struct ICSGenerator {
         return ics.joined(separator: "\r\n")
     }
 
-    private static func generateEvent(_ event: EKEvent) -> [String] {
+    private static func generateEvent(_ event: EKEvent, allDay: ICSAllDayDates) -> [String] {
         var lines = [String]()
 
         lines.append("BEGIN:VEVENT")
@@ -53,8 +52,9 @@ public struct ICSGenerator {
 
         // Dates
         if event.isAllDay {
-            lines.append("DTSTART;VALUE=DATE:\(dateOnlyFormatter.string(from: event.startDate))")
-            lines.append("DTEND;VALUE=DATE:\(dateOnlyFormatter.string(from: event.endDate))")
+            let end = allDay.exclusiveEnd(start: event.startDate, end: event.endDate)
+            lines.append("DTSTART;VALUE=DATE:\(allDay.string(from: event.startDate))")
+            lines.append("DTEND;VALUE=DATE:\(allDay.string(from: end))")
         } else {
             lines.append("DTSTART:\(dateFormatter.string(from: event.startDate))")
             lines.append("DTEND:\(dateFormatter.string(from: event.endDate))")
@@ -140,5 +140,46 @@ public struct ICSGenerator {
             .replacingOccurrences(of: ";", with: "\\;")
             .replacingOccurrences(of: ",", with: "\\,")
             .replacingOccurrences(of: "\n", with: "\\n")
+    }
+}
+
+/// Date-only (`VALUE=DATE`) values for all-day events, read and written in
+/// one time zone.
+///
+/// RFC 5545 makes a date-valued DTEND exclusive, while EventKit ends an
+/// all-day event just before midnight on its last day. The two end
+/// conversions keep an exported event and its re-import the same length.
+struct ICSAllDayDates {
+    private let formatter: DateFormatter
+    private let calendar: Foundation.Calendar
+
+    init(timeZone: TimeZone) {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyyMMdd"
+        formatter.timeZone = timeZone
+        var calendar = Foundation.Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        self.formatter = formatter
+        self.calendar = calendar
+    }
+
+    func string(from date: Date) -> String {
+        formatter.string(from: date)
+    }
+
+    func date(from string: String) -> Date? {
+        formatter.date(from: string)
+    }
+
+    /// The DTEND day for an EventKit all-day event: the day after its last day.
+    func exclusiveEnd(start: Date, end: Date) -> Date {
+        let lastDay = calendar.startOfDay(for: max(end.addingTimeInterval(-1), start))
+        return calendar.date(byAdding: .day, value: 1, to: lastDay)!
+    }
+
+    /// The EventKit end for a DTEND day: the last second of the day before.
+    func inclusiveEnd(start: Date, exclusiveEnd: Date) -> Date {
+        max(exclusiveEnd.addingTimeInterval(-1), start)
     }
 }

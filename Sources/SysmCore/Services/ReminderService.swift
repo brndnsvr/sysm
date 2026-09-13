@@ -96,47 +96,11 @@ public actor ReminderService: ReminderServiceProtocol {
         reminder.calendar = calendar
 
         if let startDateStr = startDate {
-            if let parsedDate = Services.dateParser().parse(startDateStr) {
-                let dateComponents = Foundation.Calendar.current.dateComponents(
-                    [.year, .month, .day, .hour, .minute],
-                    from: parsedDate
-                )
-                let year = dateComponents.year ?? Foundation.Calendar.current.component(.year, from: Date())
-                if year < 2000 || year > 2100 {
-                    throw ReminderError.invalidYear(year)
-                }
-                reminder.startDateComponents = dateComponents
-            } else {
-                // Fallback to ISO date parsing
-                let dateComponents = try parseDateString(startDateStr)
-                let year = dateComponents.year ?? Foundation.Calendar.current.component(.year, from: Date())
-                if year < 2000 || year > 2100 {
-                    throw ReminderError.invalidYear(year)
-                }
-                reminder.startDateComponents = dateComponents
-            }
+            reminder.startDateComponents = try Self.dateComponents(for: startDateStr, parser: Services.dateParser())
         }
 
         if let dueDateStr = dueDate {
-            if let parsedDate = Services.dateParser().parse(dueDateStr) {
-                let dateComponents = Foundation.Calendar.current.dateComponents(
-                    [.year, .month, .day, .hour, .minute],
-                    from: parsedDate
-                )
-                let year = dateComponents.year ?? Foundation.Calendar.current.component(.year, from: Date())
-                if year < 2000 || year > 2100 {
-                    throw ReminderError.invalidYear(year)
-                }
-                reminder.dueDateComponents = dateComponents
-            } else {
-                // Fallback to ISO date parsing
-                let dateComponents = try parseDateString(dueDateStr)
-                let year = dateComponents.year ?? Foundation.Calendar.current.component(.year, from: Date())
-                if year < 2000 || year > 2100 {
-                    throw ReminderError.invalidYear(year)
-                }
-                reminder.dueDateComponents = dateComponents
-            }
+            reminder.dueDateComponents = try Self.dateComponents(for: dueDateStr, parser: Services.dateParser())
         }
 
         if let priority = priority {
@@ -165,6 +129,29 @@ public actor ReminderService: ReminderServiceProtocol {
         return Reminder(from: reminder)
     }
 
+    /// Date components for a start or due date the user typed.
+    ///
+    /// EventKit treats components without an hour and minute as all-day
+    /// (EKReminder.h). Always including them made "2026-01-15", "friday",
+    /// and "tomorrow" due at 12:00 AM, with alarms firing at midnight.
+    /// Unparseable input throws; edit used to skip it silently.
+    static func dateComponents(for input: String, parser: any DateParserProtocol) throws -> DateComponents {
+        guard let date = parser.parse(input) else {
+            throw ReminderError.invalidDateFormat(input)
+        }
+
+        let fields: Set<Foundation.Calendar.Component> = parser.includesTime(input)
+            ? [.year, .month, .day, .hour, .minute]
+            : [.year, .month, .day]
+        let components = Foundation.Calendar.current.dateComponents(fields, from: date)
+
+        let year = components.year ?? Foundation.Calendar.current.component(.year, from: date)
+        guard (2000...2100).contains(year) else {
+            throw ReminderError.invalidYear(year)
+        }
+        return components
+    }
+
     public func editReminder(id: String, newTitle: String? = nil, newStartDate: String? = nil, newDueDate: String? = nil,
                              newPriority: Int? = nil, newNotes: String? = nil, newAlarms: [EventAlarm]? = nil) async throws -> Reminder {
         try await ensureAccess()
@@ -178,21 +165,11 @@ public actor ReminderService: ReminderServiceProtocol {
         }
 
         if let startDateStr = newStartDate {
-            if let parsedDate = Services.dateParser().parse(startDateStr) {
-                reminder.startDateComponents = Foundation.Calendar.current.dateComponents(
-                    [.year, .month, .day, .hour, .minute],
-                    from: parsedDate
-                )
-            }
+            reminder.startDateComponents = try Self.dateComponents(for: startDateStr, parser: Services.dateParser())
         }
 
         if let dueDateStr = newDueDate {
-            if let parsedDate = Services.dateParser().parse(dueDateStr) {
-                reminder.dueDateComponents = Foundation.Calendar.current.dateComponents(
-                    [.year, .month, .day, .hour, .minute],
-                    from: parsedDate
-                )
-            }
+            reminder.dueDateComponents = try Self.dateComponents(for: dueDateStr, parser: Services.dateParser())
         }
 
         if let priority = newPriority {
@@ -352,14 +329,6 @@ public actor ReminderService: ReminderServiceProtocol {
                 continuation.resume(returning: invalidReminders)
             }
         }
-    }
-
-    private func parseDateString(_ dateStr: String) throws -> DateComponents {
-        guard let date = DateFormatters.isoDate.date(from: dateStr) else {
-            throw ReminderError.invalidDateFormat(dateStr)
-        }
-
-        return Foundation.Calendar.current.dateComponents([.year, .month, .day], from: date)
     }
 }
 

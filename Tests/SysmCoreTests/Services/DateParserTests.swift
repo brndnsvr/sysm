@@ -370,4 +370,18 @@ final class DateParserTests: XCTestCase {
         // This tests that it doesn't crash
         _ = result
     }
+
+    // MARK: - includesTime()
+
+    func testIncludesTime_DateOnlyInput() {
+        for input in ["today", "tomorrow", "friday", "next monday", "2026-01-15", "3/15"] {
+            XCTAssertFalse(parser.includesTime(input), input)
+        }
+    }
+
+    func testIncludesTime_InputWithATime() {
+        for input in ["tomorrow 9am", "friday 3:30pm", "2026-01-15 14:30", "3/15 at 5 PM"] {
+            XCTAssertTrue(parser.includesTime(input), input)
+        }
+    }
 }

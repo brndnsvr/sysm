@@ -159,7 +159,7 @@ public actor PhotosService: PhotosServiceProtocol {
             throw PhotosError.cannotModifySmartAlbum
         }
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: assetIds, options: nil)
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: assetIds, options: Self.byIdentifierOptions())
 
         try await library.performChanges {
             guard let request = PHAssetCollectionChangeRequest(for: collection) else {
@@ -188,7 +188,7 @@ public actor PhotosService: PhotosServiceProtocol {
             throw PhotosError.cannotModifySmartAlbum
         }
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: assetIds, options: nil)
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: assetIds, options: Self.byIdentifierOptions())
 
         try await library.performChanges {
             guard let request = PHAssetCollectionChangeRequest(for: collection) else {
@@ -262,7 +262,7 @@ public actor PhotosService: PhotosServiceProtocol {
     public func exportPhoto(assetId: String, outputPath: String) async throws {
         try await ensureAccess()
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: Self.byIdentifierOptions())
         guard let asset = assets.firstObject else {
             throw PhotosError.assetNotFound(assetId)
         }
@@ -348,7 +348,7 @@ public actor PhotosService: PhotosServiceProtocol {
     public func exportVideo(assetId: String, outputPath: String) async throws {
         try await ensureAccess()
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: Self.byIdentifierOptions())
         guard let asset = assets.firstObject else {
             throw PhotosError.assetNotFound(assetId)
         }
@@ -390,7 +390,7 @@ public actor PhotosService: PhotosServiceProtocol {
     public func getMetadata(assetId: String) async throws -> AssetMetadata {
         try await ensureAccess()
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: Self.byIdentifierOptions())
         guard let asset = assets.firstObject else {
             throw PhotosError.assetNotFound(assetId)
         }
@@ -485,26 +485,19 @@ public actor PhotosService: PhotosServiceProtocol {
     public func listPeople() async throws -> [PhotoPerson] {
         try await ensureAccess()
 
+        // People are not user albums. This used to list every top-level album
+        // whose title lacked "People", so "Vacation 2024" came back as a person.
+        // The Faces smart folder is the only people container PhotoKit exposes.
         var people: [PhotoPerson] = []
+        let faceFolders = PHCollectionList.fetchCollectionLists(with: .smartFolder, subtype: .smartFolderFaces, options: nil)
 
-        // Fetch people using person type
-        let personOptions = PHFetchOptions()
-        let personCollections = PHCollection.fetchTopLevelUserCollections(with: personOptions)
-
-        personCollections.enumerateObjects { collection, _, _ in
-            if let personCollection = collection as? PHAssetCollection,
-               personCollection.assetCollectionType == .album,
-               personCollection.localizedTitle?.contains("People") == false {
-
-                // This is a workaround - Photos doesn't expose person collections directly via PhotoKit on macOS
-                // We can only access them indirectly
-                let assetCount = PHAsset.fetchAssets(in: personCollection, options: nil).count
-                if assetCount > 0 {
-                    people.append(PhotoPerson(
-                        id: personCollection.localIdentifier,
-                        name: personCollection.localizedTitle,
-                        photoCount: assetCount
-                    ))
+        for folderIndex in 0..<faceFolders.count {
+            let faces = PHCollection.fetchCollections(in: faceFolders.object(at: folderIndex), options: nil)
+            for faceIndex in 0..<faces.count {
+                guard let face = faces.object(at: faceIndex) as? PHAssetCollection else { continue }
+                let photoCount = PHAsset.fetchAssets(in: face, options: nil).count
+                if photoCount > 0 {
+                    people.append(PhotoPerson(id: face.localIdentifier, name: face.localizedTitle, photoCount: photoCount))
                 }
             }
         }
@@ -563,7 +556,7 @@ public actor PhotosService: PhotosServiceProtocol {
     public func setFavorite(assetId: String, isFavorite: Bool) async throws -> Bool {
         try await ensureAccess()
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: Self.byIdentifierOptions())
         guard let asset = assets.firstObject else {
             throw PhotosError.assetNotFound(assetId)
         }
@@ -579,7 +572,7 @@ public actor PhotosService: PhotosServiceProtocol {
     public func setHidden(assetId: String, isHidden: Bool) async throws -> Bool {
         try await ensureAccess()
 
-        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: nil)
+        let assets = PHAsset.fetchAssets(withLocalIdentifiers: [assetId], options: Self.byIdentifierOptions())
         guard let asset = assets.firstObject else {
             throw PhotosError.assetNotFound(assetId)
         }
@@ -590,6 +583,18 @@ public actor PhotosService: PhotosServiceProtocol {
         }
 
         return true
+    }
+
+    /// Fetch options for looking assets up by identifier.
+    ///
+    /// PhotoKit leaves hidden assets out of every fetch unless asked, so a
+    /// lookup by ID reported a hidden photo as not found and
+    /// "sysm photos hidden --unhide <id>" could never succeed. An explicit
+    /// ID names the asset the user wants, hidden or not.
+    static func byIdentifierOptions() -> PHFetchOptions {
+        let options = PHFetchOptions()
+        options.includeHiddenAssets = true
+        return options
     }
 
     // MARK: - Private Helpers

@@ -49,6 +49,9 @@ public struct Reminder: Codable, Sendable {
     public let recurrenceRule: RecurrenceRule?
     public let hasAlarms: Bool
     public let alarms: [EventAlarm]?
+    /// Whether the due date has a time of day: `false` for an all-day
+    /// reminder, `nil` when there is no due date.
+    public let hasDueTime: Bool?
     /// Creates a Reminder from an EventKit reminder.
     /// - Parameter ekReminder: The EventKit reminder to convert.
     public init(from ekReminder: EKReminder) {
@@ -74,8 +77,10 @@ public struct Reminder: Codable, Sendable {
         if let dueDateComponents = ekReminder.dueDateComponents,
            let date = Foundation.Calendar.current.date(from: dueDateComponents) {
             self.dueDate = date
+            self.hasDueTime = dueDateComponents.hour != nil
         } else {
             self.dueDate = nil
+            self.hasDueTime = nil
         }
 
         if let rules = ekReminder.recurrenceRules, let firstRule = rules.first {
@@ -95,6 +100,10 @@ public struct Reminder: Codable, Sendable {
     /// Human-readable due date string.
     public var dueDateString: String? {
         guard let date = dueDate else { return nil }
+        // An all-day reminder's midnight is not a due time; printing it read as a 12:00 AM alarm.
+        if hasDueTime == false {
+            return DateFormatters.fullDate.string(from: date)
+        }
         return DateFormatters.fullDateTime.string(from: date)
     }
 

@@ -210,44 +210,54 @@ public protocol CalendarServiceProtocol: Sendable {
     /// - Throws: ``CalendarError/accessDenied`` if calendar access not granted.
     func getEvent(id: String) async throws -> CalendarEvent?
 
-    /// Deletes an event by title.
+    /// Finds the event a delete or edit would act on, without changing it.
     ///
-    /// If multiple events have the same title, deletes the first occurrence found.
-    /// For recurring events, prompts to delete this occurrence or all future occurrences.
+    /// Occurrences of a recurring event share one identifier, so a selector
+    /// can match many. The earliest occurrence that has not ended is chosen,
+    /// else the latest past one.
     ///
-    /// - Parameter title: Title of the event to delete (exact match).
-    /// - Returns: `true` if an event was deleted, `false` if not found.
+    /// - Parameter selector: The event's identifier or exact title.
+    /// - Returns: The occurrence a delete or edit would act on.
     /// - Throws:
     ///   - ``CalendarError/accessDenied`` if calendar access not granted.
-    ///   - ``CalendarError/eventNotFound(_:)`` if no event with that title exists.
-    func deleteEvent(title: String) async throws -> Bool
+    ///   - ``CalendarError/eventNotFound(_:)`` if nothing matches.
+    ///   - ``CalendarError/ambiguousEvent(_:_:)`` if a title matches more than one event.
+    func findEvent(_ selector: EventSelector) async throws -> CalendarEvent
 
-    /// Updates an existing event's properties.
-    ///
-    /// Only non-nil parameters are updated. Finds the first event matching the title.
+    /// Deletes the occurrence ``findEvent(_:)`` chooses.
     ///
     /// - Parameters:
-    ///   - title: Current title of the event to edit (exact match).
+    ///   - selector: The event's identifier or exact title.
+    ///   - includeFuture: For a recurring event, also delete every later occurrence.
+    /// - Returns: The deleted occurrence.
+    /// - Throws: The same errors as ``findEvent(_:)``.
+    func deleteEvent(_ selector: EventSelector, includeFuture: Bool) async throws -> CalendarEvent
+
+    /// Updates the occurrence ``findEvent(_:)`` chooses.
+    ///
+    /// Only non-nil values are changed.
+    ///
+    /// - Parameters:
+    ///   - selector: The event's identifier or exact title.
     ///   - newTitle: Optional new title.
     ///   - newStart: Optional new start time.
     ///   - newEnd: Optional new end time.
-    /// - Returns: `true` if the event was updated.
-    /// - Throws:
-    ///   - ``CalendarError/accessDenied`` if calendar access not granted.
-    ///   - ``CalendarError/eventNotFound(_:)`` if no event with that title exists.
-    ///   - ``CalendarError/calendarReadOnly`` if event's calendar is not editable.
-    func editEvent(title: String, newTitle: String?, newStart: Date?, newEnd: Date?) async throws -> Bool
+    ///   - includeFuture: For a recurring event, also change every later occurrence.
+    /// - Returns: The updated occurrence.
+    /// - Throws: The same errors as ``findEvent(_:)``, and
+    ///   ``CalendarError/invalidYear(_:)`` if the new start is out of range.
+    func editEvent(_ selector: EventSelector, newTitle: String?, newStart: Date?, newEnd: Date?,
+                   includeFuture: Bool) async throws -> CalendarEvent
 
     // MARK: - Advanced Operations
 
-    /// Validates all events and returns those with potential issues.
+    /// Finds events dated outside the supported years (2000-2100).
     ///
-    /// Checks for events with:
-    /// - End time before start time
-    /// - Missing required fields
-    /// - Malformed data
+    /// A recurring event is judged by its first occurrence, so a series that
+    /// legitimately continues past 2100 is not reported. Birthday calendars
+    /// are skipped.
     ///
-    /// - Returns: Array of ``CalendarEvent`` objects that may have issues.
+    /// - Returns: Events whose start year is out of range.
     /// - Throws: ``CalendarError/accessDenied`` if calendar access not granted.
     func validateEvents() async throws -> [CalendarEvent]
 

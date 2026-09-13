@@ -206,39 +206,25 @@ public actor CalendarService: CalendarServiceProtocol {
         return CalendarEvent(from: event)
     }
 
-    public func deleteEvent(title: String) async throws -> Bool {
+    public func findEvent(_ selector: EventSelector) async throws -> CalendarEvent {
         try await ensureAccess()
-
-        let cal = Foundation.Calendar.current
-        let startDate = cal.date(byAdding: .day, value: -30, to: Date())!
-        let endDate = cal.date(byAdding: .day, value: 365, to: Date())!
-
-        let calendars = store.calendars(for: .event)
-        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: calendars)
-        let ekEvents = store.events(matching: predicate)
-
-        guard let event = ekEvents.first(where: { $0.title == title }) else {
-            return false
-        }
-
-        try store.remove(event, span: .thisEvent)
-        return true
+        return CalendarEvent(from: try resolveEvent(selector))
     }
 
-    public func editEvent(title: String, newTitle: String? = nil, newStart: Date? = nil, newEnd: Date? = nil) async throws -> Bool {
+    public func deleteEvent(_ selector: EventSelector, includeFuture: Bool) async throws -> CalendarEvent {
         try await ensureAccess()
 
-        let cal = Foundation.Calendar.current
-        let startDate = cal.date(byAdding: .day, value: -30, to: Date())!
-        let endDate = cal.date(byAdding: .day, value: 365, to: Date())!
+        let event = try resolveEvent(selector)
+        let deleted = CalendarEvent(from: event)
+        try store.remove(event, span: Self.span(for: event, includeFuture: includeFuture))
+        return deleted
+    }
 
-        let calendars = store.calendars(for: .event)
-        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: calendars)
-        let ekEvents = store.events(matching: predicate)
+    public func editEvent(_ selector: EventSelector, newTitle: String? = nil, newStart: Date? = nil,
+                          newEnd: Date? = nil, includeFuture: Bool = false) async throws -> CalendarEvent {
+        try await ensureAccess()
 
-        guard let event = ekEvents.first(where: { $0.title == title }) else {
-            return false
-        }
+        let event = try resolveEvent(selector)
 
         if let newTitle = newTitle {
             event.title = newTitle
@@ -251,28 +237,121 @@ public actor CalendarService: CalendarServiceProtocol {
             event.endDate = newEnd
         }
 
-        try store.save(event, span: .thisEvent)
-        return true
+        try store.save(event, span: Self.span(for: event, includeFuture: includeFuture))
+        return CalendarEvent(from: event)
+    }
+
+    /// Finds the one occurrence a delete or edit acts on.
+    ///
+    /// Occurrences of a recurring event share an identifier, so an ID or a
+    /// title can match many, and EventKit returns them in no set order.
+    /// Taking the first match hit an arbitrary occurrence. The earliest
+    /// occurrence that has not ended wins, else the latest past one. A title
+    /// shared by different events is refused rather than guessed.
+    private func resolveEvent(_ selector: EventSelector) throws -> EKEvent {
+        let now = Date()
+        let cal = Foundation.Calendar.current
+        let predicate = store.predicateForEvents(
+            withStart: cal.date(byAdding: .day, value: -30, to: now)!,
+            end: cal.date(byAdding: .day, value: 365, to: now)!,
+            calendars: nil
+        )
+        let events = store.events(matching: predicate)
+
+        let matches: [EKEvent]
+        switch selector {
+        case .id(let id):
+            matches = events.filter { $0.eventIdentifier == id }
+            // Outside the search window, fall back to EventKit's own lookup,
+            // which returns a recurring event's first occurrence.
+            if matches.isEmpty, let event = store.event(withIdentifier: id) {
+                return event
+            }
+        case .title(let title):
+            matches = events.filter { $0.title == title }
+            let series = Dictionary(grouping: matches) { $0.eventIdentifier ?? "" }
+            if series.count > 1 {
+                let candidates = series.values
+                    .compactMap { occurrences in Self.preferredOccurrence(of: occurrences, now: now) }
+                    .sorted { $0.startDate < $1.startDate }
+                    .map { CalendarEvent(from: $0) }
+                throw CalendarError.ambiguousEvent(title, candidates)
+            }
+        }
+
+        guard let event = Self.preferredOccurrence(of: matches, now: now) else {
+            throw CalendarError.eventNotFound(selector.description)
+        }
+        return event
+    }
+
+    /// The occurrence to act on: the earliest that has not ended, else the latest.
+    static func preferredOccurrence<Event>(of events: [Event], now: Date,
+                                           start: (Event) -> Date, end: (Event) -> Date) -> Event? {
+        let byStart = events.sorted { start($0) < start($1) }
+        return byStart.first { end($0) > now } ?? byStart.last
+    }
+
+    private static func preferredOccurrence(of events: [EKEvent], now: Date) -> EKEvent? {
+        preferredOccurrence(of: events, now: now, start: { $0.startDate }, end: { $0.endDate })
+    }
+
+    private static func span(for event: EKEvent, includeFuture: Bool) -> EKSpan {
+        includeFuture && event.hasRecurrenceRules ? .futureEvents : .thisEvent
     }
 
     public func validateEvents() async throws -> [CalendarEvent] {
         try await ensureAccess()
 
-        let cal = Foundation.Calendar.current
-        let startDate = cal.date(byAdding: .year, value: -10, to: Date())!
-        let endDate = cal.date(byAdding: .year, value: 100, to: Date())!
+        // Birthdays come from Contacts and legitimately start before 2000.
+        let calendars = store.calendars(for: .event).filter { $0.type != .birthday }
+        var checked = Set<String>()
+        var invalid: [CalendarEvent] = []
 
-        let calendars = store.calendars(for: .event)
-        let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: calendars)
-        let ekEvents = store.events(matching: predicate)
+        for window in Self.validationWindows() {
+            let predicate = store.predicateForEvents(withStart: window.start, end: window.end, calendars: calendars)
+            for event in store.events(matching: predicate) {
+                let key = event.eventIdentifier ?? UUID().uuidString
+                guard checked.insert(key).inserted else { continue }
 
-        return ekEvents.compactMap { event -> CalendarEvent? in
-            let year = Foundation.Calendar.current.component(.year, from: event.startDate)
-            guard Self.validYearRange.contains(year) else {
-                return CalendarEvent(from: event)
+                // A series is judged by its first occurrence: a yearly event
+                // begun in 2024 legitimately recurs past 2100.
+                let first = event.hasRecurrenceRules ? store.event(withIdentifier: key) ?? event : event
+                let year = Self.gregorian.component(.year, from: first.startDate)
+                if !Self.validYearRange.contains(year) {
+                    invalid.append(CalendarEvent(from: first))
+                }
             }
-            return nil
         }
+        return invalid
+    }
+
+    static let gregorian = Foundation.Calendar(identifier: .gregorian)
+
+    /// Windows covering the years outside `validYearRange`.
+    ///
+    /// EventKit shortens an event predicate longer than four years to its
+    /// first four (EKEventStore.h), so the old single -10y..+100y predicate
+    /// only ever scanned its oldest four years. Only out-of-range years can
+    /// hold an invalid event, so the valid span is skipped. Three-year
+    /// windows stay under the limit whatever the leap days.
+    static func validationWindows(calendar: Foundation.Calendar = gregorian) -> [DateInterval] {
+        let spans = [
+            (1, validYearRange.lowerBound),
+            (validYearRange.upperBound + 1, validYearRange.upperBound + 101),
+        ]
+        var windows: [DateInterval] = []
+        for (firstYear, endYear) in spans {
+            var year = firstYear
+            while year < endYear {
+                let next = min(year + 3, endYear)
+                let start = calendar.date(from: DateComponents(year: year, month: 1, day: 1))!
+                let end = calendar.date(from: DateComponents(year: next, month: 1, day: 1))!
+                windows.append(DateInterval(start: start, end: end))
+                year = next
+            }
+        }
+        return windows
     }
 
     public func listAttendees(eventId: String) async throws -> [EventAttendee] {
@@ -364,6 +443,21 @@ public actor CalendarService: CalendarServiceProtocol {
     }
 }
 
+/// Picks the event a delete or edit acts on.
+public enum EventSelector: Sendable, CustomStringConvertible {
+    /// An EventKit event identifier, as shown in `--json` output.
+    case id(String)
+    /// An exact event title.
+    case title(String)
+
+    public var description: String {
+        switch self {
+        case .id(let id): return id
+        case .title(let title): return title
+        }
+    }
+}
+
 public enum CalendarError: LocalizedError {
     case accessDenied
     case calendarNotFound(String)
@@ -373,6 +467,7 @@ public enum CalendarError: LocalizedError {
     case invalidDateFormat(String)
     case calendarReadOnly(String)
     case invalidColor(String)
+    case ambiguousEvent(String, [CalendarEvent])
 
     public var errorDescription: String? {
         switch self {
@@ -392,11 +487,19 @@ public enum CalendarError: LocalizedError {
             return "Calendar '\(name)' is read-only and cannot be modified"
         case .invalidColor(let color):
             return "Invalid hex color '\(color)'. Expected format: #RRGGBB"
+        case .ambiguousEvent(let title, let candidates):
+            let choices = candidates.map {
+                "  \($0.id)  \(DateFormatters.fullDateTime.string(from: $0.startDate))  (\($0.calendarName))"
+            }
+            return "\(candidates.count) different events are titled '\(title)'; choose one with --id:\n"
+                + choices.joined(separator: "\n")
         }
     }
 
     public var recoverySuggestion: String? {
         switch self {
+        case .ambiguousEvent:
+            return "Pass the event's ID with --id instead of its title."
         case .accessDenied:
             return """
             Grant calendar access in System Settings:
