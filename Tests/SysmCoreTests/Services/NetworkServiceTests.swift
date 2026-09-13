@@ -27,5 +27,13 @@ final class NetworkServiceTests: XCTestCase {
         XCTAssertEqual(NetworkService.dnsServers(fromScutil: "resolver #1\n  domain : local\n"), [])
     }
 
+    // MARK: - pingArguments(host:count:)
 
+    func testPingTimeLimitGrowsWithTheCount() {
+        // -t limits the whole run; a fixed 5 ended --count 10 after about five packets.
+        XCTAssertEqual(NetworkService.pingArguments(host: "example.com", count: 10),
+                       ["-c", "10", "-t", "15", "example.com"])
+        XCTAssertEqual(NetworkService.pingArguments(host: "example.com", count: 1),
+                       ["-c", "1", "-t", "6", "example.com"])
+    }
 }

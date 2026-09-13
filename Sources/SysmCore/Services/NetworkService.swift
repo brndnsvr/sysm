@@ -157,7 +157,7 @@ public struct NetworkService: NetworkServiceProtocol {
     public func ping(host: String, count: Int) throws -> PingResult {
         let result = try Shell.execute(
             "/sbin/ping",
-            args: ["-c", String(count), "-t", "5", host],
+            args: Self.pingArguments(host: host, count: count),
             timeout: TimeInterval(count * 6 + 5)
         )
 
@@ -206,6 +206,15 @@ public struct NetworkService: NetworkServiceProtocol {
             roundTripAvg: avgRtt,
             roundTripMax: maxRtt
         )
+    }
+
+    /// Arguments for ping(8).
+    ///
+    /// ping's -t limits the whole run, not the wait for each reply, so a fixed
+    /// "-t 5" ended any --count above five early. The limit allows the one
+    /// second per packet ping spends by default, plus five for the last reply.
+    static func pingArguments(host: String, count: Int) -> [String] {
+        ["-c", String(count), "-t", String(count + 5), host]
     }
 
     // MARK: - Private
