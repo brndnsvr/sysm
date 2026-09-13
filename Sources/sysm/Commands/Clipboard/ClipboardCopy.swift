@@ -18,10 +18,13 @@ struct ClipboardCopy: ParsableCommand {
         if let text = text {
             content = text
         } else {
-            // Read from stdin
-            guard let stdinData = Optional(FileHandle.standardInput.availableData),
-                  let stdinText = String(data: stdinData, encoding: .utf8),
-                  !stdinText.isEmpty else {
+            // A terminal on stdin means nothing was piped; waiting for EOF would just hang.
+            guard isatty(STDIN_FILENO) == 0 else {
+                throw ValidationError("No text provided. Pass as argument or pipe via stdin.")
+            }
+            // availableData returns only what is buffered right now, so longer input was cut short.
+            let stdinData = FileHandle.standardInput.readDataToEndOfFile()
+            guard let stdinText = String(data: stdinData, encoding: .utf8), !stdinText.isEmpty else {
                 throw ValidationError("No text provided. Pass as argument or pipe via stdin.")
             }
             content = stdinText.trimmingCharacters(in: .newlines)
