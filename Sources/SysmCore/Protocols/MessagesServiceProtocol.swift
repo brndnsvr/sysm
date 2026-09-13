@@ -110,9 +110,9 @@ public protocol MessagesServiceProtocol: Sendable {
     ///   - conversationId: The conversation's unique identifier.
     ///   - limit: Maximum number of messages to return.
     /// - Returns: Array of ``Message`` objects from the conversation.
-    /// - Throws:
-    ///   - ``MessagesError/messagesNotRunning`` if Messages.app is not running.
-    ///   - ``MessagesError/conversationNotFound(_:)`` if conversation doesn't exist.
+    /// - Throws: ``MessagesError/historyUnavailable`` always. Messages exposes no
+    ///   message history to AppleScript; the protocol keeps the method so a
+    ///   chat.db reader can implement it later.
     ///
     /// ## Example
     ///

@@ -44,19 +44,14 @@ final class MessagesServiceTests: XCTestCase {
 
     // MARK: - getMessages()
 
-    func testGetMessagesParsesOutput() throws {
-        mock.defaultResponse = "Jan 15, 2024|||+1234567890|||Hello!###Jan 15, 2024|||+0987654321|||Hi there###"
-        let messages = try service.getMessages(conversationId: "chat-1", limit: 10)
-        XCTAssertEqual(messages.count, 2)
-        XCTAssertEqual(messages[0].sender, "+1234567890")
-        XCTAssertEqual(messages[0].content, "Hello!")
-        XCTAssertEqual(messages[1].content, "Hi there")
-    }
-
-    func testGetMessagesEmpty() throws {
-        mock.defaultResponse = ""
-        let messages = try service.getMessages(conversationId: "chat-1", limit: 10)
-        XCTAssertTrue(messages.isEmpty)
+    func testGetMessagesReportsHistoryUnavailable() {
+        // Messages has no scriptable message class, so reading must fail, not return [].
+        XCTAssertThrowsError(try service.getMessages(conversationId: "chat-1", limit: 10)) { error in
+            guard case MessagesError.historyUnavailable = error else {
+                return XCTFail("Expected historyUnavailable, got \(error)")
+            }
+        }
+        XCTAssertTrue(mock.executedScripts.isEmpty)
     }
 
     // MARK: - sendMessage()
