@@ -66,39 +66,11 @@ public struct MessagesService: MessagesServiceProtocol {
     // MARK: - Read Conversation
 
     public func getMessages(conversationId: String, limit: Int = 30) throws -> [Message] {
-        let script = """
-        tell application "Messages"
-            set msgList to ""
-            set msgCount to 0
-            try
-                set targetChat to chat id "\(escapeForAppleScript(conversationId))"
-                repeat with m in (messages of targetChat)
-                    if msgCount >= \(limit) then exit repeat
-                    set msgCount to msgCount + 1
-                    try
-                        set msgDate to (date of m) as string
-                        set msgContent to text of m
-                        set msgSender to handle of sender of m
-                        set msgList to msgList & msgDate & "|||" & msgSender & "|||" & msgContent & "###"
-                    end try
-                end repeat
-            end try
-            return msgList
-        end tell
-        """
-
-        let result = try runAppleScript(script)
-        if result.isEmpty { return [] }
-
-        return result.components(separatedBy: "###").compactMap { item -> Message? in
-            let parts = item.components(separatedBy: "|||")
-            guard parts.count >= 3 else { return nil }
-            return Message(
-                date: parts[0],
-                sender: parts[1],
-                content: parts[2]
-            )
-        }
+        // Messages' scripting dictionary has no message class (only account,
+        // chat, file transfer, and participant), so scripting "messages of" a
+        // chat failed inside its try and returned nothing, which read as an
+        // empty conversation. History lives only in chat.db.
+        throw MessagesError.historyUnavailable
     }
 
     // MARK: - Private Helpers
@@ -136,6 +108,7 @@ public enum MessagesError: LocalizedError {
     case appleScriptError(String)
     case messagesNotRunning
     case sendFailed(String)
+    case historyUnavailable
 
     public var errorDescription: String? {
         switch self {
@@ -145,11 +118,15 @@ public enum MessagesError: LocalizedError {
             return "Messages app is not running"
         case .sendFailed(let message):
             return "Failed to send message: \(message)"
+        case .historyUnavailable:
+            return "Reading messages is not supported: Messages does not expose message history to AppleScript"
         }
     }
 
     public var recoverySuggestion: String? {
         switch self {
+        case .historyUnavailable:
+            return "Read the conversation in Messages. sysm can still list conversations and send messages."
         case .appleScriptError:
             return """
             Grant automation permission:

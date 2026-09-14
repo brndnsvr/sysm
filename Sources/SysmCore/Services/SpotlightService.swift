@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 public struct SpotlightService: SpotlightServiceProtocol {
     private let mdfindPath = "/usr/bin/mdfind"
@@ -48,36 +49,28 @@ public struct SpotlightService: SpotlightServiceProtocol {
     // MARK: - Search Operations
 
     public func search(query: String, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {
-        var args: [String] = []
-
-        if let scope = scope {
-            args.append(contentsOf: ["-onlyin", scope])
-        }
-
-        args.append(query)
-
-        let paths = try runMdfind(args, limit: limit)
+        let paths = try runMdfind(Self.queryArguments(query: query, scope: scope), limit: limit)
         return paths.map { SearchResult(path: $0) }
     }
 
-    public func searchByKind(kind: String, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {
-        let kindMap: [String: String] = [
-            "pdf": "PDF Document",
-            "image": "Image",
-            "video": "Video",
-            "audio": "Audio",
-            "document": "Document",
-            "folder": "Folder",
-            "application": "Application",
-            "archive": "Archive",
-            "presentation": "Presentation",
-            "spreadsheet": "Spreadsheet",
-            "email": "Email Message",
-            "contact": "Contact",
-            "calendar": "Calendar Event",
-        ]
+    /// mdfind arguments for a free-text query.
+    ///
+    /// mdfind reads any argument starting with "-" as an option and rejects
+    /// "--", so a query like "-draft" printed "Unknown option" and found
+    /// nothing. A leading space keeps it a query.
+    static func queryArguments(query: String, scope: String?) -> [String] {
+        var args: [String] = []
+        if let scope = scope {
+            args.append(contentsOf: ["-onlyin", scope])
+        }
+        args.append(query.hasPrefix("-") ? " " + query : query)
+        return args
+    }
 
-        let kindValue = kindMap[kind.lowercased()] ?? kind
+    public func searchByKind(kind: String, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {
+        guard let contentType = Self.contentType(forKind: kind) else {
+            throw SpotlightError.unknownKind(kind)
+        }
 
         var args: [String] = []
 
@@ -85,11 +78,52 @@ public struct SpotlightService: SpotlightServiceProtocol {
             args.append(contentsOf: ["-onlyin", scope])
         }
 
-        let escapedKind = appleScript.escapeMdfind(kindValue)
-        args.append("kMDItemKind == '\(escapedKind)'")
+        // kMDItemContentTypeTree lists a file's type and every type it conforms
+        // to, so public.image matches JPEG, PNG, and HEIC alike, in any language.
+        let escapedType = appleScript.escapeMdfind(contentType)
+        args.append("kMDItemContentTypeTree == '\(escapedType)'")
 
+        let label = UTType(contentType)?.localizedDescription ?? contentType
         let paths = try runMdfind(args, limit: limit)
-        return paths.map { SearchResult(path: $0, kind: kindValue) }
+        return paths.map { SearchResult(path: $0, kind: label) }
+    }
+
+    /// Kind names sysm understands, mapped to the content types they search for.
+    static let contentTypesByKind: [String: String] = [
+        "pdf": UTType.pdf.identifier,
+        "image": UTType.image.identifier,
+        "video": UTType.movie.identifier,
+        "audio": UTType.audio.identifier,
+        "document": UTType.compositeContent.identifier,
+        "text": UTType.text.identifier,
+        "folder": UTType.folder.identifier,
+        "application": UTType.application.identifier,
+        "archive": UTType.archive.identifier,
+        "presentation": UTType.presentation.identifier,
+        "spreadsheet": UTType.spreadsheet.identifier,
+        "email": UTType.emailMessage.identifier,
+        "contact": UTType.contact.identifier,
+        "calendar": UTType.calendarEvent.identifier,
+    ]
+
+    /// The content type to search for: a kind name from ``contentTypesByKind``,
+    /// a type identifier ("public.heic"), or a filename extension ("docx").
+    ///
+    /// Kinds used to match kMDItemKind, the kind text Finder shows, which
+    /// changes with the system language and did not even match English
+    /// systems ("PDF Document" found no PDFs).
+    static func contentType(forKind kind: String) -> String? {
+        let key = kind.lowercased()
+        if let mapped = contentTypesByKind[key] {
+            return mapped
+        }
+        if let type = UTType(kind), type.isDeclared {
+            return type.identifier
+        }
+        if let type = UTType(filenameExtension: key), type.isDeclared {
+            return type.identifier
+        }
+        return nil
     }
 
     public func searchModified(days: Int, scope: String? = nil, limit: Int? = nil) throws -> [SearchResult] {
@@ -150,29 +184,53 @@ public struct SpotlightService: SpotlightServiceProtocol {
     }
 
     private func parseMetadata(_ output: String) -> [String: String] {
+        Self.metadataAttributes(fromMdls: output)
+    }
+
+    /// Attribute values from mdls output, with arrays joined by ", ".
+    ///
+    /// mdls prints an array over several lines, one quoted item per line
+    /// between "(" and ")". Reading line by line kept only "(" for every
+    /// array attribute. Values can also contain " = ", so only the first one
+    /// separates key from value.
+    static func metadataAttributes(fromMdls output: String) -> [String: String] {
         var attributes: [String: String] = [:]
+        var arrayKey: String?
+        var items: [String] = []
+
+        func unquoted(_ text: String) -> String {
+            if text.count >= 2 && text.hasPrefix("\"") && text.hasSuffix("\"") {
+                return String(text.dropFirst().dropLast())
+            }
+            return text
+        }
 
         for line in output.components(separatedBy: "\n") {
-            let parts = line.components(separatedBy: " = ")
-            if parts.count == 2 {
-                let key = parts[0].trimmingCharacters(in: .whitespaces)
-                var value = parts[1].trimmingCharacters(in: .whitespaces)
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
 
-                // Skip null values
-                if value == "(null)" { continue }
-
-                // Clean up quoted strings
-                if value.hasPrefix("\"") && value.hasSuffix("\"") {
-                    value = String(value.dropFirst().dropLast())
+            if let key = arrayKey {
+                if trimmed == ")" {
+                    attributes[key] = items.joined(separator: ", ")
+                    arrayKey = nil
+                    items = []
+                } else if !trimmed.isEmpty {
+                    items.append(unquoted(trimmed.hasSuffix(",") ? String(trimmed.dropLast()) : trimmed))
                 }
+                continue
+            }
 
-                // Clean up parenthesized values
-                if value.hasPrefix("(") && value.hasSuffix(")") {
-                    value = String(value.dropFirst().dropLast())
-                        .trimmingCharacters(in: .whitespaces)
-                }
+            guard let separator = line.range(of: " = ") else { continue }
+            let key = line[..<separator.lowerBound].trimmingCharacters(in: .whitespaces)
+            let value = line[separator.upperBound...].trimmingCharacters(in: .whitespaces)
 
-                attributes[key] = value
+            if value == "(" {
+                arrayKey = key
+            } else if value == "(null)" {
+                continue
+            } else if value.hasPrefix("(") && value.hasSuffix(")") {
+                attributes[key] = value.dropFirst().dropLast().trimmingCharacters(in: .whitespaces)
+            } else {
+                attributes[key] = unquoted(value)
             }
         }
 
@@ -186,6 +244,7 @@ public enum SpotlightError: LocalizedError {
     case fileNotFound(String)
     case searchFailed(String)
     case metadataFailed(String)
+    case unknownKind(String)
 
     public var errorDescription: String? {
         switch self {
@@ -199,6 +258,9 @@ public enum SpotlightError: LocalizedError {
             return "Search failed: \(message)"
         case .metadataFailed(let message):
             return "Metadata retrieval failed: \(message)"
+        case .unknownKind(let kind):
+            let names = SpotlightService.contentTypesByKind.keys.sorted().joined(separator: ", ")
+            return "Unknown kind '\(kind)'. Use one of \(names), a content type such as public.heic, or a file extension such as docx"
         }
     }
 }

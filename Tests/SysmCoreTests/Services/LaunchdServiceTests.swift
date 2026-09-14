@@ -96,6 +96,50 @@ final class LaunchdServiceTests: XCTestCase {
         XCTAssertNil(plist["EnvironmentVariables"])
     }
 
+    // MARK: - parseCron(_:)
+
+    func testCronAcceptsNumbersAndStars() throws {
+        let schedule = try LaunchdService.parseCron("30 2 * * 1")
+        XCTAssertEqual(schedule.minute, 30)
+        XCTAssertEqual(schedule.hour, 2)
+        XCTAssertNil(schedule.day)
+        XCTAssertNil(schedule.month)
+        XCTAssertEqual(schedule.weekday, 1)
+
+        let everyMinute = try LaunchdService.parseCron("* * * * *")
+        XCTAssertEqual(everyMinute.cronExpression, "* * * * *")
+    }
+
+    func testCronRejectsWhatOneCalendarEntryCannotHold() {
+        // These all used to degrade to "*": "*/5 * * * *" ran every minute.
+        let unsupported = [
+            "*/5 * * * *", "1-5 * * * *", "0,30 * * * *", "0 9 * * mon",
+            "60 * * * *", "* 24 * * *", "* * 0 * *", "* * * 13 *", "* * * * 8", "-1 * * * *",
+        ]
+        for expr in unsupported {
+            XCTAssertThrowsError(try LaunchdService.parseCron(expr), expr) { error in
+                guard case LaunchdService.LaunchdError.unsupportedCron(let rejected, _) = error else {
+                    return XCTFail("\(expr): expected unsupportedCron, got \(error)")
+                }
+                XCTAssertEqual(rejected, expr)
+            }
+        }
+    }
+
+    func testCronStepPointsAtEvery() {
+        XCTAssertThrowsError(try LaunchdService.parseCron("*/5 * * * *")) { error in
+            XCTAssertTrue(error.localizedDescription.contains("--every"), error.localizedDescription)
+        }
+    }
+
+    func testCronNeedsFiveFields() {
+        XCTAssertThrowsError(try LaunchdService.parseCron("0 9 * *")) { error in
+            guard case LaunchdService.LaunchdError.invalidCron = error else {
+                return XCTFail("expected invalidCron, got \(error)")
+            }
+        }
+    }
+
     // MARK: - Helpers
 
     private func assertInvalidName<T>(

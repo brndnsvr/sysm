@@ -87,13 +87,7 @@ public struct SystemService: SystemServiceProtocol {
         if let brandOutput = try? sysctlString("machdep.cpu.brand_string") {
             cpu = brandOutput
         }
-        if let spOutput = try? Shell.run("/usr/sbin/system_profiler", args: ["SPHardwareDataType", "-detailLevel", "mini"]) {
-            if let range = spOutput.range(of: #"Serial Number \(system\): (.+)"#, options: .regularExpression) {
-                serialNumber = String(spOutput[range])
-                    .replacingOccurrences(of: "Serial Number (system): ", with: "")
-                    .trimmingCharacters(in: .whitespacesAndNewlines)
-            }
-        }
+        serialNumber = Self.platformSerialNumber()
 
         return SystemInfo(
             hostname: hostname,
@@ -107,6 +101,18 @@ public struct SystemService: SystemServiceProtocol {
         )
     }
 
+    /// The Mac's serial number from the IOPlatformExpertDevice registry entry.
+    ///
+    /// system_profiler's mini detail level omits personal information, the
+    /// serial included, so parsing its output never found one.
+    private static func platformSerialNumber() -> String? {
+        let service = IOServiceGetMatchingService(kIOMainPortDefault, IOServiceMatching("IOPlatformExpertDevice"))
+        guard service != 0 else { return nil }
+        defer { IOObjectRelease(service) }
+        let property = IORegistryEntryCreateCFProperty(service, kIOPlatformSerialNumberKey as CFString, kCFAllocatorDefault, 0)
+        return property?.takeRetainedValue() as? String
+    }
+
     // MARK: - Memory
 
     public func getMemoryUsage() throws -> MemoryUsage {
@@ -117,7 +123,7 @@ public struct SystemService: SystemServiceProtocol {
             throw SystemError.commandFailed("vm_stat")
         }
 
-        let pageSize = 16384 // Apple Silicon default
+        let pageSize = Self.vmStatPageSize(vmOutput) ?? Int(getpagesize())
         var active: Int = 0
         var inactive: Int = 0
         var wired: Int = 0
@@ -150,6 +156,18 @@ public struct SystemService: SystemServiceProtocol {
             inactiveGB: Double(inactiveMB) / 1024.0,
             wiredGB: Double(wiredMB) / 1024.0
         )
+    }
+
+    /// The page size vm_stat counts in, from its header line:
+    /// "Mach Virtual Memory Statistics: (page size of 16384 bytes)".
+    ///
+    /// This was hardcoded to Apple silicon's 16 KiB, which made every figure
+    /// four times too large on Intel Macs, whose pages are 4 KiB.
+    static func vmStatPageSize(_ output: String) -> Int? {
+        guard let range = output.range(of: #"page size of (\d+) bytes"#, options: .regularExpression) else {
+            return nil
+        }
+        return Int(output[range].filter(\.isNumber))
     }
 
     // MARK: - Disk

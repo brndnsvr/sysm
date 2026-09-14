@@ -62,7 +62,9 @@ public struct MusicService: MusicServiceProtocol {
         let script = """
         tell application "Music"
             if player state is stopped then
-                return "stopped|||||||0|||0"
+                -- The same six fields as the playing case below, so the parser
+                -- sees an empty track in state "stopped".
+                return "|||||||||0|||0|||stopped"
             end if
             set trackName to name of current track
             set trackArtist to artist of current track
@@ -225,25 +227,6 @@ public struct MusicService: MusicServiceProtocol {
             set results to search library playlist 1 for "\(escapedQuery)"
             if (count of results) > 0 then
                 play item 1 of results
-            else
-                error "No tracks found matching the query"
-            end if
-        end tell
-        """
-        _ = try runAppleScript(script)
-    }
-
-    public func playNext(_ query: String) throws {
-        let escapedQuery = appleScript.escape(query)
-        let script = """
-        tell application "Music"
-            set results to search library playlist 1 for "\(escapedQuery)"
-            if (count of results) > 0 then
-                set theTrack to item 1 of results
-                -- Note: "play next" might not work in all versions
-                -- This is a workaround that adds to Up Next
-                play theTrack
-                pause
             else
                 error "No tracks found matching the query"
             end if

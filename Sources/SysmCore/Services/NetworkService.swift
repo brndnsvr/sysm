@@ -4,7 +4,7 @@ import Foundation
 public struct NetworkService: NetworkServiceProtocol {
     public init() {}
 
-    public func getStatus() throws -> NetworkStatus {
+    public func getStatus(includeExternalIP: Bool = false) throws -> NetworkStatus {
         let ifList = try Shell.run("/sbin/ifconfig", args: ["-l"])
         let allInterfaces = ifList.split(separator: " ").map(String.init)
 
@@ -33,9 +33,10 @@ public struct NetworkService: NetworkServiceProtocol {
 
         let connected = !activeInterfaces.isEmpty
 
-        // Get external IP
+        // The public address comes from ifconfig.me, a third-party service, so
+        // it is looked up only when asked for.
         var externalIP: String?
-        if let ip = try? Shell.run("/usr/bin/curl", args: ["-s", "--max-time", "3", "ifconfig.me"]) {
+        if includeExternalIP, let ip = try? Shell.run("/usr/bin/curl", args: ["-s", "--max-time", "3", "ifconfig.me"]) {
             let trimmed = ip.trimmingCharacters(in: .whitespacesAndNewlines)
             if !trimmed.isEmpty {
                 externalIP = trimmed
@@ -55,7 +56,11 @@ public struct NetworkService: NetworkServiceProtocol {
             return nil
         }
 
-        guard let ssid = client.ssid() else {
+        // CoreWLAN withholds the SSID and BSSID unless the calling app has
+        // Location Services authorization (CWInterface.h). An interface that
+        // still reports a signal is connected with its name hidden, not offline.
+        let ssid = client.ssid()
+        guard ssid != nil || client.rssiValue() != 0 else {
             return nil
         }
 
@@ -128,18 +133,25 @@ public struct NetworkService: NetworkServiceProtocol {
 
     public func getDNS() throws -> [String] {
         let output = try Shell.run("/usr/sbin/scutil", args: ["--dns"])
+        return Self.dnsServers(fromScutil: output)
+    }
+
+    /// Nameserver addresses from `scutil --dns` output, in order, without duplicates.
+    ///
+    /// Lines look like "nameserver[0] : fe80::1%en0". Splitting on every
+    /// colon cut an IPv6 address down to its first group, so only the first
+    /// colon, which ends the key, separates it from the address.
+    static func dnsServers(fromScutil output: String) -> [String] {
         var servers: [String] = []
 
         for line in output.split(separator: "\n") {
-            let trimmed = String(line).trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("nameserver[") {
-                let parts = trimmed.split(separator: ":")
-                if parts.count >= 2 {
-                    let server = String(parts[1]).trimmingCharacters(in: .whitespaces)
-                    if !servers.contains(server) {
-                        servers.append(server)
-                    }
-                }
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("nameserver["), let separator = trimmed.firstIndex(of: ":") else {
+                continue
+            }
+            let server = trimmed[trimmed.index(after: separator)...].trimmingCharacters(in: .whitespaces)
+            if !server.isEmpty && !servers.contains(server) {
+                servers.append(server)
             }
         }
 
@@ -149,7 +161,7 @@ public struct NetworkService: NetworkServiceProtocol {
     public func ping(host: String, count: Int) throws -> PingResult {
         let result = try Shell.execute(
             "/sbin/ping",
-            args: ["-c", String(count), "-t", "5", host],
+            args: Self.pingArguments(host: host, count: count),
             timeout: TimeInterval(count * 6 + 5)
         )
 
@@ -198,6 +210,15 @@ public struct NetworkService: NetworkServiceProtocol {
             roundTripAvg: avgRtt,
             roundTripMax: maxRtt
         )
+    }
+
+    /// Arguments for ping(8).
+    ///
+    /// ping's -t limits the whole run, not the wait for each reply, so a fixed
+    /// "-t 5" ended any --count above five early. The limit allows the one
+    /// second per packet ping spends by default, plus five for the last reply.
+    static func pingArguments(host: String, count: Int) -> [String] {
+        ["-c", String(count), "-t", String(count + 5), host]
     }
 
     // MARK: - Private

@@ -5,10 +5,10 @@ import SysmCore
 struct SpotlightKind: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "kind",
-        abstract: "Search files by type (pdf, image, video, audio, document, folder, application)"
+        abstract: "Search files by type (pdf, image, video, audio, document, text, folder, application)"
     )
 
-    @Argument(help: "File type to search for (pdf, image, video, audio, document, folder, application, archive, presentation, spreadsheet)")
+    @Argument(help: "File type: pdf, image, video, audio, document, text, folder, application, archive, presentation, spreadsheet, email, contact, calendar; or a content type (public.heic) or extension (docx)")
     var kind: String
 
     @Option(name: .shortAndLong, help: "Limit search to directory")

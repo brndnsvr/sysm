@@ -30,6 +30,9 @@ struct NotesCreate: ParsableCommand {
     @Flag(name: .long, help: "Read body content from stdin")
     var stdin: Bool = false
 
+    @Flag(name: .long, help: "Treat the body as HTML instead of plain text")
+    var html = false
+
     @Option(name: .long, help: "Read structured Notes Markdown from a UTF-8 file, or '-' for stdin")
     var fromMarkdown: String?
 
@@ -50,7 +53,8 @@ struct NotesCreate: ParsableCommand {
                 if stdin {
                     noteBody = readStandardInput().trimmingCharacters(in: .whitespacesAndNewlines)
                 }
-                noteId = try service.createNote(name: title, body: noteBody, folder: folder)
+                let bodyHTML = html ? noteBody : NotesPlainText.html(noteBody)
+                noteId = try service.createNote(name: title, body: bodyHTML, folder: folder)
             }
 
             print("Created note '\(title)'")

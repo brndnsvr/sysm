@@ -20,6 +20,9 @@ struct NotesEdit: ParsableCommand {
     @Flag(name: .long, help: "Read body content from stdin")
     var stdin: Bool = false
 
+    @Flag(name: .long, help: "Treat the body as HTML instead of plain text")
+    var html = false
+
     func run() throws {
         let service = Services.notes()
 
@@ -39,7 +42,7 @@ struct NotesEdit: ParsableCommand {
         }
 
         do {
-            try service.updateNote(id: id, name: title, body: noteBody)
+            try service.updateNote(id: id, name: title, body: noteBody.map { html ? $0 : NotesPlainText.html($0) })
             print("Note updated")
         } catch {
             fputs("Error: \(error.localizedDescription)\n", stderr)

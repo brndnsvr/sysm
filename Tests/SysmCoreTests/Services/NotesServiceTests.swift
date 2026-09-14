@@ -198,16 +198,18 @@ final class NotesServiceTests: XCTestCase {
     // MARK: - moveNote error paths
 
     func testMoveNoteFolderNotFound() {
-        mock.defaultResponse = "error:Can't get folder"
+        mock.responses["count of matchingFolders"] = "0"
         XCTAssertThrowsError(try service.moveNote(id: "note-1", toFolder: "Missing")) { error in
             guard case NotesError.folderNotFound = error else {
                 XCTFail("Expected folderNotFound, got \(error)")
                 return
             }
         }
+        XCTAssertFalse(mock.executedScripts.contains { $0.script.contains("move n to") })
     }
 
     func testMoveNoteNoteNotFound() {
+        mock.responses["count of matchingFolders"] = "1"
         mock.defaultResponse = "error:Can't get note"
         XCTAssertThrowsError(try service.moveNote(id: "bad-id", toFolder: "Work")) { error in
             guard case NotesError.noteNotFound = error else {
@@ -215,6 +217,33 @@ final class NotesServiceTests: XCTestCase {
                 return
             }
         }
+    }
+
+    // MARK: - Folder names shared across accounts
+
+    func testMoveNoteRejectsAmbiguousFolder() {
+        mock.responses["count of matchingFolders"] = "2"
+        XCTAssertThrowsError(try service.moveNote(id: "note-1", toFolder: "Notes")) { error in
+            guard case NotesError.ambiguousFolder(let folder, let count) = error else {
+                XCTFail("Expected ambiguousFolder, got \(error)")
+                return
+            }
+            XCTAssertEqual(folder, "Notes")
+            XCTAssertEqual(count, 2)
+        }
+        XCTAssertFalse(mock.executedScripts.contains { $0.script.contains("move n to") })
+    }
+
+    func testDeleteFolderRejectsAmbiguousName() {
+        // Notes would delete whichever "Notes" folder it found first, with its notes.
+        mock.responses["count of matchingFolders"] = "2"
+        XCTAssertThrowsError(try service.deleteFolder(name: "Notes")) { error in
+            guard case NotesError.ambiguousFolder = error else {
+                XCTFail("Expected ambiguousFolder, got \(error)")
+                return
+            }
+        }
+        XCTAssertFalse(mock.executedScripts.contains { $0.script.contains("delete folder") })
     }
 }
 
