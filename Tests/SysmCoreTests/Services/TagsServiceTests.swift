@@ -55,4 +55,20 @@ final class TagsServiceTests: XCTestCase {
 
         XCTAssertEqual(try service.getTags(path: file.path), [Tag(name: "Urgent", color: 6)])
     }
+
+    func testTaggingASymlinkLeavesItsTargetAlone() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("sysm-tags-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let target = dir.appendingPathComponent("target.txt")
+        let link = dir.appendingPathComponent("link.txt")
+        try Data().write(to: target)
+        try FileManager.default.createSymbolicLink(at: link, withDestinationURL: target)
+
+        let service = TagsService()
+        try service.addTag(path: link.path, name: "Linked", color: 4)
+
+        XCTAssertEqual(try service.getTags(path: link.path), [Tag(name: "Linked", color: 4)])
+        XCTAssertEqual(try service.getTags(path: target.path), [])
+    }
 }

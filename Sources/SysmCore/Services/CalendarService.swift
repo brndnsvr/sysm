@@ -409,12 +409,26 @@ public actor CalendarService: CalendarServiceProtocol {
         }
 
         let predicate = store.predicateForEvents(withStart: startDate, end: endDate, calendars: [calendar])
-        let ekEvents = store.events(matching: predicate)
 
-        return ICSGenerator.generate(events: ekEvents, calendarName: calendarName)
+        // events(matching:) returns every occurrence in the range. A repeating
+        // series is exported once, from its first occurrence, with its rule;
+        // an occurrence edited on its own stays as an exception.
+        var seriesSeen = Set<String>()
+        var exported: [EKEvent] = []
+        for event in store.events(matching: predicate).sorted(by: { $0.startDate < $1.startDate }) {
+            guard event.hasRecurrenceRules, !event.isDetached, let id = event.eventIdentifier else {
+                exported.append(event)
+                continue
+            }
+            if seriesSeen.insert(id).inserted {
+                exported.append(store.event(withIdentifier: id) ?? event)
+            }
+        }
+
+        return ICSGenerator.generate(events: exported, calendarName: calendarName)
     }
 
-    public func importFromICS(icsContent: String, calendarName: String) async throws -> Int {
+    public func importFromICS(icsContent: String, calendarName: String) async throws -> ICSImportSummary {
         try await ensureAccess()
 
         guard let calendar = store.calendars(for: .event).first(where: { $0.title == calendarName }) else {
@@ -424,8 +438,14 @@ public actor CalendarService: CalendarServiceProtocol {
         let parser = ICSParser(content: icsContent)
         let parsedEvents = try parser.parse()
 
-        var importedCount = 0
+        var imported = 0
+        var skipped = 0
         for eventData in parsedEvents {
+            if isAlreadyPresent(eventData, in: calendar) {
+                skipped += 1
+                continue
+            }
+
             let event = EKEvent(eventStore: store)
             event.calendar = calendar
             event.title = eventData.title
@@ -436,10 +456,46 @@ public actor CalendarService: CalendarServiceProtocol {
             event.notes = eventData.notes
 
             try store.save(event, span: .thisEvent)
-            importedCount += 1
+            imported += 1
         }
 
-        return importedCount
+        return ICSImportSummary(imported: imported, skippedExisting: skipped)
+    }
+
+    /// Whether the calendar already has an event the file describes: one whose
+    /// external identifier is the file's UID, or one with the same title,
+    /// start, and end. A saved event gets its external identifier from
+    /// EventKit, not from the file, so the UID alone misses a second import of
+    /// the same file.
+    private func isAlreadyPresent(_ event: ICSEventData, in calendar: EKCalendar) -> Bool {
+        if let uid = event.uid, !uid.isEmpty,
+           store.calendarItems(withExternalIdentifier: uid)
+               .contains(where: { $0.calendar?.calendarIdentifier == calendar.calendarIdentifier }) {
+            return true
+        }
+        let predicate = store.predicateForEvents(withStart: event.startDate, end: event.endDate, calendars: [calendar])
+        let existing: [(title: String, start: Date, end: Date)] = store.events(matching: predicate).map {
+            ($0.title ?? "", $0.startDate, $0.endDate)
+        }
+        return Self.matchesExisting(event, existing)
+    }
+
+    /// Whether `existing` holds an event with the same title, start, and end.
+    static func matchesExisting(_ event: ICSEventData, _ existing: [(title: String, start: Date, end: Date)]) -> Bool {
+        existing.contains { $0.title == event.title && $0.start == event.startDate && $0.end == event.endDate }
+    }
+}
+
+/// What an ICS import did.
+public struct ICSImportSummary: Codable, Sendable {
+    /// Events created in the calendar.
+    public let imported: Int
+    /// Events skipped because the calendar already had them.
+    public let skippedExisting: Int
+
+    public init(imported: Int, skippedExisting: Int) {
+        self.imported = imported
+        self.skippedExisting = skippedExisting
     }
 }
 

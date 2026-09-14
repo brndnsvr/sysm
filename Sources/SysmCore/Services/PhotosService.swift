@@ -357,35 +357,63 @@ public actor PhotosService: PhotosServiceProtocol {
             throw PhotosError.exportFailed("Asset is not a video")
         }
 
-        let options = PHVideoRequestOptions()
-        options.version = .current
-        options.deliveryMode = .highQualityFormat
+        let resources = PHAssetResource.assetResources(for: asset)
+        guard let type = Self.preferredVideoResourceType(among: resources.map(\.type)),
+              let resource = resources.first(where: { $0.type == type }) else {
+            throw PhotosError.exportFailed("No video resource available")
+        }
+
+        // Staged beside the destination so rename(2) stays on one volume.
+        let destination = URL(fileURLWithPath: outputPath).standardizedFileURL
+        let staging = destination.deletingLastPathComponent()
+            .appendingPathComponent(".sysm-export-\(UUID().uuidString)")
+        let options = PHAssetResourceRequestOptions()
         options.isNetworkAccessAllowed = true
 
-        return try await withCheckedThrowingContinuation { continuation in
-            PHImageManager.default().requestAVAsset(forVideo: asset, options: options) { avAsset, _, info in
-                if let error = info?[PHImageErrorKey] as? Error {
-                    continuation.resume(throwing: PhotosError.exportFailed(error.localizedDescription))
-                    return
-                }
+        do {
+            try await PHAssetResourceManager.default().writeData(for: resource, toFile: staging, options: options)
+        } catch {
+            try? FileManager.default.removeItem(at: staging)
+            throw PhotosError.exportFailed(error.localizedDescription)
+        }
 
-                guard let urlAsset = avAsset as? AVURLAsset else {
-                    continuation.resume(throwing: PhotosError.exportFailed("Unable to access video data"))
-                    return
-                }
-
-                do {
-                    let outputURL = URL(fileURLWithPath: outputPath)
-                    try FileManager.default.copyItem(at: urlAsset.url, to: outputURL)
-                    continuation.resume(returning: ())
-                } catch {
-                    continuation.resume(throwing: PhotosError.exportFailed(error.localizedDescription))
-                }
-            }
+        // rename(2) replaces whatever is at the destination, a symlink
+        // included, rather than following it, like photo export's writer.
+        guard Darwin.rename(staging.path, destination.path) == 0 else {
+            let code = errno
+            try? FileManager.default.removeItem(at: staging)
+            throw PhotosError.exportFailed(String(cString: strerror(code)))
         }
     }
 
+    /// The resource to export for a video: the edited rendition when there is
+    /// one, else the original.
+    ///
+    /// Requesting an AVAsset and requiring an AVURLAsset failed for slo-mo and
+    /// edited videos, which Photos hands back as compositions.
+    static func preferredVideoResourceType(among types: [PHAssetResourceType]) -> PHAssetResourceType? {
+        if types.contains(.fullSizeVideo) { return .fullSizeVideo }
+        if types.contains(.video) { return .video }
+        return nil
+    }
+
     // MARK: - Metadata
+
+    /// The resource that holds the asset itself, the original photo or video,
+    /// rather than adjustment data or a Live Photo's paired video, whichever
+    /// Photos happened to list first.
+    static func primaryResourceType(among types: [PHAssetResourceType]) -> PHAssetResourceType? {
+        types.first { $0 == .photo || $0 == .video }
+    }
+
+    /// A resource's size in bytes from PHAssetResource's private fileSize
+    /// property, the only source Photos has. value(forKey:) on a key the class
+    /// no longer has raises an Objective-C exception that ends the process, so
+    /// the property is checked for first.
+    private static func fileSize(of resource: PHAssetResource) -> Int64? {
+        guard resource.responds(to: NSSelectorFromString("fileSize")) else { return nil }
+        return (resource.value(forKey: "fileSize") as? NSNumber)?.int64Value
+    }
 
     public func getMetadata(assetId: String) async throws -> AssetMetadata {
         try await ensureAccess()
@@ -396,8 +424,11 @@ public actor PhotosService: PhotosServiceProtocol {
         }
 
         let resources = PHAssetResource.assetResources(for: asset)
-        let filename = resources.first?.originalFilename ?? "Unknown"
-        let fileSize = resources.first?.value(forKey: "fileSize") as? Int64
+        let primary = Self.primaryResourceType(among: resources.map(\.type)).flatMap { type in
+            resources.first { $0.type == type }
+        } ?? resources.first
+        let filename = primary?.originalFilename ?? "Unknown"
+        let fileSize = primary.flatMap(Self.fileSize(of:))
 
         let mediaType: String
         switch asset.mediaType {

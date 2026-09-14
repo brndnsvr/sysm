@@ -240,4 +240,66 @@ final class MailServiceTests: XCTestCase {
         XCTAssertLessThan(setComma.lowerBound, toList.lowerBound)
         XCTAssertLessThan(ccJoin.lowerBound, reset.lowerBound)
     }
+
+    // MARK: - Recipient lists (sending)
+
+    func testRecipientAddressesSplitOnCommasAndSemicolons() {
+        XCTAssertEqual(MailService.recipientAddresses(" a@x.com, b@y.com;c@z.com ,, "), ["a@x.com", "b@y.com", "c@z.com"])
+    }
+
+    func testSendMessageAddsOneRecipientPerAddress() throws {
+        mock.defaultResponse = "ok"
+        try service.sendMessage(to: "a@x.com, b@y.com", cc: "c@z.com", subject: "Hi", body: "Body")
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains(#"make new to recipient at end of to recipients with properties {address:"a@x.com"}"#), script)
+        XCTAssertTrue(script.contains(#"make new to recipient at end of to recipients with properties {address:"b@y.com"}"#), script)
+        XCTAssertTrue(script.contains(#"make new cc recipient at end of cc recipients with properties {address:"c@z.com"}"#), script)
+        XCTAssertFalse(script.contains("a@x.com, b@y.com"), script)
+    }
+
+    func testSendMessageWithOnlySeparatorsHasNoRecipients() {
+        XCTAssertThrowsError(try service.sendMessage(to: " , ", subject: "Hi", body: "Body")) { error in
+            guard case MailError.noRecipientsSpecified = error else {
+                return XCTFail("Expected noRecipientsSpecified, got \(error)")
+            }
+        }
+    }
+
+    func testForwardAddsOneRecipientPerAddress() throws {
+        mock.defaultResponse = "67890"
+        _ = try service.forward(messageId: "12345", to: "a@x.com; b@y.com", body: "FYI", send: false)
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.contains(#"to recipients of theForward with properties {address:"a@x.com"}"#), script)
+        XCTAssertTrue(script.contains(#"to recipients of theForward with properties {address:"b@y.com"}"#), script)
+    }
+
+    // MARK: - Search dates
+
+    func testSearchDatesAreBuiltFromNumbers() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        let date = calendar.date(from: DateComponents(year: 2026, month: 1, day: 31, hour: 13, minute: 5, second: 9))!
+
+        XCTAssertEqual(MailService.appleScriptDateAssignment("afterDate", date, calendar: calendar), """
+        set afterDate to current date
+        set day of afterDate to 1
+        set year of afterDate to 2026
+        set month of afterDate to 1
+        set day of afterDate to 31
+        set time of afterDate to 47109
+        """)
+    }
+
+    func testSearchScriptHasNoLocaleDependentDateLiterals() throws {
+        mock.defaultResponse = ""
+        _ = try service.searchMessages(afterDate: Date(timeIntervalSince1970: 1_700_000_000),
+                                       beforeDate: Date(timeIntervalSince1970: 1_800_000_000))
+
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertFalse(script.contains("date \""), script)
+        XCTAssertTrue(script.contains("set year of afterDate to"), script)
+        XCTAssertTrue(script.contains("set year of beforeDate to"), script)
+    }
 }

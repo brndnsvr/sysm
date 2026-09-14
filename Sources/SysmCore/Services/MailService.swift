@@ -21,12 +21,6 @@ public struct MailService: MailServiceProtocol {
     private static let unreadScanMultiplier = 5
     private static let searchScanMultiplier = 10
 
-    private static let appleScriptDateFormatter: DateFormatter = {
-        let fmt = DateFormatter()
-        fmt.dateFormat = "EEEE, MMMM d, yyyy 'at' h:mm:ss a"
-        return fmt
-    }()
-
     private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
 
     public init() {}
@@ -269,29 +263,22 @@ public struct MailService: MailServiceProtocol {
     // MARK: - Draft
 
     public func createDraft(to: String?, subject: String?, body: String?) throws {
-        var scriptParts: [String] = []
-
-        if let to = to {
-            scriptParts.append("set theTo to \"\(escapeForAppleScript(to))\"")
-        }
+        var properties: [String] = []
         if let subject = subject {
-            scriptParts.append("set theSubject to \"\(escapeForAppleScript(subject))\"")
+            properties.append("subject:\"\(escapeForAppleScript(subject))\"")
         }
         if let body = body {
-            scriptParts.append("set theBody to \"\(escapeForAppleScript(body))\"")
+            properties.append("content:\"\(escapeForAppleScript(body))\"")
         }
-
-        var makeNewParts: [String] = []
-        if to != nil { makeNewParts.append("to recipient theTo") }
-        if subject != nil { makeNewParts.append("subject theSubject") }
-        if body != nil { makeNewParts.append("content theBody") }
-
-        let makeNew = makeNewParts.isEmpty ? "" : " with properties {\(makeNewParts.joined(separator: ", "))}"
+        let withProperties = properties.isEmpty ? "" : " with properties {\(properties.joined(separator: ", "))}"
+        let recipients = recipientLines("to", to ?? "").joined(separator: "\n                ")
 
         let script = """
         tell application "Mail"
-            \(scriptParts.joined(separator: "\n            "))
-            set newMessage to make new outgoing message\(makeNew)
+            set newMessage to make new outgoing message\(withProperties)
+            tell newMessage
+                \(recipients)
+            end tell
             set visible of newMessage to true
             activate
         end tell
@@ -473,6 +460,26 @@ public struct MailService: MailServiceProtocol {
 
     // MARK: - Enhanced Search
 
+    /// AppleScript that sets `variable` to `date`, built from numbers.
+    ///
+    /// A date "..." literal is read with the user's own date and time settings,
+    /// so text made with a fixed English pattern failed or meant another day on
+    /// other locales. The day is set to 1 before the month so today being the
+    /// 31st cannot overflow into the following month.
+    static func appleScriptDateAssignment(_ variable: String, _ date: Date,
+                                          calendar: Foundation.Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: date)
+        let seconds = (parts.hour ?? 0) * 3600 + (parts.minute ?? 0) * 60 + (parts.second ?? 0)
+        return [
+            "set \(variable) to current date",
+            "set day of \(variable) to 1",
+            "set year of \(variable) to \(parts.year ?? 2000)",
+            "set month of \(variable) to \(parts.month ?? 1)",
+            "set day of \(variable) to \(parts.day ?? 1)",
+            "set time of \(variable) to \(seconds)",
+        ].joined(separator: "\n")
+    }
+
     public func searchMessages(
         accountName: String? = nil,
         query: String? = nil,
@@ -492,9 +499,8 @@ public struct MailService: MailServiceProtocol {
         var conditionalChecks: [String] = []
 
         if let after = afterDate {
-            let dateStr = Self.appleScriptDateFormatter.string(from: after)
             conditionalChecks.append("""
-                        set afterDate to date "\(dateStr)"
+                        \(Self.appleScriptDateAssignment("afterDate", after))
                         if msgDate < afterDate then
                             set matchesDate to false
                         end if
@@ -502,9 +508,8 @@ public struct MailService: MailServiceProtocol {
         }
 
         if let before = beforeDate {
-            let dateStr = Self.appleScriptDateFormatter.string(from: before)
             conditionalChecks.append("""
-                        set beforeDate to date "\(dateStr)"
+                        \(Self.appleScriptDateAssignment("beforeDate", before))
                         if msgDate > beforeDate then
                             set matchesDate to false
                         end if
@@ -671,6 +676,13 @@ public struct MailService: MailServiceProtocol {
     public func forward(messageId: String, to: String, body: String, send: Bool) throws -> String {
         let safeId = try sanitizedId(messageId)
         let sendAction = send ? "send theForward" : ""
+        let addresses = Self.recipientAddresses(to)
+        guard !addresses.isEmpty else {
+            throw MailError.noRecipientsSpecified
+        }
+        let forwardRecipients = addresses
+            .map { "make new to recipient at end of to recipients of theForward with properties {address:\"\(escapeForAppleScript($0))\"}" }
+            .joined(separator: "\n                ")
 
         let findMessage = messageByIdExpression(safeId)
         let script = """
@@ -679,7 +691,7 @@ public struct MailService: MailServiceProtocol {
         \(findMessage)
                 set theForward to forward msg with opening window
                 set content of theForward to "\(escapeForAppleScript(body))"
-                make new to recipient at theForward with properties {address:"\(escapeForAppleScript(to))"}
+                \(forwardRecipients)
                 \(sendAction)
                 return (id of theForward) as string
             on error errMsg
@@ -695,6 +707,27 @@ public struct MailService: MailServiceProtocol {
         return result
     }
 
+    // MARK: - Recipients
+
+    /// Addresses from a recipient list typed as "a@x.com, b@y.com" (commas or
+    /// semicolons), trimmed, without empty entries.
+    ///
+    /// Each recipient option used to reach Mail as one recipient whose address
+    /// was the whole string, so a list never became several recipients.
+    static func recipientAddresses(_ list: String) -> [String] {
+        list.split(whereSeparator: { $0 == "," || $0 == ";" })
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    /// AppleScript lines that add each address in `list` as a `kind` ("to",
+    /// "cc", or "bcc") recipient of the message the script is telling.
+    private func recipientLines(_ kind: String, _ list: String) -> [String] {
+        Self.recipientAddresses(list).map {
+            "make new \(kind) recipient at end of \(kind) recipients with properties {address:\"\(escapeForAppleScript($0))\"}"
+        }
+    }
+
     // MARK: - Send Mail
 
     public func sendMessage(
@@ -706,33 +739,16 @@ public struct MailService: MailServiceProtocol {
         isHTML: Bool = false,
         accountName: String? = nil
     ) throws {
-        if to.isEmpty {
+        guard !Self.recipientAddresses(to).isEmpty else {
             throw MailError.noRecipientsSpecified
         }
 
-        let escapedTo = escapeForAppleScript(to)
         let escapedSubject = escapeForAppleScript(subject)
         let escapedBody = escapeForAppleScript(body)
 
-        var recipientSetup = """
-                make new to recipient at end of to recipients with properties {address:"\(escapedTo)"}
-        """
-
-        if let cc = cc, !cc.isEmpty {
-            let escapedCc = escapeForAppleScript(cc)
-            recipientSetup += """
-
-                    make new cc recipient at end of cc recipients with properties {address:"\(escapedCc)"}
-            """
-        }
-
-        if let bcc = bcc, !bcc.isEmpty {
-            let escapedBcc = escapeForAppleScript(bcc)
-            recipientSetup += """
-
-                    make new bcc recipient at end of bcc recipients with properties {address:"\(escapedBcc)"}
-            """
-        }
+        let recipientSetup = (recipientLines("to", to) + recipientLines("cc", cc ?? "") + recipientLines("bcc", bcc ?? ""))
+            .map { "                " + $0 }
+            .joined(separator: "\n")
 
         var accountSetup = ""
         if let accountName = accountName {

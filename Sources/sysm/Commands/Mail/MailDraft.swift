@@ -20,7 +20,7 @@ struct MailDraft: ParsableCommand {
             abstract: "Create a new email draft (opens Mail.app)"
         )
 
-        @Option(name: .long, help: "Recipient email address")
+        @Option(name: .long, help: "Recipient email addresses, separated by commas")
         var to: String?
 
         @Option(name: .long, help: "Email subject")

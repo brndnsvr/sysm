@@ -38,12 +38,13 @@ struct CalendarImport: AsyncParsableCommand {
                 }
             }
         } else {
-            let count = try await service.importFromICS(
+            let summary = try await service.importFromICS(
                 icsContent: icsContent,
                 calendarName: calendar
             )
 
-            print("Successfully imported \(count) event(s) into calendar '\(calendar)'")
+            let skipped = summary.skippedExisting > 0 ? " (\(summary.skippedExisting) already there, skipped)" : ""
+            print("Imported \(summary.imported) event(s) into calendar '\(calendar)'\(skipped)")
         }
     }
 }

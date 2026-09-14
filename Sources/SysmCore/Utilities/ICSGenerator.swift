@@ -43,12 +43,9 @@ public struct ICSGenerator {
 
         lines.append("BEGIN:VEVENT")
 
-        // UID
-        if let uid = event.eventIdentifier {
-            lines.append("UID:\(uid)")
-        } else {
-            lines.append("UID:\(UUID().uuidString)")
-        }
+        // UID: the external identifier is the calendar item's iCalendar UID,
+        // the one other calendars and a later import can match on.
+        lines.append("UID:\(event.calendarItemExternalIdentifier ?? event.eventIdentifier ?? UUID().uuidString)")
 
         // Dates
         if event.isAllDay {
@@ -58,6 +55,20 @@ public struct ICSGenerator {
         } else {
             lines.append("DTSTART:\(dateFormatter.string(from: event.startDate))")
             lines.append("DTEND:\(dateFormatter.string(from: event.endDate))")
+        }
+
+        // Recurrence: a series carries its rule; an occurrence edited on its
+        // own is an exception that names the date it replaces.
+        if event.isDetached, let occurrence = event.occurrenceDate {
+            if event.isAllDay {
+                lines.append("RECURRENCE-ID;VALUE=DATE:\(allDay.string(from: occurrence))")
+            } else {
+                lines.append("RECURRENCE-ID:\(dateFormatter.string(from: occurrence))")
+            }
+        } else {
+            for rule in event.recurrenceRules ?? [] {
+                lines.append("RRULE:\(rrule(for: rule, isAllDay: event.isAllDay, allDay: allDay))")
+            }
         }
 
         // Summary (title)
@@ -132,6 +143,64 @@ public struct ICSGenerator {
         lines.append("END:VEVENT")
 
         return lines
+    }
+
+    /// The RRULE value for an EventKit recurrence rule (RFC 5545 3.3.10).
+    ///
+    /// UNTIL takes the same form as DTSTART: a date for all-day events, a UTC
+    /// date-time otherwise.
+    static func rrule(for rule: EKRecurrenceRule, isAllDay: Bool, allDay: ICSAllDayDates) -> String {
+        var parts = ["FREQ=\(frequencyName(rule.frequency))"]
+        if rule.interval > 1 {
+            parts.append("INTERVAL=\(rule.interval)")
+        }
+        if let days = rule.daysOfTheWeek, !days.isEmpty {
+            let codes = days.map { ($0.weekNumber != 0 ? String($0.weekNumber) : "") + weekdayCode($0.dayOfTheWeek.rawValue) }
+            parts.append("BYDAY=\(codes.joined(separator: ","))")
+        }
+        for (name, numbers) in [
+            ("BYMONTHDAY", rule.daysOfTheMonth),
+            ("BYYEARDAY", rule.daysOfTheYear),
+            ("BYWEEKNO", rule.weeksOfTheYear),
+            ("BYMONTH", rule.monthsOfTheYear),
+            ("BYSETPOS", rule.setPositions),
+        ] {
+            if let numbers, !numbers.isEmpty {
+                parts.append("\(name)=\(numbers.map(\.stringValue).joined(separator: ","))")
+            }
+        }
+        // WKST only changes which dates a rule produces for a weekly rule with
+        // an interval above 1 and BYDAY, or one with BYWEEKNO (RFC 5545
+        // 3.3.10). EventKit reports a default week start even when none was
+        // set, so writing it elsewhere would only echo that default.
+        let weekStartMatters = (rule.frequency == .weekly && rule.interval > 1 && !(rule.daysOfTheWeek ?? []).isEmpty)
+            || !(rule.weeksOfTheYear ?? []).isEmpty
+        if weekStartMatters, (1...7).contains(rule.firstDayOfTheWeek) {
+            parts.append("WKST=\(weekdayCode(rule.firstDayOfTheWeek))")
+        }
+        if let end = rule.recurrenceEnd {
+            if let endDate = end.endDate {
+                parts.append("UNTIL=\(isAllDay ? allDay.string(from: endDate) : dateFormatter.string(from: endDate))")
+            } else if end.occurrenceCount > 0 {
+                parts.append("COUNT=\(end.occurrenceCount)")
+            }
+        }
+        return parts.joined(separator: ";")
+    }
+
+    private static func frequencyName(_ frequency: EKRecurrenceFrequency) -> String {
+        switch frequency {
+        case .daily: return "DAILY"
+        case .weekly: return "WEEKLY"
+        case .monthly: return "MONTHLY"
+        case .yearly: return "YEARLY"
+        @unknown default: return "DAILY"
+        }
+    }
+
+    /// RFC 5545 weekday code for an EventKit weekday number (1 = Sunday).
+    private static func weekdayCode(_ weekday: Int) -> String {
+        ["SU", "MO", "TU", "WE", "TH", "FR", "SA"][(weekday - 1 + 7) % 7]
     }
 
     private static func escapeICS(_ text: String) -> String {

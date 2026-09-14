@@ -11,7 +11,7 @@ struct MailForward: ParsableCommand {
     @Argument(help: "Message ID to forward")
     var messageId: String
 
-    @Option(name: .long, help: "Recipient email address")
+    @Option(name: .long, help: "Recipient email addresses, separated by commas")
     var to: String
 
     @Option(name: .long, help: "Forward body text")
