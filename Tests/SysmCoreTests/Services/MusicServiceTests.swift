@@ -156,6 +156,18 @@ final class MusicServiceTests: XCTestCase {
         }
     }
 
+    func testGetStatusLeavesAClosedMusicClosed() throws {
+        mock.defaultResponse = MusicService.stoppedReply
+        let status = try XCTUnwrap(service.getStatus())
+
+        // Reading player state inside a bare tell block starts Music, so the
+        // script answers for a Music that is not running instead.
+        let script = try XCTUnwrap(mock.executedScripts.last?.script)
+        XCTAssertTrue(script.hasPrefix("if application \"Music\" is running then"), script)
+        XCTAssertTrue(script.contains("else\n    return \"\(MusicService.stoppedReply)\"\nend if"), script)
+        XCTAssertEqual(status.state, "stopped")
+    }
+
     func testErrorMappingGenericAppleScript() {
         mock.errorToThrow = AppleScriptError.executionFailed("some other error")
         XCTAssertThrowsError(try service.getStatus()) { error in
