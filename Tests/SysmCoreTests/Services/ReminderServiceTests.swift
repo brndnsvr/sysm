@@ -1,3 +1,4 @@
+import EventKit
 import XCTest
 @testable import SysmCore
 
@@ -67,5 +68,50 @@ final class ReminderServiceTests: XCTestCase {
         XCTAssertTrue(message.contains("2 incomplete reminders are titled 'Pay rent'"), message)
         XCTAssertTrue(message.contains("id-1  (Home)") && message.contains("id-2  (Work)"), message)
         XCTAssertTrue(message.contains("--id"), message)
+    }
+
+    // MARK: - preferredReminderSource
+
+    private struct Account {
+        let title: String
+        let type: EKSourceType
+        let holdsLists: Bool
+    }
+
+    private func source(_ accounts: [Account], default defaultAccount: Account? = nil) -> Account? {
+        ReminderService.preferredReminderSource(accounts, default: defaultAccount,
+                                                holdsLists: \.holdsLists, title: \.title, type: \.type)
+    }
+
+    func testTheAccountHoldingListsBeatsAnEmptyNamesake() {
+        // This Mac carries two CalDAV accounts titled iCloud: one holds the
+        // calendars, the other the reminder lists. Saving a list to the first
+        // fails with "That account does not support reminders".
+        let calendars = Account(title: "iCloud", type: .calDAV, holdsLists: false)
+        let lists = Account(title: "iCloud", type: .calDAV, holdsLists: true)
+
+        XCTAssertEqual(source([calendars, lists])?.holdsLists, true)
+    }
+
+    func testTheStoresOwnDefaultWins() {
+        let exchange = Account(title: "Exchange", type: .exchange, holdsLists: true)
+        let icloud = Account(title: "iCloud", type: .calDAV, holdsLists: true)
+
+        XCTAssertEqual(source([icloud, exchange], default: exchange)?.title, "Exchange")
+    }
+
+    func testWithNoListsAnywhereItFallsBackToICloudThenCalDAVThenLocal() {
+        let local = Account(title: "On My Mac", type: .local, holdsLists: false)
+        let exchange = Account(title: "Exchange", type: .exchange, holdsLists: false)
+        let icloud = Account(title: "iCloud", type: .calDAV, holdsLists: false)
+        let fastmail = Account(title: "Fastmail", type: .calDAV, holdsLists: false)
+
+        XCTAssertEqual(source([local, exchange, fastmail, icloud])?.title, "iCloud")
+        XCTAssertEqual(source([local, exchange, fastmail])?.title, "Fastmail")
+        XCTAssertEqual(source([local, exchange])?.title, "On My Mac")
+    }
+
+    func testNoAccountsGiveNil() {
+        XCTAssertNil(source([]))
     }
 }

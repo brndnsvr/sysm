@@ -224,17 +224,45 @@ public actor ReminderService: ReminderServiceProtocol {
         return Reminder(from: reminder)
     }
 
-    /// Returns the iCloud source, falling back to calDAV then local sources.
-    private func iCloudSource() -> EKSource? {
-        // Prefer iCloud (calDAV with "iCloud" title)
-        if let icloud = store.sources.first(where: {
-            $0.sourceType == .calDAV && $0.title.lowercased().contains("icloud")
-        }) {
-            return icloud
-        }
-        // Fall back to any calDAV source, then local
-        return store.sources.first(where: { $0.sourceType == .calDAV })
-            ?? store.sources.first(where: { $0.sourceType == .local })
+    /// The account a new reminder list belongs to: where the store already
+    /// files new reminders, else one that holds lists, else iCloud.
+    private func reminderSource() -> EKSource? {
+        Self.preferredReminderSource(
+            store.sources,
+            default: store.defaultCalendarForNewReminders()?.source,
+            holdsLists: { !$0.calendars(for: .reminder).isEmpty },
+            title: { $0.title },
+            type: { $0.sourceType }
+        )
+    }
+
+    /// The account a new reminder list belongs to.
+    ///
+    /// A Mac can carry two CalDAV accounts both titled "iCloud", one holding
+    /// the calendars and the other the reminder lists. Choosing on the title
+    /// alone took whichever came first, and saving a list to the calendar one
+    /// failed with "That account does not support reminders". An account the
+    /// store already keeps lists in demonstrably accepts them, so ask where
+    /// new reminders go first, then prefer an account that holds lists, and
+    /// keep the old title and type order only as a last resort.
+    static func preferredReminderSource<Source>(
+        _ sources: [Source],
+        default defaultSource: Source?,
+        holdsLists: (Source) -> Bool,
+        title: (Source) -> String,
+        type: (Source) -> EKSourceType
+    ) -> Source? {
+        if let defaultSource { return defaultSource }
+
+        let hosting = sources.filter(holdsLists)
+        if let icloud = hosting.first(where: { title($0).lowercased().contains("icloud") }) { return icloud }
+        if let hosting = hosting.first { return hosting }
+
+        if let icloud = sources.first(where: {
+            type($0) == .calDAV && title($0).lowercased().contains("icloud")
+        }) { return icloud }
+        return sources.first(where: { type($0) == .calDAV })
+            ?? sources.first(where: { type($0) == .local })
     }
 
     public func createList(name: String) async throws -> Bool {
@@ -245,8 +273,7 @@ public actor ReminderService: ReminderServiceProtocol {
             throw ReminderError.listAlreadyExists(name)
         }
 
-        // Always target iCloud; never fall back to Exchange
-        guard let source = iCloudSource() else {
+        guard let source = reminderSource() else {
             throw ReminderError.noValidSource
         }
 
@@ -430,7 +457,7 @@ public enum ReminderError: LocalizedError {
             """
         case .noValidSource:
             return """
-            Cannot create reminder lists because no iCloud source is available.
+            Cannot create reminder lists because no account accepts them.
 
             This usually means:
             - iCloud Reminders is not enabled
