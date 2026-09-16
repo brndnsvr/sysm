@@ -511,8 +511,13 @@ public actor CalendarService: CalendarServiceProtocol {
             event.isAllDay = eventData.isAllDay
             event.location = eventData.location
             event.notes = eventData.notes
+            if let recurrence = eventData.recurrence {
+                event.recurrenceRules = [recurrence]
+            }
 
-            try store.save(event, span: .thisEvent)
+            // A repeating event is saved as the whole series it describes, not
+            // as its first occurrence.
+            try store.save(event, span: event.hasRecurrenceRules ? .futureEvents : .thisEvent)
             imported += 1
         }
 

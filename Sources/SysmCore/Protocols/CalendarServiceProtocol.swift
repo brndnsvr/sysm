@@ -315,6 +315,10 @@ public protocol CalendarServiceProtocol: Sendable {
     ///   - icsContent: iCalendar formatted content (RFC 5545).
     ///   - calendarName: Calendar to import events into.
     /// - Returns: How many events were imported and how many were skipped.
+    ///
+    /// A repeating event keeps its RRULE and arrives as one series. EXDATE and
+    /// per-occurrence overrides are not read, so deleted or edited occurrences
+    /// come back as ordinary ones.
     /// - Throws:
     ///   - ``CalendarError/accessDenied`` if calendar access not granted.
     ///   - ``CalendarError/calendarNotFound(_:)`` if specified calendar doesn't exist.

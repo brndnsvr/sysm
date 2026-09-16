@@ -1,3 +1,4 @@
+import EventKit
 import Foundation
 
 /// Parsed event data from iCalendar file.
@@ -11,6 +12,23 @@ public struct ICSEventData {
     public let uid: String?
     public let organizer: String?
     public let attendees: [String]
+    /// The event's RRULE, when it carries one EventKit can express.
+    public let recurrence: EKRecurrenceRule?
+
+    public init(title: String, startDate: Date, endDate: Date, isAllDay: Bool, location: String?,
+                notes: String?, uid: String?, organizer: String?, attendees: [String],
+                recurrence: EKRecurrenceRule? = nil) {
+        self.title = title
+        self.startDate = startDate
+        self.endDate = endDate
+        self.isAllDay = isAllDay
+        self.location = location
+        self.notes = notes
+        self.uid = uid
+        self.organizer = organizer
+        self.attendees = attendees
+        self.recurrence = recurrence
+    }
 }
 
 /// Parses iCalendar (.ics) format.
@@ -150,8 +168,90 @@ public struct ICSParser {
             notes: notes,
             uid: data["UID"],
             organizer: data["ORGANIZER"],
-            attendees: attendees
+            attendees: attendees,
+            recurrence: data["RRULE"].flatMap { recurrenceRule(from: $0) }
         )
+    }
+
+    /// The EventKit rule an RRULE value describes (RFC 5545 3.3.10), or nil
+    /// when it names no frequency EventKit knows.
+    ///
+    /// Import read no RRULE at all, so a weekly meeting sysm had exported came
+    /// back as a single event on its first date. What EventKit cannot hold,
+    /// EXDATE and per-occurrence overrides, is still left behind.
+    func recurrenceRule(from value: String) -> EKRecurrenceRule? {
+        var parts: [String: String] = [:]
+        for piece in value.components(separatedBy: ";") {
+            let pair = piece.components(separatedBy: "=")
+            guard pair.count == 2 else { continue }
+            let name = pair[0].trimmingCharacters(in: .whitespaces).uppercased()
+            parts[name] = pair[1].trimmingCharacters(in: .whitespaces)
+        }
+
+        guard let frequency = Self.frequency(named: parts["FREQ"]) else { return nil }
+
+        var end: EKRecurrenceEnd?
+        if let count = parts["COUNT"].flatMap({ Int($0) }), count > 0 {
+            end = EKRecurrenceEnd(occurrenceCount: count)
+        } else if let until = parts["UNTIL"],
+                  let date = parseDate(until, isAllDay: until.count == 8, tzid: nil) {
+            end = EKRecurrenceEnd(end: date)
+        }
+
+        // EventKit raises on a part its frequency does not allow, and a file
+        // can carry any combination, so each part is offered only where the
+        // frequency accepts it.
+        let monthly = frequency == .monthly
+        let yearly = frequency == .yearly
+        let days = frequency == .daily ? nil : parts["BYDAY"].flatMap {
+            Self.daysOfTheWeek(in: $0, numbered: monthly || yearly)
+        }
+
+        return EKRecurrenceRule(
+            recurrenceWith: frequency,
+            interval: max(parts["INTERVAL"].flatMap { Int($0) } ?? 1, 1),
+            daysOfTheWeek: days,
+            daysOfTheMonth: monthly ? Self.numbers(in: parts["BYMONTHDAY"]) : nil,
+            monthsOfTheYear: yearly ? Self.numbers(in: parts["BYMONTH"]) : nil,
+            weeksOfTheYear: yearly ? Self.numbers(in: parts["BYWEEKNO"]) : nil,
+            daysOfTheYear: yearly ? Self.numbers(in: parts["BYYEARDAY"]) : nil,
+            setPositions: monthly || yearly ? Self.numbers(in: parts["BYSETPOS"]) : nil,
+            end: end
+        )
+    }
+
+    private static func frequency(named name: String?) -> EKRecurrenceFrequency? {
+        switch name {
+        case "DAILY": return .daily
+        case "WEEKLY": return .weekly
+        case "MONTHLY": return .monthly
+        case "YEARLY": return .yearly
+        default: return nil
+        }
+    }
+
+    /// BYDAY codes, each optionally prefixed by the week it falls in, as in
+    /// "-1FR" for the last Friday. Only a monthly or yearly rule may count
+    /// weeks; elsewhere the prefix is dropped rather than refused.
+    private static func daysOfTheWeek(in value: String, numbered: Bool) -> [EKRecurrenceDayOfWeek]? {
+        let weekdays: [String: EKWeekday] = [
+            "SU": .sunday, "MO": .monday, "TU": .tuesday, "WE": .wednesday,
+            "TH": .thursday, "FR": .friday, "SA": .saturday,
+        ]
+        let days = value.components(separatedBy: ",").compactMap { piece -> EKRecurrenceDayOfWeek? in
+            let code = piece.trimmingCharacters(in: .whitespaces).uppercased()
+            guard code.count >= 2, let weekday = weekdays[String(code.suffix(2))] else { return nil }
+            let week = numbered ? Int(code.dropLast(2)) ?? 0 : 0
+            return EKRecurrenceDayOfWeek(weekday, weekNumber: week)
+        }
+        return days.isEmpty ? nil : days
+    }
+
+    private static func numbers(in value: String?) -> [NSNumber]? {
+        guard let value else { return nil }
+        let numbers = value.components(separatedBy: ",")
+            .compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+        return numbers.isEmpty ? nil : numbers.map(NSNumber.init(value:))
     }
 
     /// Reads a DATE or DATE-TIME value: UTC when it ends in Z, local time in
