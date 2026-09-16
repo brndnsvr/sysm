@@ -314,16 +314,73 @@ public actor CalendarService: CalendarServiceProtocol {
                 let key = event.eventIdentifier ?? UUID().uuidString
                 guard checked.insert(key).inserted else { continue }
 
-                // A series is judged by its first occurrence: a yearly event
-                // begun in 2024 legitimately recurs past 2100.
+                // A series is judged by the span it covers, not by the year it
+                // began: a yearly event begun in 2024 legitimately recurs past
+                // 2100, and one begun in 1979 still recurs today.
                 let first = event.hasRecurrenceRules ? store.event(withIdentifier: key) ?? event : event
-                let year = Self.gregorian.component(.year, from: first.startDate)
-                if !Self.validYearRange.contains(year) {
+                if Self.isOutsideValidRange(first) {
                     invalid.append(CalendarEvent(from: first))
                 }
             }
         }
         return invalid
+    }
+
+    /// Whether an event never falls inside `validYearRange`.
+    ///
+    /// Judging a series by its first occurrence reported every birthday a
+    /// Google or Exchange calendar carries: contact birthdays arrive as yearly
+    /// series begun at the year of birth, or at the 1604 that stands for a
+    /// year nobody recorded, and the `.birthday` calendar type never covers
+    /// them. Such a series reaches today, so only one that cannot reach the
+    /// valid range at all holds a date worth reporting.
+    static func isOutsideValidRange(_ event: EKEvent) -> Bool {
+        isOutsideValidRange(start: event.startDate, end: seriesEnd(of: event))
+    }
+
+    static func isOutsideValidRange(start: Date, end: Date?) -> Bool {
+        let startYear = gregorian.component(.year, from: start)
+        if validYearRange.contains(startYear) { return false }
+        if startYear > validYearRange.upperBound { return true }
+        // Starts before the range: only an ended series stays outside it.
+        guard let end else { return false }
+        return gregorian.component(.year, from: end) < validYearRange.lowerBound
+    }
+
+    /// The last date a series can reach: the date its rule ends, the date its
+    /// count runs out, or nil for a rule that never ends. An event with no
+    /// rule ends where it starts.
+    static func seriesEnd(of event: EKEvent) -> Date? {
+        guard let rules = event.recurrenceRules, !rules.isEmpty else { return event.startDate }
+
+        var latest: Date?
+        for rule in rules {
+            guard let end = rule.recurrenceEnd else { return nil }
+            guard let date = end.endDate
+                ?? lastOccurrence(of: rule, from: event.startDate, count: end.occurrenceCount)
+            else { return nil }
+            latest = max(latest ?? date, date)
+        }
+        return latest
+    }
+
+    /// The date a count-limited rule runs out, stepping one period per
+    /// occurrence.
+    ///
+    /// BYDAY and its siblings can place several occurrences in a period, so a
+    /// real series can run out sooner than this. Erring late only keeps a
+    /// series out of the report, which beats calling a live one invalid.
+    static func lastOccurrence(of rule: EKRecurrenceRule, from start: Date, count: Int) -> Date? {
+        guard count > 0 else { return nil }
+        let unit: Foundation.Calendar.Component
+        switch rule.frequency {
+        case .daily: unit = .day
+        case .weekly: unit = .weekOfYear
+        case .monthly: unit = .month
+        case .yearly: unit = .year
+        @unknown default: return nil
+        }
+        return gregorian.date(byAdding: unit, value: (count - 1) * max(rule.interval, 1), to: start)
     }
 
     static let gregorian = Foundation.Calendar(identifier: .gregorian)
