@@ -5,6 +5,14 @@ public struct NotesService: NotesServiceProtocol {
     private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
     private let structuredFormatter: any NotesStructuredFormatting
 
+    /// The folder a command works in when none is named.
+    ///
+    /// Notes answers a bare `default folder` with error -1728 on a Mac holding
+    /// more than one Notes account, so every command run without `--folder`
+    /// failed, `notes create` among them. The default account's default folder
+    /// is that same folder, and it resolves.
+    static let defaultFolder = "default folder of default account"
+
     public init() {
         structuredFormatter = NotesAccessibilityFormatter()
     }
@@ -30,7 +38,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func listNotes(folder: String? = nil) throws -> [(name: String, folder: String, id: String)] {
-        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
+        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? Self.defaultFolder
 
         let script = """
         tell application "Notes"
@@ -147,7 +155,7 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func countNotes(folder: String? = nil) throws -> Int {
-        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
+        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? Self.defaultFolder
 
         let script = """
         tell application "Notes"
@@ -166,7 +174,7 @@ public struct NotesService: NotesServiceProtocol {
     public func createNote(name: String, body: String, folder: String? = nil) throws -> String {
         let escapedName = appleScript.escape(name)
         let escapedBody = appleScript.escape(body)
-        let folderRef = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
+        let folderRef = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? Self.defaultFolder
 
         let script = """
         tell application "Notes"
@@ -286,7 +294,7 @@ public struct NotesService: NotesServiceProtocol {
 
     public func searchNotes(query: String, searchBody: Bool, folder: String? = nil) throws -> [Note] {
         let escapedQuery = appleScript.escape(query)
-        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? "default folder"
+        let folderFilter = folder.map { "folder \"\(appleScript.escape($0))\"" } ?? Self.defaultFolder
 
         let script = """
         tell application "Notes"
