@@ -58,28 +58,39 @@ public struct MusicService: MusicServiceProtocol {
 
     // MARK: - Now Playing
 
+    /// Six fields holding an empty track in state "stopped", the shape
+    /// `getStatus` parses.
+    static let stoppedReply = "|||||||||0|||0|||stopped"
+
     public func getStatus() throws -> NowPlaying? {
+        // Asking a closed Music for its player state starts it, so checking
+        // what was playing opened the app and left it running. Music that is
+        // not running is stopped, so answer for it without a tell block.
         let script = """
-        tell application "Music"
-            if player state is stopped then
-                -- The same six fields as the playing case below, so the parser
-                -- sees an empty track in state "stopped".
-                return "|||||||||0|||0|||stopped"
-            end if
-            set trackName to name of current track
-            set trackArtist to artist of current track
-            set trackAlbum to album of current track
-            set trackDuration to duration of current track
-            set trackPosition to player position
-            if player state is playing then
-                set stateStr to "playing"
-            else if player state is paused then
-                set stateStr to "paused"
-            else
-                set stateStr to "stopped"
-            end if
-            return trackName & "|||" & trackArtist & "|||" & trackAlbum & "|||" & (trackDuration as integer) & "|||" & (trackPosition as integer) & "|||" & stateStr
-        end tell
+        if application "Music" is running then
+            tell application "Music"
+                if player state is stopped then
+                    -- The same six fields as the playing case below, so the
+                    -- parser sees an empty track in state "stopped".
+                    return "\(Self.stoppedReply)"
+                end if
+                set trackName to name of current track
+                set trackArtist to artist of current track
+                set trackAlbum to album of current track
+                set trackDuration to duration of current track
+                set trackPosition to player position
+                if player state is playing then
+                    set stateStr to "playing"
+                else if player state is paused then
+                    set stateStr to "paused"
+                else
+                    set stateStr to "stopped"
+                end if
+                return trackName & "|||" & trackArtist & "|||" & trackAlbum & "|||" & (trackDuration as integer) & "|||" & (trackPosition as integer) & "|||" & stateStr
+            end tell
+        else
+            return "\(Self.stoppedReply)"
+        end if
         """
 
         let result = try runAppleScript(script)

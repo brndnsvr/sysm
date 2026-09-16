@@ -185,6 +185,21 @@ final class NotesServiceTests: XCTestCase {
 
     // MARK: - Error mapping
 
+    func testCommandsWithoutAFolderUseTheDefaultAccountsFolder() throws {
+        mock.defaultResponse = ""
+        _ = try service.listNotes()
+        _ = try service.countNotes()
+        _ = try service.createNote(name: "Note", body: "Body")
+        _ = try service.searchNotes(query: "q", searchBody: false)
+
+        // Notes rejects a bare "default folder" on a Mac holding more than one
+        // account, which broke every command run without --folder.
+        for script in mock.executedScripts.map(\.script) {
+            XCTAssertEqual(script.components(separatedBy: "default folder").count,
+                           script.components(separatedBy: NotesService.defaultFolder).count, script)
+        }
+    }
+
     func testAppleScriptErrorMapping() {
         mock.errorToThrow = AppleScriptError.executionFailed("test error")
         XCTAssertThrowsError(try service.listFolders()) { error in

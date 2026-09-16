@@ -1,3 +1,4 @@
+import EventKit
 import XCTest
 @testable import SysmCore
 
@@ -91,5 +92,65 @@ final class CalendarServiceTests: XCTestCase {
         XCTAssertTrue(CalendarService.matchesExisting(event, [(title: "Standup", start: start, end: start.addingTimeInterval(900))]))
         XCTAssertFalse(CalendarService.matchesExisting(event, [(title: "Standup", start: start, end: start.addingTimeInterval(1800))]))
         XCTAssertFalse(CalendarService.matchesExisting(event, [(title: "Retro", start: start, end: start.addingTimeInterval(900))]))
+    }
+
+    // MARK: - validate
+
+    private func midYear(_ year: Int) -> Date {
+        CalendarService.gregorian.date(from: DateComponents(year: year, month: 6, day: 15))!
+    }
+
+    private func series(from year: Int, rule: EKRecurrenceRule?) -> EKEvent {
+        let event = EKEvent(eventStore: EKEventStore())
+        event.startDate = midYear(year)
+        event.endDate = event.startDate.addingTimeInterval(3600)
+        if let rule { event.addRecurrenceRule(rule) }
+        return event
+    }
+
+    func testADateInsideTheRangeIsValid() {
+        XCTAssertFalse(CalendarService.isOutsideValidRange(start: midYear(2026), end: midYear(2026)))
+    }
+
+    func testALoneDateOutsideTheRangeIsInvalid() {
+        XCTAssertTrue(CalendarService.isOutsideValidRange(start: midYear(1604), end: midYear(1604)))
+        XCTAssertTrue(CalendarService.isOutsideValidRange(start: midYear(2150), end: midYear(2150)))
+    }
+
+    func testASeriesBegunBeforeTheRangeThatStillRunsIsValid() {
+        XCTAssertFalse(CalendarService.isOutsideValidRange(start: midYear(1979), end: nil))
+        XCTAssertFalse(CalendarService.isOutsideValidRange(start: midYear(1604), end: midYear(2026)))
+    }
+
+    func testASeriesThatRanOutBeforeTheRangeIsInvalid() {
+        XCTAssertTrue(CalendarService.isOutsideValidRange(start: midYear(1979), end: midYear(1984)))
+    }
+
+    func testAContactBirthdayIsNotReported() {
+        // Google and Exchange deliver contact birthdays into ordinary
+        // calendars as endless yearly series begun at the year of birth, or at
+        // 1604 when no year was recorded.
+        let birthday = series(from: 1979, rule: EKRecurrenceRule(recurrenceWith: .yearly, interval: 1, end: nil))
+        let noYearRecorded = series(from: 1604, rule: EKRecurrenceRule(recurrenceWith: .yearly, interval: 1, end: nil))
+
+        XCTAssertNil(CalendarService.seriesEnd(of: birthday))
+        XCTAssertFalse(CalendarService.isOutsideValidRange(birthday))
+        XCTAssertFalse(CalendarService.isOutsideValidRange(noYearRecorded))
+    }
+
+    func testACountLimitedSeriesEndsWhereItRunsOut() {
+        let event = series(from: 1979, rule: EKRecurrenceRule(recurrenceWith: .yearly, interval: 1,
+                                                              end: EKRecurrenceEnd(occurrenceCount: 5)))
+        let endYear = CalendarService.seriesEnd(of: event).map { CalendarService.gregorian.component(.year, from: $0) }
+
+        XCTAssertEqual(endYear, 1983)
+        XCTAssertTrue(CalendarService.isOutsideValidRange(event))
+    }
+
+    func testAnEventWithNoRuleEndsWhereItStarts() {
+        let event = series(from: 1604, rule: nil)
+
+        XCTAssertEqual(CalendarService.seriesEnd(of: event), event.startDate)
+        XCTAssertTrue(CalendarService.isOutsideValidRange(event))
     }
 }
