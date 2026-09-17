@@ -36,6 +36,12 @@ jobs:
         run: swiftformat --lint .
         continue-on-error: true
 
+      # Not continue-on-error: a bundle that no longer matches its source, or
+      # that names the wrong version, ships to every user through the release
+      # asset and the Homebrew formula.
+      - name: Validate bundled Claude skill
+        run: ./scripts/validate-skill.sh
+
       - name: Test release-cycle versioning
         run: ./scripts/test-versioning.sh
 
