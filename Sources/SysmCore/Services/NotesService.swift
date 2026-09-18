@@ -73,13 +73,18 @@ public struct NotesService: NotesServiceProtocol {
     }
 
     public func getNote(id: String) throws -> Note? {
+        // Read the container into a variable before asking for its name. On
+        // macOS 27, Notes answers the chained `name of container of n` with
+        // -1728 or -1700, and the `on error` branch turned that into "not
+        // found" for every note.
         let script = """
         tell application "Notes"
             try
                 set n to note id "\(appleScript.escape(id))"
+                set noteFolder to container of n
                 set noteData to ""
                 set noteData to noteData & (name of n) & "|||FIELD|||"
-                set noteData to noteData & (name of container of n) & "|||FIELD|||"
+                set noteData to noteData & (name of noteFolder) & "|||FIELD|||"
                 set noteData to noteData & (body of n) & "|||FIELD|||"
                 set noteData to noteData & ((creation date of n) as string) & "|||FIELD|||"
                 set noteData to noteData & ((modification date of n) as string)

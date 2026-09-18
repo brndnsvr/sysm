@@ -67,6 +67,19 @@ final class NotesServiceTests: XCTestCase {
         XCTAssertNil(note)
     }
 
+    func testGetNoteReadsTheContainerBeforeItsName() throws {
+        mock.defaultResponse = ""
+        _ = try service.getNote(id: "note-123")
+
+        // On macOS 27, Notes fails the chained `name of container of n` with
+        // -1728 or -1700, which the script's `on error` branch reported as
+        // not found.
+        let script = try XCTUnwrap(mock.executedScripts.first?.script)
+        XCTAssertFalse(script.contains("of container of"), script)
+        XCTAssertTrue(script.contains("set noteFolder to container of n"), script)
+        XCTAssertTrue(script.contains("(name of noteFolder)"), script)
+    }
+
     // MARK: - countNotes()
 
     func testCountNotes() throws {
