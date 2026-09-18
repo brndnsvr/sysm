@@ -6,7 +6,7 @@ effort: high
 
 # sysm — macOS Apple Ecosystem CLI
 
-`sysm` is installed at `/opt/homebrew/bin/sysm` (v1.26.4.0). It wraps Apple frameworks, AppleScript, and system APIs into a unified CLI.
+`sysm` is installed at `/opt/homebrew/bin/sysm` (v1.26.4.1). It wraps Apple frameworks, AppleScript, and system APIs into a unified CLI.
 
 ## How to Use This Skill
 
