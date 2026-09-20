@@ -177,6 +177,63 @@ final class NotesServiceTests: XCTestCase {
         }
     }
 
+    func testBlockedByDialogErrorNamesThePromptAndTheRecovery() throws {
+        let error = NotesStructuredFormattingError.blockedByDialog(
+            "Would you like to enable automatic sorting of checked items?"
+        )
+        let description = try XCTUnwrap(error.errorDescription)
+
+        XCTAssertTrue(description.contains("automatic sorting of checked items"))
+        XCTAssertTrue(description.contains("Dismiss it in Notes"))
+    }
+
+    func testMainWindowUnavailableErrorExplainsHowToRecover() throws {
+        let description = try XCTUnwrap(
+            NotesStructuredFormattingError.mainWindowUnavailable.errorDescription
+        )
+
+        XCTAssertTrue(description.contains("main window"))
+        XCTAssertTrue(description.contains("Window > Notes"))
+    }
+
+    /// An unrecognized Notes dialog must stop the run rather than be answered blindly, and the
+    /// partial note has to be reported so it can be inspected.
+    func testCreateStructuredNoteReportsPartialNoteIdWhenBlockedByDialog() {
+        let formatter = MockNotesStructuredFormatter()
+        formatter.applyError = NotesStructuredFormattingError.blockedByDialog("Delete this note?")
+        service = NotesService(structuredFormatter: formatter)
+        mock.defaultResponse = "note-partial-dialog"
+
+        XCTAssertThrowsError(
+            try service.createStructuredNote(name: "Supplies", markdown: "- [ ] Pencils", folder: nil)
+        ) { error in
+            guard case NotesError.structuredFormattingFailed(let noteId, let reason) = error else {
+                XCTFail("Expected structuredFormattingFailed, got \(error)")
+                return
+            }
+            XCTAssertEqual(noteId, "note-partial-dialog")
+            XCTAssertTrue(reason.contains("Delete this note?"))
+        }
+    }
+
+    func testCreateStructuredNoteReportsPartialNoteIdWhenMainWindowUnavailable() {
+        let formatter = MockNotesStructuredFormatter()
+        formatter.applyError = NotesStructuredFormattingError.mainWindowUnavailable
+        service = NotesService(structuredFormatter: formatter)
+        mock.defaultResponse = "note-partial-mainwindow"
+
+        XCTAssertThrowsError(
+            try service.createStructuredNote(name: "Supplies", markdown: "- [ ] Pencils", folder: nil)
+        ) { error in
+            guard case NotesError.structuredFormattingFailed(let noteId, let reason) = error else {
+                XCTFail("Expected structuredFormattingFailed, got \(error)")
+                return
+            }
+            XCTAssertEqual(noteId, "note-partial-mainwindow")
+            XCTAssertTrue(reason.contains("main window"))
+        }
+    }
+
     func testCreateStructuredNoteRejectsAmbiguousFolderBeforeCreation() {
         let formatter = MockNotesStructuredFormatter()
         service = NotesService(structuredFormatter: formatter)

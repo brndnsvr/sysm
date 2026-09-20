@@ -62,6 +62,23 @@ If targeting, focus, selection, formatting, or read-back verification fails, the
 different window or note. A failure after creation reports the partial note ID so it can be inspected safely; sysm
 does not delete or retry against another note.
 
+Two states Notes can be in would otherwise strand the run, so they are handled explicitly:
+
+- **The first-run checklist prompt.** The first time anything marks a checklist item as checked, Notes asks
+  "Would you like to enable automatic sorting of checked items?". It is a sheet, so it takes focus and every later
+  format action fails. sysm answers it with **Not Now**, which declines the change and leaves the Notes setting
+  exactly as it was. Any *other* sheet is one sysm did not cause and cannot safely answer, so the run stops and the
+  error quotes what Notes is asking.
+- **No main Notes window.** `set selection` only registers in Notes' main list window. When every open window is a
+  separate note window — the usual state after Notes relaunches and restores windows — Notes reports an empty
+  selection indefinitely and the per-action target check can never pass. sysm reopens the main window through Notes'
+  own Window menu and re-asserts the selection; if the selection still cannot be confirmed it fails closed before
+  anything is typed.
+
+Waits are bounded throughout. Notes is given a longer budget to come forward when it has to launch first, and its
+Format menu is polled until the command it needs is enabled, because Notes validates that menu on its own main loop
+and briefly reports a command as disabled right after the selection or paragraph style changes.
+
 Duplicate folder names across Notes accounts are rejected for structured creation because a folder name alone cannot
 identify the intended destination safely. Rename one duplicate or omit `--folder` to use Notes' default folder.
 
@@ -85,9 +102,31 @@ unchecked state. Automated verification confirms the exact note/folder, all text
 A manual canary is still required to certify tappable checkdots, checked state, and heading appearance on a given
 macOS/Notes release.
 
+Checked state can be read back out of band without editing the note: select a checklist item and read the title of
+the Format menu's Shift-Command-U item. It reads "Mark as Checked" for an unchecked item and "Mark as Unchecked"
+for a checked one.
+
+Two things make that reading easy to get wrong, and both produce a confident but false "nothing was checked":
+
+- **Notes must be the active application.** Its Format menu is only validated against the real selection while
+  Notes is frontmost; otherwise every item reads disabled and the titles are stale. `notes create` deliberately
+  returns focus to whatever was in front before it ran, so a check performed straight after the command reads a
+  Notes that is no longer active. Activate Notes first.
+- **The title lags a selection change** by a few hundred milliseconds, so sample it until several consecutive
+  readings agree.
+
+Do not use this reading to drive a retry. Notes reports a successful press for the menu command whether or not the
+state actually changed, so a false negative here turns into a second press that quietly unchecks the item again.
+
+**Canary status:** certified on macOS 27.0 with sysm 1.26.4.1 (2026-09-19) — Title/Heading/Subheading styles,
+native tappable checkdots, checked items, and joined body paragraphs, verified from a cold Notes, from a restored
+window set with no main window, and through the first-run auto-sort prompt.
+
 ## Automated coverage
 
 - Parser tests cover all supported blocks, line endings, literal unsupported Markdown, and invalid empty content.
 - Renderer tests cover HTML escaping and marker removal from bootstrap content.
 - Service tests cover preflight-before-create, exact ID handoff, requested folder, and partial-note error reporting.
 - CLI tests cover help, incompatible input flags, and `--from-markdown -` without touching Notes.
+- Error tests cover the blocking-dialog and missing-main-window cases, including that both report the partial note
+  ID so a half-formatted note can be found.

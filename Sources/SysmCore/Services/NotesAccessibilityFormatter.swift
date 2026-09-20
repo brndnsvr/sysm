@@ -19,6 +19,8 @@ enum NotesStructuredFormattingError: LocalizedError, Equatable {
     case ambiguousEditor
     case focusLost
     case textSelectionFailed
+    case blockedByDialog(String)
+    case mainWindowUnavailable
     case formatCommandUnavailable(String)
     case formatCommandFailed(String)
     case readBackFailed(String)
@@ -41,6 +43,16 @@ enum NotesStructuredFormattingError: LocalizedError, Equatable {
             return "Notes lost keyboard focus before formatting completed"
         case .textSelectionFailed:
             return "Could not select the expected text in the target note"
+        case .blockedByDialog(let prompt):
+            return """
+            Notes is showing a dialog that blocks formatting: "\(prompt)". \
+            Dismiss it in Notes, then run the command again
+            """
+        case .mainWindowUnavailable:
+            return """
+            Notes is not reporting a selected note, which happens when its main window is \
+            closed. Open the main Notes window (Window > Notes) and run the command again
+            """
         case .formatCommandUnavailable(let command):
             return "Notes format command '\(command)' is unavailable for the current account or keyboard layout"
         case .formatCommandFailed(let command):
@@ -66,6 +78,10 @@ struct NotesAccessibilityFormatter: NotesStructuredFormatting {
     private static let fieldDelimiter = "\u{001E}"
     private static let waitIterations = 100
     private static let waitInterval: TimeInterval = 0.05
+    /// Notes can take several seconds to come forward when it has to launch first.
+    private static let activationWaitIterations = 300
+    /// Notes briefly reports an empty selection while it is still opening the note window.
+    private static let selectionWaitIterations = 20
 
     private var appleScript: any AppleScriptRunnerProtocol { Services.appleScriptRunner() }
 
@@ -93,11 +109,75 @@ struct NotesAccessibilityFormatter: NotesStructuredFormatting {
         try showAndSelectNote(id: id)
         let runningApplication = try waitForNotesToBecomeFrontmost()
         let applicationElement = AXUIElementCreateApplication(runningApplication.processIdentifier)
+        try ensureSelectionIsReported(id: id, application: applicationElement)
         let accessibilityUI = NotesAccessibilityUI(application: applicationElement) {
             try verifySelectedNote(id: id)
         }
         try accessibilityUI.apply(document: document)
         try verifyReadBack(document: document, noteId: id, expectedFolder: expectedFolder)
+    }
+
+    /// `set selection` only registers in Notes' main list window. When every open window is a
+    /// separate note window — the usual state after Notes relaunches and restores windows —
+    /// Notes reports an empty selection forever, and the per-action target check can never pass.
+    ///
+    /// Reopen the main window through Notes' own Window menu and re-assert the selection. If it
+    /// still cannot be confirmed, fail closed before anything is typed.
+    private func ensureSelectionIsReported(id: String, application: AXUIElement) throws {
+        if try selectedNoteId() == id {
+            return
+        }
+
+        guard let mainWindowItem = mainWindowMenuItem(in: application),
+              AXUIElementPerformAction(mainWindowItem, kAXPressAction as CFString) == .success else {
+            throw NotesStructuredFormattingError.mainWindowUnavailable
+        }
+
+        for _ in 0..<Self.waitIterations {
+            Thread.sleep(forTimeInterval: Self.waitInterval)
+            if try selectedNoteId() == id {
+                return
+            }
+            try showAndSelectNote(id: id)
+            if try selectedNoteId() == id {
+                return
+            }
+        }
+
+        throw NotesStructuredFormattingError.mainWindowUnavailable
+    }
+
+    private func selectedNoteId() throws -> String {
+        let script = """
+        tell application "Notes"
+            set selectedNotes to selection
+            if (count of selectedNotes) is not 1 then return ""
+            return id of item 1 of selectedNotes
+        end tell
+        """
+        return try runAppleScript(script, identifier: "notes-structured-selection")
+    }
+
+    /// Notes lists its main window as a "Notes" item in the Window menu.
+    private func mainWindowMenuItem(in application: AXUIElement) -> AXUIElement? {
+        guard let menuBar = NotesAccessibilityBridge.elementAttribute(
+            application,
+            kAXMenuBarAttribute as CFString
+        ) else {
+            return nil
+        }
+
+        for menuBarItem in NotesAccessibilityBridge.children(of: menuBar)
+        where NotesAccessibilityBridge.stringAttribute(menuBarItem, kAXTitleAttribute as CFString) == "Window" {
+            for menu in NotesAccessibilityBridge.children(of: menuBarItem) {
+                for item in NotesAccessibilityBridge.children(of: menu)
+                where NotesAccessibilityBridge.stringAttribute(item, kAXTitleAttribute as CFString) == "Notes" {
+                    return item
+                }
+            }
+        }
+
+        return nil
     }
 
     private func showAndSelectNote(id: String) throws {
@@ -119,13 +199,21 @@ struct NotesAccessibilityFormatter: NotesStructuredFormatting {
         }
     }
 
+    /// A cold Notes is still launching when `showAndSelectNote` returns, so a single `activate`
+    /// is not enough: the app can come up behind whatever was already frontmost. Keep asking it
+    /// forward across a longer budget instead of giving up after the shared five seconds.
     private func waitForNotesToBecomeFrontmost() throws -> NSRunningApplication {
-        for _ in 0..<Self.waitIterations {
+        for iteration in 0..<Self.activationWaitIterations {
             if let application = NSRunningApplication
                 .runningApplications(withBundleIdentifier: Self.notesBundleIdentifier)
-                .first,
-                NSWorkspace.shared.frontmostApplication?.processIdentifier == application.processIdentifier {
-                return application
+                .first {
+                if NSWorkspace.shared.frontmostApplication?.processIdentifier
+                    == application.processIdentifier {
+                    return application
+                }
+                if iteration % 20 == 19 {
+                    _ = application.activate(options: [])
+                }
             }
             Thread.sleep(forTimeInterval: Self.waitInterval)
         }
@@ -133,17 +221,22 @@ struct NotesAccessibilityFormatter: NotesStructuredFormatting {
     }
 
     private func verifySelectedNote(id: String) throws {
-        let script = """
-        tell application "Notes"
-            set selectedNotes to selection
-            if (count of selectedNotes) is not 1 then return ""
-            return id of item 1 of selectedNotes
-        end tell
-        """
-        let selectedId = try runAppleScript(script, identifier: "notes-structured-target")
-        guard selectedId == id else {
-            throw NotesStructuredFormattingError.targetMismatch(expected: id, actual: selectedId)
+        // Notes reports an empty selection for a short time after it launches or opens the
+        // note window. Treat "nothing selected yet" as not-ready and retry within a bounded
+        // budget. A *different* note id means the target genuinely changed, so that still
+        // fails immediately rather than waiting it out.
+        var selectedId = ""
+        for _ in 0..<Self.selectionWaitIterations {
+            selectedId = try selectedNoteId()
+            if selectedId == id {
+                return
+            }
+            if !selectedId.isEmpty {
+                break
+            }
+            Thread.sleep(forTimeInterval: Self.waitInterval)
         }
+        throw NotesStructuredFormattingError.targetMismatch(expected: id, actual: selectedId)
     }
 
     private func verifyReadBack(
